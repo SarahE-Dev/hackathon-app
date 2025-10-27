@@ -1,51 +1,58 @@
+import React from 'react';
+
+interface IQuestion {
+  id: string;
+  type: 'MCQ' | 'Multi-Select' | 'Short-Answer' | 'Long-Answer' | 'Coding' | 'File-Upload';
+  title: string;
+  content: string;
+  points: number;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+}
+
 interface LongAnswerQuestionProps {
-  question: {
-    content: {
-      placeholder?: string;
-      maxLength?: number;
-      minLength?: number;
-    };
-  };
-  value: string | null;
+  question: IQuestion;
+  currentAnswer?: string;
   onChange: (value: string) => void;
-  disabled?: boolean;
+  readOnly?: boolean;
 }
 
 export default function LongAnswerQuestion({
   question,
-  value = '',
+  currentAnswer = '',
   onChange,
-  disabled = false,
+  readOnly = false,
 }: LongAnswerQuestionProps) {
-  const maxLength = question.content.maxLength || 5000;
-  const minLength = question.content.minLength || 0;
-  const remaining = maxLength - (value?.length || 0);
-  const wordCount = value ? value.trim().split(/\s+/).filter(Boolean).length : 0;
+  const maxLength = 5000;
+  const remaining = maxLength - (currentAnswer?.length || 0);
+  const wordCount = currentAnswer ? currentAnswer.trim().split(/\s+/).filter(Boolean).length : 0;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <textarea
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={question.content.placeholder || 'Enter your detailed answer...'}
+        value={currentAnswer || ''}
+        onChange={(e) => !readOnly && onChange(e.target.value)}
+        placeholder="Enter your detailed answer here..."
         maxLength={maxLength}
-        disabled={disabled}
+        disabled={readOnly}
         rows={10}
-        className="w-full px-4 py-3 bg-dark-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-neon-blue transition-all disabled:opacity-50 resize-y min-h-[200px]"
+        className={`
+          w-full px-4 py-3 rounded-lg
+          bg-dark-700/50 border border-dark-600
+          text-white placeholder-gray-500
+          focus:border-neon-blue focus:ring-2 focus:ring-neon-blue/20
+          transition-all duration-200
+          disabled:opacity-50 disabled:cursor-not-allowed
+          resize-y min-h-[240px] max-h-96 font-mono text-sm
+        `}
       />
-      <div className="flex items-center justify-between text-xs">
+      <div className="flex items-center justify-between text-xs text-gray-400">
         <div className="space-x-4">
-          <span className="text-gray-500">
+          <span>
             {wordCount} {wordCount === 1 ? 'word' : 'words'}
           </span>
-          {minLength > 0 && (
-            <span className={`${(value?.length || 0) < minLength ? 'text-yellow-400' : 'text-green-400'}`}>
-              Minimum {minLength} characters
-            </span>
-          )}
         </div>
-        <span className={`${remaining < 100 ? 'text-yellow-400' : 'text-gray-500'}`}>
-          {remaining} characters remaining
+        <span className={remaining < 100 ? 'text-neon-yellow' : ''}>
+          {remaining} / {maxLength} characters
         </span>
       </div>
     </div>
