@@ -1,0 +1,33 @@
+{
+  "name": "hackathon-proctoring-platform",
+  "version": "1.0.0",
+  "description": "Production-level assessment and hackathon platform with proctoring",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend",
+    "code-runner",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:runner": "npm run dev --workspace=code-runner",
+    "seed": "npm run seed --workspace=backend",
+    "build": "npm run build --workspaces",
+    "lint": "npm run lint --workspaces",
+    "test": "npm run test --workspaces"
+  },
+  "keywords": [
+    "proctoring",
+    "assessment",
+    "hackathon",
+    "coding-challenges"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

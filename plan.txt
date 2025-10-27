@@ -1,0 +1,112 @@
+Needs (Functional Requirements)
+User roles & permissions
+Applicant/Fellow (test-taker): take timed assessments; upload files; see their own results/feedback when released.
+Proctor/Instructor/TA: start/stop sessions, identity check, live monitor, incident log, pause/resume, override time.
+Grader: access submissions, use rubric, leave comments, assign scores, request regrade.
+Judge (hackathon): view team/project pages, score via rubric, leave notes; see leaderboard context (not live until reveal).
+Admin: CRUD for users, roles, orgs/cohorts, banks, exams; set policies (proctoring, retake rules, late windows).
+Assessment authoring
+Question types: multiple choice (single/multi-select), freeform/short answer, long-form, coding (in-browser editor & test runner), and file-upload prompts (e.g., slide deck, dataset, design).
+Logic/branching: show/hide sections by answer, randomization (question order, option order), pools with weights.
+Versioning: draft → review → publish; immutable published snapshots.
+Delivery & proctoring
+Sessions: timed windows, start/end, per-student time accommodations, autosubmit on timeout.
+Identity & integrity: pre-check (photo ID confirmation), tab-change detection, copy/paste/print detection, optional webcam + mic recording and periodic snapshots (with consent), IP/device fingerprint logging.
+Environment controls: disable back/forward, optional fullscreen/lockdown reminder, calculator/notes toggle (built-in scratchpad).
+Incidents: automatic flags (excess tab switches, idle), manual proctor notes; timestamps for all events.
+Coding questions
+Editor: language pickers (e.g., Python/JS/Java), linting, run code, stdin/stdout capture.
+Tests: hidden & visible tests; per-test scoring; time/memory limits; deterministic sandbox.
+Attachments: allow upload (e.g., notebook, CSV) in addition to code cell.
+Submissions & artifacts
+Timestamps: start, first answer, each question submit, tab switches, autosave, final submit.
+File attachments: PDFs, images, code zips, etc., with size/type limits and virus scan.
+Audit trail: immutable event log per attempt.
+Grading & rubrics
+Rubrics: point scales, criteria, descriptors; per-question and overall; reusable templates.
+Workflows: self-assign or queue; double-blind optional; discrepancy resolution; regrade requests.
+Feedback: inline comments (code lines, freeform text), rubric feedback, summary; release controls.
+Hackathon mode
+Teams & projects: team registration, repo/link fields, short description, demo video link.
+Judging forms: configurable rubric per track; private judge notes; conflict of interest flag.
+Standings page: real-time hidden leaderboard for admins; public reveal at scheduled time; tie-break rules.
+Results & analytics
+Scores: per-question, per-section, overall; pass/fail rules; skill tags.
+Reports: cohort distribution, item analysis (difficulty/discrimination), proctoring flags, time-on-task.
+Exports: CSV/JSON; PDF report per candidate.
+Integrations (phaseable)
+SSO: Google/Microsoft; optional email/password.
+LMS/CRM hooks (later): Canvas grade push, Monday.com status updates, GitHub repo links.
+Webhooks: submission-created, grade-released, incident-flagged.
+Security, privacy, compliance
+Data protection: role-based access, TLS, encrypted at rest; PII minimization.
+Recording: explicit consent banner; retention policy; regional storage.
+Reliability: autosave, resume after disconnect, idempotent submits; scalable stateless services.
+Project Scope
+MVP (8–12 core epics)
+User & auth: roles/permissions, org/cohort scoping.
+Question bank: MCQ, freeform, coding; tags, difficulty; versioning.
+Assessment builder: sections, timers, randomization; publish snapshots.
+Delivery & autosave: timed sessions, accommodations, autosubmit, mobile-restricted UI.
+Basic proctoring: tab-change & blur detection, IP/device log, incident notes; (recording optional flag placeholder).
+Coding runner (one language to start, e.g., Python): run + visible tests; per-test scoring; sandbox queue.
+Submissions with attachments: file upload to secure object storage; audit log; timestamps.
+Grading UI + rubrics: criteria, inline comments, draft → submit grade → release.
+Results pages & export: per-student report, CSV export; simple item stats.
+Hackathon essentials: team pages, judge rubric form, offline leaderboard, reveal toggle.
+Admin controls: banks, exams, cohorts; accommodation settings; retention policies.
+Analytics lite: time-on-task, flag counts, per-item correctness.
+Post-MVP / Phase 2
+Screen/webcam recording (storage-efficient, e.g., sampled frames), face-presence heuristics.
+Multi-language code support (JS, Java, C++), hidden tests & performance caps, diff viewer.
+Advanced item analysis (KR-20/alpha, discrimination).
+LMS/CRM integrations, SSO expansion, webhooks.
+Live monitoring dashboard for proctors with real-time flags.
+Public hackathon leaderboard with track filters and judge comments (sanitized).
+Non-Functional Requirements
+Scalability: 1k concurrent test-takers; queue-backed code execution; horizontal API scaling.
+Availability: graceful degradation; retry-safe submissions; autosave ≤5s interval.
+Performance: code run ≤3s average for small tests; page loads ≤2s on broadband.
+Security: OWASP ASVS hygiene; strict upload validation; signed URL downloads; audit logging.
+Privacy: configurable data retention; recording opt-in; FERPA-friendly defaults for education use.
+Accessibility: WCAG 2.1 AA; keyboard-only flows; dyslexia-friendly font option.
+Timezone: all timestamps normalized to UTC with display in America/New_York.
+Key Entities (data model sketch)
+User, Role, Org/Cohort
+Question (type, content, options, tests, tags, version)
+Assessment (sections, settings, publish snapshot)
+Session (cohort, window, policies, accommodations)
+Attempt (user, timestamps, events, answers, files)
+ProctorEvent (tab switch, blur, incident, note)
+Rubric (criteria, weights)
+Grade (per-question, overall, comments)
+Team (members, project links)
+JudgeScore (rubric criteria, notes)
+Leaderboard (computed standings, tiebreaks)
+Grading & Rubric Templates (starter)
+Admissions/skills check rubric (example):
+Problem understanding (0–3)
+Solution approach (0–3)
+Correctness (0–4)
+Communication/clarity (0–2)
+Integrity flags review (pass/hold)
+Hackathon rubric (example):
+Impact & relevance (0–5)
+Technical depth (0–5)
+Execution & stability (0–5)
+UX & presentation (0–5)
+Innovation (0–5)
+“Main Standing” (Leaderboard) Rules (hackathon)
+Score calc: weighted average across judges; drop highest/lowest (optional).
+Ties: most 5s on “Impact,” then “Technical depth,” then earliest submission time.
+Views: Admin real-time; Judges see only assigned items; Public/Participant view unlocked at reveal time.
+Guardrails & Policies
+Retakes: per assessment (none / 1 with penalty / unlimited practice pool).
+Late windows: allow submission until 9:30 PM ET same day or Sunday 11:59 PM ET.
+Accommodation: +X% time; separate room flag; reduced proctoring constraints where required.
+Suggested Tech (fits your stack)
+Frontend: Next.js/React on Vercel; WebSocket for proctor live feed.
+Backend: Node/Express (existing pattern), JWT; MongoDB (Atlas).
+Code runner: isolated workers (Docker or Firecracker) with job queue (BullMQ/Redis).
+Storage: S3-compatible for uploads & recordings; signed URLs.
+Observability: structured audit logs; error tracking; metrics dashboard.

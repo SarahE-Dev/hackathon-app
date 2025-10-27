@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: hackathon-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: hackathon-platform
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - hackathon-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: hackathon-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - hackathon-network
+
+  # Code runner worker (optional - for local testing)
+  # code-runner:
+  #   build:
+  #     context: ./code-runner
+  #     dockerfile: Dockerfile
+  #   container_name: hackathon-code-runner
+  #   environment:
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #   depends_on:
+  #     - redis
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   networks:
+  #     - hackathon-network
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  hackathon-network:
+    driver: bridge
