@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # Database
   mongodb:
     image: mongo:7
     container_name: hackathon-mongodb
@@ -12,7 +13,14 @@ services:
       - mongodb_data:/data/db
     networks:
       - hackathon-network
+    restart: unless-stopped
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  # Cache & Message Queue
   redis:
     image: redis:7-alpine
     container_name: hackathon-redis
@@ -22,22 +30,92 @@ services:
       - redis_data:/data
     networks:
       - hackathon-network
+    restart: unless-stopped
+    healthcheck:
+      test: redis-cli ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: redis-server --appendonly yes
 
-  # Code runner worker (optional - for local testing)
-  # code-runner:
-  #   build:
-  #     context: ./code-runner
-  #     dockerfile: Dockerfile
-  #   container_name: hackathon-code-runner
-  #   environment:
-  #     - REDIS_HOST=redis
-  #     - REDIS_PORT=6379
-  #   depends_on:
-  #     - redis
-  #   volumes:
-  #     - /var/run/docker.sock:/var/run/docker.sock
-  #   networks:
-  #     - hackathon-network
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: hackathon-backend
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - BACKEND_PORT=3001
+      - MONGODB_URI=mongodb://mongodb:27017/hackathon-platform
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-in-production}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-your-refresh-secret-change-in-production}
+      - FRONTEND_URL=http://localhost:3000
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - hackathon-network
+    restart: unless-stopped
+    healthcheck:
+      test: curl -f http://localhost:3001/health || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: hackathon-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+      - NEXT_PUBLIC_WS_URL=ws://localhost:3001
+    depends_on:
+      - backend
+    networks:
+      - hackathon-network
+    restart: unless-stopped
+    healthcheck:
+      test: curl -f http://localhost:3000 || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Code Runner Worker (Optional)
+  code-runner:
+    build:
+      context: .
+      dockerfile: code-runner/Dockerfile
+    container_name: hackathon-code-runner
+    environment:
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CODE_RUNNER_TIMEOUT=5000
+      - CODE_RUNNER_MEMORY_LIMIT=128
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - hackathon-network
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: node -e "console.log('healthy')"
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   mongodb_data:
