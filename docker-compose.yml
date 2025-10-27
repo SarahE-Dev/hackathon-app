@@ -91,31 +91,31 @@ services:
       timeout: 5s
       retries: 5
 
-  # Code Runner Worker (Optional)
-  code-runner:
-    build:
-      context: .
-      dockerfile: code-runner/Dockerfile
-    container_name: hackathon-code-runner
-    environment:
-      - NODE_ENV=production
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - CODE_RUNNER_TIMEOUT=5000
-      - CODE_RUNNER_MEMORY_LIMIT=128
-    depends_on:
-      redis:
-        condition: service_healthy
-    networks:
-      - hackathon-network
-    restart: unless-stopped
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    healthcheck:
-      test: node -e "console.log('healthy')"
-      interval: 30s
-      timeout: 10s
-      retries: 3
+  # Code Runner Worker (Optional - commented out until source files exist)
+  # code-runner:
+  #   build:
+  #     context: .
+  #     dockerfile: code-runner/Dockerfile
+  #   container_name: hackathon-code-runner
+  #   environment:
+  #     - NODE_ENV=production
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #     - CODE_RUNNER_TIMEOUT=5000
+  #     - CODE_RUNNER_MEMORY_LIMIT=128
+  #   depends_on:
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - hackathon-network
+  #   restart: unless-stopped
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   healthcheck:
+  #     test: node -e "console.log('healthy')"
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
 
 volumes:
   mongodb_data:

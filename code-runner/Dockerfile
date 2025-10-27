@@ -3,8 +3,10 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Copy root package files
 COPY package.json package-lock.json ./
+
+# Copy workspace package files
 COPY code-runner/package.json ./code-runner/
 COPY shared/package.json ./shared/
 
