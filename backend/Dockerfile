@@ -15,9 +15,12 @@ COPY shared/package.json ./shared/
 # Install dependencies
 RUN npm install
 
-# Copy source code
+# Copy source code and config files
 COPY backend ./backend
 COPY shared ./shared
+
+# Copy critical backend config files
+COPY backend/tsconfig.json ./backend/
 
 # Expose port
 EXPOSE 3001

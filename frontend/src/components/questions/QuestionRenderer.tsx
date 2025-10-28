@@ -79,20 +79,32 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
     case 'Coding':
       return (
         <CodingQuestion
-          question={question}
-          currentAnswer={currentAnswer}
+          question={{
+            content: {
+              language: 'javascript',
+              starterCode: '',
+              testCases: [],
+            },
+          }}
+          value={currentAnswer}
           onChange={onChange}
-          readOnly={readOnly}
+          disabled={readOnly}
         />
       );
 
     case 'File-Upload':
       return (
         <FileUploadQuestion
-          question={question}
-          currentAnswer={currentAnswer}
+          question={{
+            content: {
+              allowedFileTypes: ['.pdf', '.doc', '.docx', '.txt', '.zip', '.jpg', '.png'],
+              maxFileSize: 10,
+              maxFiles: 5,
+            },
+          }}
+          value={currentAnswer}
           onChange={onChange}
-          readOnly={readOnly}
+          disabled={readOnly}
         />
       );
 

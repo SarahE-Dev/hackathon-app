@@ -15,9 +15,15 @@ COPY shared/package.json ./shared/
 # Install dependencies
 RUN npm install
 
-# Copy source code
+# Copy source code and config files
 COPY frontend ./frontend
 COPY shared ./shared
+
+# Copy critical frontend config files
+COPY frontend/next.config.js ./frontend/
+COPY frontend/tailwind.config.ts ./frontend/
+COPY frontend/postcss.config.js ./frontend/
+COPY frontend/tsconfig.json ./frontend/
 
 # Expose port
 EXPOSE 3000
