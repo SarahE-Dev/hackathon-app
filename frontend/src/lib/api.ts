@@ -203,4 +203,107 @@ export const questionsAPI = {
   },
 };
 
+// Sessions API
+export const sessionsAPI = {
+  getAll: async (params?: any) => {
+    const response = await api.get('/sessions', { params });
+    return response.data;
+  },
+
+  getById: async (id: string) => {
+    const response = await api.get(`/sessions/${id}`);
+    return response.data;
+  },
+
+  create: async (data: any) => {
+    const response = await api.post('/sessions', data);
+    return response.data;
+  },
+
+  update: async (id: string, data: any) => {
+    const response = await api.put(`/sessions/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: string) => {
+    const response = await api.delete(`/sessions/${id}`);
+    return response.data;
+  },
+};
+
+// Attempts API
+export const attemptsAPI = {
+  getAll: async (params?: any) => {
+    const response = await api.get('/attempts/my-attempts', { params });
+    return response.data;
+  },
+
+  getById: async (id: string) => {
+    const response = await api.get(`/attempts/${id}`);
+    return response.data;
+  },
+
+  start: async (assessmentId: string, sessionId?: string) => {
+    const response = await api.post('/attempts/start', {
+      assessmentId,
+      sessionId,
+    });
+    return response.data;
+  },
+
+  saveAnswer: async (attemptId: string, questionId: string, answer: any) => {
+    const response = await api.put(`/attempts/${attemptId}/answer`, {
+      questionId,
+      answer,
+    });
+    return response.data;
+  },
+
+  submit: async (attemptId: string) => {
+    const response = await api.post(`/attempts/${attemptId}/submit`);
+    return response.data;
+  },
+
+  addProctorEvent: async (attemptId: string, event: any) => {
+    const response = await api.post(`/attempts/${attemptId}/event`, event);
+    return response.data;
+  },
+
+  uploadFile: async (attemptId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post(`/attempts/${attemptId}/upload`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+};
+
+// Grades API
+export const gradesAPI = {
+  getByAttempt: async (attemptId: string) => {
+    const response = await api.get(`/grades/attempt/${attemptId}`);
+    return response.data;
+  },
+
+  getByAssessment: async (assessmentId: string, params?: any) => {
+    const response = await api.get(`/grades/assessment/${assessmentId}`, {
+      params,
+    });
+    return response.data;
+  },
+
+  create: async (data: any) => {
+    const response = await api.post('/grades', data);
+    return response.data;
+  },
+
+  update: async (id: string, data: any) => {
+    const response = await api.put(`/grades/${id}`, data);
+    return response.data;
+  },
+};
+
 export default api;
