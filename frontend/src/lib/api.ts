@@ -306,4 +306,28 @@ export const gradesAPI = {
   },
 };
 
+// Problem Import API (Codewars integration)
+export const problemImportAPI = {
+  // Check if Codewars API is available
+  checkCodewarsStatus: async () => {
+    const response = await api.get('/problems/codewars/status');
+    return response.data;
+  },
+
+  // Preview a problem before importing
+  previewCodewarsProblem: async (codewarsId: string) => {
+    const response = await api.get(`/problems/codewars/preview/${codewarsId}`);
+    return response.data;
+  },
+
+  // Import a problem from Codewars
+  importCodewarsProblem: async (codewarsId: string, language: string = 'javascript') => {
+    const response = await api.post('/problems/import', {
+      codewarsId,
+      language,
+    });
+    return response.data;
+  },
+};
+
 export default api;
