@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios';
+import LiveCodingSession from '@/components/LiveCodingSession';
 
 interface TeamMember {
   _id: string;
@@ -183,43 +184,11 @@ export default function TeamDetailPage() {
             </div>
 
             {/* Tab Content */}
-            {activeTab === 'code' && (
-              <div className="glass rounded-2xl p-6 border border-gray-800">
-                <h3 className="text-xl font-bold mb-4">Live Coding Session</h3>
-
-                {/* Code Editor Placeholder */}
-                <div className="bg-dark-800 rounded-lg border border-gray-700 p-4 mb-4">
-                  <div className="bg-dark-900 rounded font-mono text-sm">
-                    <textarea
-                      value={code}
-                      onChange={(e) => setCode(e.target.value)}
-                      className="w-full h-96 bg-transparent text-gray-300 p-4 resize-none outline-none"
-                      placeholder="// Start typing your code here..."
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <button className="flex-1 py-3 bg-gradient-to-r from-neon-blue to-neon-purple text-white rounded-lg font-medium hover:shadow-lg hover:shadow-neon-blue/50 transition-all">
-                    Run Code
-                  </button>
-                  <button className="flex-1 py-3 bg-dark-700 border border-gray-600 text-white rounded-lg font-medium hover:border-neon-blue transition-all">
-                    Save Progress
-                  </button>
-                </div>
-
-                {/* Test Output */}
-                <div className="mt-6 bg-dark-800 rounded-lg border border-gray-700 p-4">
-                  <h4 className="text-sm font-bold text-gray-400 mb-2">Test Results</h4>
-                  <pre className="text-xs text-gray-400 overflow-auto max-h-32">
-                    {`Test Case 1: PASSED
-Test Case 2: PENDING
-Test Case 3: PENDING
-
-Ready to run tests...`}
-                  </pre>
-                </div>
-              </div>
+            {activeTab === 'code' && team && (
+              <LiveCodingSession
+                teamId={team.name}
+                problemTitle={team.projectTitle}
+              />
             )}
 
             {activeTab === 'members' && (

@@ -320,15 +320,15 @@ export default function DashboardPage() {
                           {assessment.description || 'No description provided'}
                         </p>
                         <div className="flex flex-wrap gap-4 text-xs text-gray-500">
-                          <div>📌 {assessment.totalPoints} points</div>
-                          <div>📅 {dueDate.toLocaleDateString()}</div>
+                          <div key="points">📌 {assessment.totalPoints} points</div>
+                          <div key="date">📅 {dueDate.toLocaleDateString()}</div>
                           {attempt && status !== 'available' && (
-                            <div>
+                            <div key="started">
                               ⏱️ Started {new Date(attempt.startedAt).toLocaleDateString()}
                             </div>
                           )}
                           {attempt?.status === 'graded' && attempt?.score !== undefined && (
-                            <div className="text-neon-green font-medium">
+                            <div key="score" className="text-neon-green font-medium">
                               ✓ Score: {attempt.score}/{assessment.totalPoints}
                             </div>
                           )}
