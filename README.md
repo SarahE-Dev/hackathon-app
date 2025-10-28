@@ -1,68 +1,68 @@
-# Hackathon Proctoring Platform
+# CodeArena - Justice Through Code Hackathon Platform
 
-Production-level assessment and hackathon platform with proctoring, coding challenges, grading, and judging capabilities.
+Production-ready assessment and hackathon platform with proctoring, coding challenges, grading, and judging capabilities. Built with a neon cyberpunk design and complete containerization.
 
 ## Project Structure
 
 ```
 hackathon-app/
-├── frontend/          # Next.js 14 frontend
-├── backend/           # Express.js backend API
-├── code-runner/       # Code execution service
-├── shared/            # Shared types and utilities
-├── PROJECT_PLAN.md    # Detailed 10-week implementation plan
-└── docker-compose.yml # Development environment
+├── frontend/              # Next.js 14 frontend (Tailwind CSS + neon theme)
+├── backend/               # Express.js backend API (TypeScript)
+├── code-runner/           # Code execution service (Docker-in-Docker)
+├── shared/                # Shared types and utilities
+├── docker-compose.yml     # Production Docker setup
+├── docker-compose.dev.yml # Development Docker setup (hot-reload)
+├── DOCKER_SETUP.md        # Complete Docker guide
+├── IMPLEMENTATION_GUIDE.md # Feature roadmap
+└── README.md              # This file
 ```
 
 ## Technology Stack
 
-- **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS, Monaco Editor
-- **Backend**: Express.js, TypeScript, Socket.io
-- **Database**: MongoDB Atlas
-- **Queue**: BullMQ + Redis
-- **Code Runner**: Docker + isolated containers
-- **Storage**: AWS S3 (or compatible)
+- **Frontend**: Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS, Zustand, Monaco Editor
+- **Backend**: Express.js, TypeScript, Socket.io, Mongoose, BullMQ
+- **Database**: MongoDB 7.0 (containerized)
+- **Cache & Queue**: Redis 7 (containerized)
+- **Code Runner**: Node.js + Docker (isolated containers)
+- **Deployment**: Docker Compose with multi-stage builds
+- **Design**: Neon cyberpunk theme with glass morphism
 
-## Getting Started
+## Quick Start
 
 ### Prerequisites
 
-- Node.js 20+ and npm
-- MongoDB (local or Atlas)
-- Redis (local or cloud)
-- Docker (for code execution)
+- Docker & Docker Compose (recommended)
+- Node.js 18+ and npm (if running without Docker)
+- Git
 
-### Installation
-
-1. **Install dependencies for all workspaces:**
+### Option 1: Docker (Recommended)
 
 ```bash
+# Start all services in Docker
+docker-compose up
+
+# Or with clean build
+docker-compose down && docker-compose build --no-cache && docker-compose up
+```
+
+Services will be available at:
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:3001
+- **MongoDB**: localhost:27017
+- **Redis**: localhost:6379
+
+### Option 2: Local Development
+
+```bash
+# Install dependencies
 npm install
-```
 
-2. **Set up environment variables:**
-
-```bash
-cp .env.example .env
-# Edit .env with your configuration
-```
-
-3. **Start MongoDB and Redis using Docker:**
-
-```bash
+# Start MongoDB and Redis (in Docker)
 docker-compose up -d mongodb redis
-```
 
-4. **Run development servers:**
-
-```bash
-# Start both frontend and backend
-npm run dev
-
-# Or run individually
-npm run dev:frontend
-npm run dev:backend
-npm run dev:runner
+# Run development servers
+npm run dev:frontend &
+npm run dev:backend &
 ```
 
 The application will be available at:
@@ -70,36 +70,79 @@ The application will be available at:
 - Backend API: http://localhost:3001
 - Backend Health: http://localhost:3001/health
 
-### Database Setup
+### Create Demo Assessment
 
-The application will automatically connect to MongoDB. For the first run:
+After starting the platform, create a demo assessment:
 
 ```bash
-# Optional: Seed the database with sample data
-npm run seed
+# Database will have a demo user ready
+# Email: demo@example.com
+# Password: Demo@123456
 ```
 
-## Development Workflow
+Then:
+1. Go to http://localhost:3000/dashboard
+2. Login with credentials above
+3. Click "Start" on the JavaScript Fundamentals Quiz
+4. Answer the 4 questions (MCQ, Short Answer, Multi-Select, Long Answer)
+5. Submit and see your results
 
-### Project Phases (10-Week Plan)
+**Note**: If rate limiting blocks you during setup, wait a few minutes and try again.
 
-See [PROJECT_PLAN.md](./PROJECT_PLAN.md) for the complete implementation roadmap.
+## Features Implemented ✅
 
-**Current Phase**: Foundation & Setup ✅
+### Core Features
+- ✅ User Authentication (JWT with refresh tokens)
+- ✅ User Roles & Permissions (Admin, Proctor, Grader, Judge, Applicant)
+- ✅ Assessment Creation & Publishing
+- ✅ Question Bank (6 question types)
+- ✅ Assessment Taking Interface
+- ✅ Auto-save with Zustand state management
+- ✅ Dashboard with assessment tracking
+- ✅ Neon cyberpunk design theme
+- ✅ Full Docker containerization
+- ✅ Multi-stage Docker builds for production
 
-**Next Steps**:
-1. Implement database schemas (Week 1-2)
-2. Build authentication system (Week 1-2)
-3. Create question bank (Week 3-4)
-4. Build assessment builder (Week 3-4)
+### Question Types Supported
+1. **Multiple Choice (MCQ)** - Single selection
+2. **Multi-Select** - Multiple correct answers
+3. **Short Answer** - Text input with validation
+4. **Long Answer** - Long-form text with word count
+5. **Coding** - Monaco editor with test cases
+6. **File Upload** - Document/file submission
 
-### Running Tests
+## Development Commands
+
+### Building
+
+```bash
+# Build all workspaces
+npm run build
+
+# Build specific workspace
+npm run build --workspace=frontend
+npm run build --workspace=backend
+```
+
+### Development Mode (Local)
+
+```bash
+# Start all dev servers
+npm run dev
+
+# Or individually
+npm run dev:frontend  # http://localhost:3000
+npm run dev:backend   # http://localhost:3001
+npm run dev:runner    # Code execution service
+```
+
+### Testing
 
 ```bash
 # Run all tests
 npm test
 
-# Run tests for specific workspace
+# Run specific workspace tests
 npm test --workspace=backend
 npm test --workspace=frontend
 ```
@@ -110,224 +153,260 @@ npm test --workspace=frontend
 # Lint all workspaces
 npm run lint
 
-# Lint specific workspace
-npm run lint --workspace=backend
+# Fix linting issues
+npm run lint:fix --workspace=frontend
 ```
 
-### Building for Production
+## Upcoming Features 🚀
 
-```bash
-# Build all workspaces
-npm run build
+### In Progress
+- **Results Pages** - View scores, feedback, and detailed breakdowns
+- **Grading System** - Rubrics, inline comments, regrading
+- **Proctoring Dashboard** - Real-time monitoring and incident tracking
 
-# Build specific workspace
-npm run build --workspace=frontend
-```
+### Planned
+- **Hackathon Mode** - Teams, projects, leaderboards, judge scoring
+- **Admin Dashboard** - User management, assessment analytics
+- **Analytics** - Time-on-task, question statistics, performance reports
+- **Code Execution** - Full code sandbox with test case validation
+- **Advanced Proctoring** - Tab detection, copy-paste monitoring, device fingerprinting
 
-## Key Features (MVP)
-
-### User Roles
-- **Admin**: Full system control, user management, assessment creation
-- **Proctor**: Monitor sessions, flag incidents, control timing
-- **Grader**: Review submissions, apply rubrics, provide feedback
-- **Judge**: Score hackathon projects, view leaderboard
-- **Applicant**: Take assessments, submit work, view results
-
-### Assessment Features
-- Multiple question types (MCQ, freeform, coding, file upload)
-- Timed sessions with accommodations
-- Randomization and question pools
-- Draft → Review → Publish workflow
-
-### Proctoring
-- Tab switch and blur detection
-- Copy/paste monitoring
-- IP and device fingerprinting
-- Incident logging with timestamps
-- Live proctor dashboard
-
-### Coding Challenges
-- Monaco editor (VS Code)
-- Python support (more languages post-MVP)
-- Visible and hidden test cases
-- Per-test scoring
-- Sandbox execution (3s timeout)
-
-### Grading System
-- Configurable rubrics
-- Inline comments on code/text
-- Draft and release workflow
-- Regrade requests
-
-### Hackathon Mode
-- Team registration and management
-- Judge assignment and rubrics
-- Real-time leaderboard (admin view)
-- Public reveal at scheduled time
-- Tie-break rules
-
-## API Documentation
+## API Routes
 
 ### Authentication
+```
+POST   /api/auth/register        - Create new account
+POST   /api/auth/login           - Login and get JWT
+POST   /api/auth/refresh         - Refresh access token
+POST   /api/auth/logout          - Logout
+GET    /api/auth/me              - Get current user
+```
+
+### Assessments
+```
+GET    /api/assessments          - List published assessments
+GET    /api/assessments/:id      - Get assessment details
+POST   /api/assessments          - Create assessment (Admin/Proctor)
+PUT    /api/assessments/:id      - Update assessment
+POST   /api/assessments/:id/publish - Publish assessment (Admin)
+```
+
+### Questions
+```
+GET    /api/assessments/questions/list - Get question bank
+GET    /api/assessments/questions/:id  - Get question details
+POST   /api/assessments/questions      - Create question
+PUT    /api/assessments/questions/:id  - Update question
+POST   /api/assessments/questions/:id/publish - Publish question
+```
+
+### Attempts (Taking Assessments)
+```
+POST   /api/attempts/start       - Start new attempt
+GET    /api/attempts/my-attempts - Get user's attempts
+GET    /api/attempts/:id         - Get attempt details
+PUT    /api/attempts/:id/answer  - Auto-save answer
+POST   /api/attempts/:id/submit  - Submit attempt
+POST   /api/attempts/:id/event   - Log proctor events
+POST   /api/attempts/:id/upload  - Upload file
+```
+
+### Grades
+```
+GET    /api/grades/attempt/:id   - Get attempt grades
+GET    /api/grades/assessment/:id - Get all attempt grades for assessment
+POST   /api/grades               - Create/update grade
+```
+
+### Users & Organizations
+```
+GET    /api/users                - List users (Admin)
+GET    /api/users/:id            - Get user details
+PUT    /api/users/:id            - Update user
+DELETE /api/users/:id            - Delete user (Admin)
+```
+
+## Docker Setup Guide
+
+For complete Docker instructions, see [DOCKER_SETUP.md](./DOCKER_SETUP.md).
+
+### Basic Docker Commands
 
 ```bash
-POST /api/auth/register
-POST /api/auth/login
-POST /api/auth/refresh
-POST /api/auth/logout
+# Start all services
+docker-compose up
+
+# Stop all services
+docker-compose down
+
+# View logs
+docker-compose logs -f frontend
+docker-compose logs -f backend
+
+# Rebuild images
+docker-compose build --no-cache
+
+# Clean everything and start fresh
+docker-compose down -v && docker-compose up
 ```
 
-### Core Endpoints
+### Database Access
 
 ```bash
-# Users
-GET    /api/users
-POST   /api/users
-PUT    /api/users/:id
+# MongoDB shell
+docker exec hackathon-mongodb mongosh hackathon-platform
 
-# Assessments
-GET    /api/assessments
-POST   /api/assessments
-PUT    /api/assessments/:id
-POST   /api/assessments/:id/publish
-
-# Sessions
-POST   /api/sessions
-GET    /api/sessions/:id
-
-# Attempts
-POST   /api/attempts
-GET    /api/attempts/:id
-PUT    /api/attempts/:id/answer
-POST   /api/attempts/:id/submit
-
-# Grading
-GET    /api/grades/queue
-POST   /api/grades
-POST   /api/grades/:id/release
-
-# Hackathon
-POST   /api/teams
-GET    /api/leaderboard
-POST   /api/judge-scores
+# Redis CLI
+docker exec hackathon-redis redis-cli
 ```
 
-### WebSocket Events
+## Project Architecture
 
-```javascript
-// Connect to proctoring WebSocket
-const socket = io('ws://localhost:3001');
+### Frontend Stack
+- **Framework**: Next.js 14 with App Router
+- **State Management**: Zustand (auth, attempt, ui stores)
+- **Styling**: Tailwind CSS with custom neon color theme
+- **UI Components**: Custom glass-morphism design system
+- **Editor**: Monaco Editor for code questions
+- **HTTP Client**: Axios with JWT interceptors
 
-// Join session
-socket.emit('join-session', sessionId);
+### Backend Stack
+- **Framework**: Express.js with TypeScript
+- **Database**: MongoDB with Mongoose
+- **Caching**: Redis
+- **Authentication**: JWT with refresh tokens
+- **Real-time**: Socket.io for proctoring
+- **Validation**: Zod schema validation
 
-// Listen for proctor events
-socket.on('proctor-event', (data) => {
-  console.log('Event:', data);
-});
-```
+### Database Collections
+- **Users** - User accounts with roles
+- **Organizations** - Organizational boundaries
+- **Assessments** - Assessment definitions
+- **Questions** - Question bank with all types
+- **Attempts** - User attempt records
+- **Grades** - Assessment grades and feedback
+- **Teams** - Hackathon teams (future)
+- **ProctorEvents** - Monitoring logs (future)
 
-## Database Schema
+## Quick Demo Login
 
-See [PROJECT_PLAN.md](./PROJECT_PLAN.md) for complete schema documentation.
+When you start the application, a demo account is pre-configured:
 
-### Core Collections:
-- Users
-- Organizations
-- Questions
-- Assessments
-- Sessions
-- Attempts
-- Grades
-- Teams
-- JudgeScores
-- ProctorEvents
+**Dashboard**: http://localhost:3000/dashboard
+
+**Credentials**:
+- Email: `demo@example.com`
+- Password: `Demo@123456`
+
+**What to do**:
+1. Click the login link on the home page
+2. Enter credentials above
+3. View the JavaScript Fundamentals Quiz
+4. Click "Start" to begin
+5. Answer all 4 questions
+6. Click "Submit" to finish
 
 ## Security
 
-- JWT authentication with refresh tokens
-- Rate limiting on all endpoints
-- Input validation with Zod
-- Helmet.js for HTTP headers
-- CORS configured for frontend origin
-- Isolated Docker containers for code execution
-- Signed URLs for file downloads
+- ✅ JWT authentication with refresh tokens
+- ✅ Rate limiting on auth endpoints
+- ✅ Input validation with Zod
+- ✅ Helmet.js for HTTP headers
+- ✅ CORS configured
+- ✅ Bcrypt password hashing
+- ✅ Secure token storage in localStorage
+- 🔄 Planned: Proctoring security features (tab detection, etc.)
+
+## Environment Variables
+
+### Frontend (.env.local)
+```
+NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXT_PUBLIC_WS_URL=ws://localhost:3001
+```
+
+### Backend (.env)
+```
+NODE_ENV=development
+BACKEND_PORT=3001
+MONGODB_URI=mongodb://mongodb:27017/hackathon-platform
+REDIS_URL=redis://redis:6379
+JWT_SECRET=your-secret-key-change-in-production
+JWT_REFRESH_SECRET=your-refresh-secret-change-in-production
+FRONTEND_URL=http://localhost:3000
+```
 
 ## Deployment
 
-### Frontend (Vercel)
+### Docker Production Build
 
 ```bash
-cd frontend
-vercel --prod
+# Build production images
+docker-compose build --no-cache
+
+# Run production containers
+docker-compose up -d
+
+# Check logs
+docker-compose logs -f
 ```
 
-### Backend (Railway/Render/AWS)
+### Environment for Production
 
-```bash
-cd backend
-npm run build
-npm start
+Update these for production:
+- `JWT_SECRET`: Generate with `openssl rand -base64 32`
+- `JWT_REFRESH_SECRET`: Generate with `openssl rand -base64 32`
+- `MONGODB_URI`: Use MongoDB Atlas connection string
+- `REDIS_URL`: Use Redis Cloud or managed service
+- `FRONTEND_URL`: Your production frontend URL
+- `BACKEND_URL`: Your production API URL
+
+## File Structure
+
 ```
+frontend/
+├── src/
+│   ├── app/              # Next.js App Router pages
+│   ├── components/       # React components
+│   │   ├── ui/          # Base UI components
+│   │   ├── questions/   # Question renderers
+│   │   └── assessment/  # Assessment components
+│   ├── lib/             # Utilities and API client
+│   └── store/           # Zustand stores
 
-### Environment Variables
+backend/
+├── src/
+│   ├── controllers/      # Request handlers
+│   ├── models/          # Mongoose schemas
+│   ├── routes/          # Route definitions
+│   ├── middleware/      # Express middleware
+│   ├── services/        # Business logic
+│   └── index.ts         # Server entry point
 
-Ensure all production environment variables are set:
-- `MONGODB_URI`: MongoDB Atlas connection string
-- `REDIS_HOST`, `REDIS_PORT`: Redis connection
-- `JWT_SECRET`, `JWT_REFRESH_SECRET`: Secure random strings
-- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`: S3 credentials
-- `FRONTEND_URL`, `BACKEND_URL`: Production URLs
-
-## Monitoring
-
-- Structured logging with Winston
-- Error tracking (Sentry recommended)
-- Performance monitoring
-- Database query analysis
+shared/
+└── src/types/           # Shared TypeScript types
+```
 
 ## Contributing
 
-This is a production system. Follow these guidelines:
-
-1. Create feature branches from `main`
-2. Write tests for new features
-3. Follow TypeScript strict mode
-4. Update documentation
-5. Request code review before merging
-
-## Roadmap
-
-### Week 1-2 (Current)
-- [x] Project setup
-- [x] Type definitions
-- [ ] Database schemas
-- [ ] Authentication system
-
-### Week 3-4
-- [ ] Question bank
-- [ ] Assessment builder
-
-### Week 5-6
-- [ ] Session delivery
-- [ ] Proctoring features
-
-### Week 7
-- [ ] Code execution engine
-
-### Week 8
-- [ ] Grading system
-
-### Week 9-10
-- [ ] Hackathon features
-- [ ] Analytics and polish
-
-See [PROJECT_PLAN.md](./PROJECT_PLAN.md) for the complete timeline.
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 
-MIT
+MIT - See LICENSE file for details
 
 ## Support
 
-For issues and questions, please open a GitHub issue or contact the development team.
+For issues and questions:
+1. Check [DOCKER_SETUP.md](./DOCKER_SETUP.md) for Docker-related issues
+2. Check [IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md) for architecture details
+3. Open a GitHub issue with detailed description
+4. Contact the development team
+
+---
+
+**Built with ❤️ for Justice Through Code**
