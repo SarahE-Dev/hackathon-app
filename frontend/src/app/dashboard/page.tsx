@@ -161,12 +161,20 @@ export default function DashboardPage() {
               <h1 className="text-4xl font-bold text-gradient">Dashboard</h1>
               <p className="text-gray-400 mt-1">Welcome back, {user?.firstName}!</p>
             </div>
-            <button
-              onClick={handleLogout}
-              className="px-6 py-2 bg-dark-700 border border-red-500/50 text-red-400 rounded-lg hover:bg-red-500/10 transition-all"
-            >
-              Logout
-            </button>
+            <div className="flex gap-3">
+              <Link
+                href="/hackathon/teams"
+                className="px-6 py-2 bg-gradient-to-r from-neon-blue to-neon-purple text-white rounded-lg hover:shadow-lg hover:shadow-neon-blue/50 transition-all font-medium"
+              >
+                🚀 JTC Hackathon
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="px-6 py-2 bg-dark-700 border border-red-500/50 text-red-400 rounded-lg hover:bg-red-500/10 transition-all"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </div>
