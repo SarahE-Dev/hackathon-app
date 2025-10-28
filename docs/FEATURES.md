@@ -2,6 +2,12 @@
 
 ## ✅ Implemented Features
 
+### Integrations
+- [x] Codewars API integration (1000+ real coding problems)
+- [x] One-click problem import with preview
+- [x] Auto-conversion to CodeArena format
+- [x] Problem metadata and statistics
+
 ### Core Platform
 - [x] User authentication (JWT with refresh tokens)
 - [x] User roles & permissions (Admin, Proctor, Grader, Judge, Applicant)

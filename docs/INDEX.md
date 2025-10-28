@@ -18,6 +18,10 @@ Deploying to production:
 1. **[DOCKER.md](./DOCKER.md)** - Docker setup and containerization
 2. **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Production deployment guide
 
+### 🔌 Integrations
+Third-party service integrations:
+- **[CODEWARS_INTEGRATION.md](./CODEWARS_INTEGRATION.md)** - Import problems from Codewars (1000+ real challenges)
+
 ### 📋 Reference
 Additional reference materials:
 - **[FAQ.md](./FAQ.md)** - Common questions and troubleshooting
