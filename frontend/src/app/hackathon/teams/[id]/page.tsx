@@ -31,6 +31,30 @@ interface Problem {
   title: string;
   difficulty: string;
   points: number;
+  content: {
+    prompt: string;
+    language: string;
+    codeTemplate?: string;
+    testCases?: Array<{
+      id: string;
+      input: string;
+      expectedOutput: string;
+      isHidden: boolean;
+      points: number;
+      timeLimit?: number;
+      memoryLimit?: number;
+    }>;
+  };
+  tags?: string[];
+  metadata?: {
+    codewarsId?: string;
+    codewarsDifficulty?: number;
+    codewarsStats?: {
+      totalAttempts: number;
+      totalCompleted: number;
+      successRate: string;
+    };
+  };
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -42,9 +66,9 @@ export default function TeamDetailPage() {
 
   const [team, setTeam] = useState<Team | null>(null);
   const [problems, setProblems] = useState<Problem[]>([]);
+  const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'members' | 'code' | 'problems' | 'submit'>('code');
-  const [code, setCode] = useState('// Live coding session\n// Write your solution here\n\n');
 
   useEffect(() => {
     const initializePage = async () => {
@@ -62,7 +86,7 @@ export default function TeamDetailPage() {
         });
         setTeam(teamResponse.data.data.team);
 
-        // Fetch Codewars problems for hackathon
+        // Fetch coding problems for hackathon
         const problemsResponse = await axios.get(`${API_URL}/api/assessments/questions/list`, {
           headers: { 'Authorization': `Bearer ${token}` },
         });
@@ -70,6 +94,11 @@ export default function TeamDetailPage() {
           .filter((q: any) => q.type === 'coding')
           .slice(0, 5);
         setProblems(codingProblems);
+        
+        // Set the first problem as selected by default
+        if (codingProblems.length > 0) {
+          setSelectedProblem(codingProblems[0]);
+        }
       } catch (error) {
         console.error('Error loading team:', error);
       } finally {
@@ -187,7 +216,8 @@ export default function TeamDetailPage() {
             {activeTab === 'code' && team && (
               <LiveCodingSession
                 teamId={team.name}
-                problemTitle={team.projectTitle}
+                problemTitle={selectedProblem?.title || team.projectTitle}
+                problem={selectedProblem || undefined}
               />
             )}
 
@@ -216,17 +246,25 @@ export default function TeamDetailPage() {
 
             {activeTab === 'problems' && (
               <div className="glass rounded-2xl p-6 border border-gray-800">
-                <h3 className="text-xl font-bold mb-4">Leetcode-Style Problems</h3>
+                <h3 className="text-xl font-bold mb-4">Available Problems</h3>
                 <div className="space-y-3">
                   {problems.map((problem) => (
                     <div
                       key={problem._id}
-                      className="p-4 bg-dark-700 rounded-lg border border-gray-700 hover:border-neon-blue/50 cursor-pointer transition-all"
+                      className={`p-4 bg-dark-700 rounded-lg border transition-all cursor-pointer ${
+                        selectedProblem?._id === problem._id 
+                          ? 'border-neon-blue bg-neon-blue/10' 
+                          : 'border-gray-700 hover:border-gray-500'
+                      }`}
+                      onClick={() => setSelectedProblem(problem)}
                     >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-white">{problem.title}</p>
-                          <div className="flex gap-2 mt-2">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-white">{problem.title}</h4>
+                          <p className="text-gray-400 text-sm mt-1 line-clamp-2">
+                            {problem.content?.prompt?.substring(0, 150)}...
+                          </p>
+                          <div className="flex items-center gap-2 mt-2">
                             <span className={`text-xs font-medium px-2 py-1 rounded ${
                               problem.difficulty === 'easy' ? 'bg-green-500/20 text-green-400' :
                               problem.difficulty === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
@@ -237,15 +275,36 @@ export default function TeamDetailPage() {
                             <span className="text-xs bg-neon-blue/20 text-neon-blue px-2 py-1 rounded">
                               {problem.points} points
                             </span>
+                            <span className="text-xs bg-gray-600 text-gray-300 px-2 py-1 rounded">
+                              {problem.content?.language || 'Python'}
+                            </span>
+                            {problem.metadata?.codewarsId && (
+                              <span className="text-xs bg-orange-500/20 text-orange-400 px-2 py-1 rounded">
+                                Codewars
+                              </span>
+                            )}
                           </div>
                         </div>
-                        <button className="px-4 py-2 bg-neon-blue/20 hover:bg-neon-blue/30 text-neon-blue rounded-lg transition-all">
-                          Solve
-                        </button>
+                        {selectedProblem?._id === problem._id && (
+                          <div className="ml-4 text-neon-blue">
+                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
+                
+                {selectedProblem && (
+                  <div className="mt-6 p-4 bg-neon-blue/10 border border-neon-blue/30 rounded-lg">
+                    <h4 className="font-semibold text-neon-blue mb-2">Selected Problem</h4>
+                    <p className="text-gray-300 text-sm">
+                      {selectedProblem.title} - Ready to code! Switch to the Code tab to start working.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -298,3 +357,4 @@ export default function TeamDetailPage() {
     </div>
   );
 }
+
