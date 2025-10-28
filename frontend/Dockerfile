@@ -41,8 +41,8 @@ COPY package.json package-lock.json ./
 COPY frontend/package.json ./frontend/
 COPY shared/package.json ./shared/
 
-# Install production dependencies only
-RUN npm install --omit=dev
+# Install all dependencies (including dev) for Next.js runtime to work
+RUN npm install
 
 # Copy built app from builder
 COPY --from=builder /app/frontend/.next ./frontend/.next
@@ -62,5 +62,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
 # Use dumb-init to handle signals
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start application in production mode
-CMD ["npm", "run", "start", "--workspace=frontend"]
+# Start application - development or production based on NODE_ENV
+CMD sh -c "if [ \"$NODE_ENV\" = \"development\" ]; then npm run dev --workspace=frontend; else npm run start --workspace=frontend; fi"

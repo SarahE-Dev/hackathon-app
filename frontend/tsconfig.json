@@ -23,6 +23,7 @@
       "@/components/*": ["./src/components/*"],
       "@/lib/*": ["./src/lib/*"],
       "@/hooks/*": ["./src/hooks/*"],
+      "@/store/*": ["./src/store/*"],
       "@/types/*": ["./src/types/*"],
       "shared": ["../shared/src"]
     }
