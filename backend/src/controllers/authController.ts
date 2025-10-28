@@ -33,15 +33,16 @@ export const register = async (
     // Hash password
     const passwordHash = await hashPassword(password);
 
+    // Assign user to organization (either provided or default demo organization)
+    const assignedOrgId = organizationId || '68f630a085934e56f1df9b86'; // Default to demo organization
+
     // Create user
     const user = new User({
       email: email.toLowerCase(),
       firstName,
       lastName,
       passwordHash,
-      roles: organizationId
-        ? [{ role: 'applicant', organizationId }]
-        : [],
+      roles: [{ role: 'applicant', organizationId: assignedOrgId }],
       isActive: true,
       emailVerified: false,
     });
