@@ -16,8 +16,8 @@ echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}Creating Test Assessment${NC}"
 echo -e "${BLUE}========================================${NC}"
 
-# Step 1: Register/Login user
-echo -e "\n${YELLOW}Step 1: Registering/Logging in user...${NC}"
+# Step 1: Register user (try login first, if fails register new user)
+echo -e "\n${YELLOW}Step 1: Authenticating user...${NC}"
 
 LOGIN_RESPONSE=$(curl -s -X POST "$API_URL/auth/login" \
   -H "Content-Type: application/json" \
@@ -26,9 +26,11 @@ LOGIN_RESPONSE=$(curl -s -X POST "$API_URL/auth/login" \
     \"password\": \"$TEST_PASSWORD\"
   }")
 
-# Check if login was successful, if not register
-if echo "$LOGIN_RESPONSE" | grep -q "Invalid credentials"; then
-  echo -e "${YELLOW}User doesn't exist, registering...${NC}"
+ACCESS_TOKEN=$(echo "$LOGIN_RESPONSE" | grep -o '"accessToken":"[^"]*' | cut -d'"' -f4)
+
+# If login failed, register
+if [ -z "$ACCESS_TOKEN" ]; then
+  echo -e "${YELLOW}Registering new user...${NC}"
   REGISTER_RESPONSE=$(curl -s -X POST "$API_URL/auth/register" \
     -H "Content-Type: application/json" \
     -d "{
@@ -42,12 +44,12 @@ if echo "$LOGIN_RESPONSE" | grep -q "Invalid credentials"; then
   ACCESS_TOKEN=$(echo "$REGISTER_RESPONSE" | grep -o '"accessToken":"[^"]*' | cut -d'"' -f4)
 else
   echo "Login successful"
-  ACCESS_TOKEN=$(echo "$LOGIN_RESPONSE" | grep -o '"accessToken":"[^"]*' | cut -d'"' -f4)
 fi
 
 if [ -z "$ACCESS_TOKEN" ]; then
   echo -e "${YELLOW}Failed to get access token${NC}"
-  echo "Response was: $LOGIN_RESPONSE"
+  echo "Login Response: $LOGIN_RESPONSE"
+  echo "Register Response: $REGISTER_RESPONSE"
   exit 1
 fi
 
