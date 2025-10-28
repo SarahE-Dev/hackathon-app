@@ -17,6 +17,13 @@ export const getAllAssessments = async (
 
     if (organizationId) {
       query.organizationId = organizationId;
+    } else {
+      // If no organizationId is specified, only show published assessments
+      // OR assessments created by the current user
+      query.$or = [
+        { status: AssessmentStatus.PUBLISHED },
+        { authorId: req.user!.userId }
+      ];
     }
 
     if (status) {

@@ -47,7 +47,7 @@ export default function DashboardPage() {
       try {
         // Fetch assessments
         const assessmentsData = await assessmentsAPI.getAll();
-        const assessmentsList = assessmentsData.data || [];
+        const assessmentsList = assessmentsData.data?.assessments || [];
         setAssessments(Array.isArray(assessmentsList) ? assessmentsList : []);
 
         // Fetch user's attempts to determine status

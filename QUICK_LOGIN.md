@@ -18,6 +18,8 @@ You'll be redirected to login.
 
 ### Step 3: Enter Credentials
 
+Use this demo account:
+
 | Field | Value |
 |-------|-------|
 | **Email** | `demo@example.com` |
@@ -25,7 +27,7 @@ You'll be redirected to login.
 
 ### Step 4: Click Login
 
-That's it! You're now on your dashboard.
+That's it! You're now on your dashboard and will see the JavaScript Fundamentals Quiz assessment.
 
 ---
 

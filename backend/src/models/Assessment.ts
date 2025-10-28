@@ -69,6 +69,7 @@ export interface IAssessment extends Document {
   status: AssessmentStatus;
   publishedSnapshot?: IPublishedSnapshot;
   publishedAt?: Date;
+  totalPoints: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -265,6 +266,10 @@ const AssessmentSchema = new Schema({
     type: PublishedSnapshotSchema,
   },
   publishedAt: Date,
+  totalPoints: {
+    type: Number,
+    default: 100,
+  },
 }, {
   timestamps: true,
 });
