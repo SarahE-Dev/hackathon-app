@@ -348,22 +348,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Hackathons Section */}
-        <div className="mb-12">
-          <h2 className="text-2xl font-bold text-white mb-6">🏆 Hackathons</h2>
-          <div className="glass rounded-xl p-8 border border-neon-blue/20">
-            <div className="text-center">
-              <div className="text-5xl mb-3">🚀</div>
-              <h3 className="text-xl font-semibold text-white mb-2">Hackathons Coming Soon</h3>
-              <p className="text-gray-400 mb-4">
-                Create teams, build projects, and compete with other participants.
-              </p>
-              <button className="px-6 py-2 bg-neon-blue/20 border border-neon-blue text-neon-blue rounded-lg hover:bg-neon-blue/30 transition-all">
-                Notify Me
-              </button>
-            </div>
-          </div>
-        </div>
 
         {/* Back Link */}
         <div className="text-center pb-8">
