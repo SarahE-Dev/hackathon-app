@@ -40,6 +40,8 @@ export interface IQuestion extends Document {
   authorId: mongoose.Types.ObjectId;
   organizationId: mongoose.Types.ObjectId;
   points: number;
+  metadata?: Record<string, any>;
+  externalLink?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -172,6 +174,14 @@ const QuestionSchema = new Schema({
     type: Number,
     required: true,
     min: 0,
+  },
+  metadata: {
+    type: Schema.Types.Mixed,
+    default: null,
+  },
+  externalLink: {
+    type: String,
+    default: null,
   },
 }, {
   timestamps: true,

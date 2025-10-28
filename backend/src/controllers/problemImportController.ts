@@ -47,10 +47,29 @@ export const importCodewarseProblem = async (
       });
     }
 
-    // Create question in database
+    // Extract organizationId from user's first role
+    const organizationId = (req.user!.roles[0] as any)?.organizationId;
+
+    if (!organizationId) {
+      throw new ApiError(400, 'User must belong to an organization to import problems');
+    }
+
+    // Create question in database with proper schema structure
     const question = new Question({
-      ...questionData,
+      type: questionData.type,
+      title: questionData.title,
+      content: {
+        prompt: questionData.content,
+        codeTemplate: questionData.codeTemplate,
+        language: questionData.language,
+      },
+      tags: questionData.tags,
+      difficulty: questionData.difficulty,
+      points: questionData.points,
+      metadata: questionData.metadata,
+      externalLink: questionData.externalLink,
       authorId: req.user!.userId,
+      organizationId,
     });
 
     await question.save();
