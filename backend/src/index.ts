@@ -19,6 +19,7 @@ import gradeRoutes from './routes/grades';
 import teamRoutes from './routes/teams';
 import proctoringRoutes from './routes/proctoring';
 import problemRoutes from './routes/problems';
+import organizationRoutes from './routes/organizations';
 
 dotenv.config();
 
@@ -52,6 +53,7 @@ app.use('/api/grades', gradeRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/proctoring', proctoringRoutes);
 app.use('/api/problems', problemRoutes);
+app.use('/api/organizations', organizationRoutes);
 
 // Error handling
 app.use(errorHandler);
