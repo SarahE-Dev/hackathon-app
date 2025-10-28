@@ -7,19 +7,26 @@ export interface CodewarsProblem {
   name: string;
   slug: string;
   description: string;
-  difficulty: number; // 1-8, where 1 is easiest
+  difficulty?: number; // 1-8, where 1 is easiest (legacy/fallback)
+  rank?: {
+    id: number | null;
+    name: string | null;
+    color: string | null;
+  };
   languages: string[];
   tags: string[];
   totalAttempts: number;
   totalCompleted: number;
   createdAt: string;
   publishedAt: string;
-  approvalStats: {
+  approvalStats?: {
     totalVotes: number;
     positiveVotes: number;
     estimatedRank: number;
   };
   testCases?: string;
+  category?: string;
+  url?: string;
 }
 
 /**
@@ -94,6 +101,26 @@ export const codewarsService = {
   },
 
   /**
+   * Extract difficulty from Codewars problem
+   * The Codewars API returns rank.id which is a negative number (-1 to -8)
+   * where -1 is easiest and -8 is hardest
+   */
+  extractDifficulty: (problem: CodewarsProblem): number => {
+    // Try explicit difficulty field first (for legacy data)
+    if (problem.difficulty) {
+      return problem.difficulty;
+    }
+
+    // Fall back to rank.id (negative value: -1 to -8)
+    if (problem.rank?.id) {
+      return Math.abs(problem.rank.id); // Convert -1 to 1, -8 to 8
+    }
+
+    // Default to medium difficulty if neither is available
+    return 4;
+  },
+
+  /**
    * Convert difficulty rank (1-8) to user-friendly level
    * 1 = fundamentals, 8 = hard expert
    */
@@ -107,18 +134,22 @@ export const codewarsService = {
    * Convert Codewars problem to CodeArena coding question format
    */
   convertToCodeArenaQuestion: (problem: CodewarsProblem, language: string = 'javascript') => {
+    const difficulty = codewarsService.extractDifficulty(problem);
+    const difficultyLevel = codewarsService.difficultyToLevel(difficulty);
+    const points = 50 + (difficulty * 10);
+
     return {
       type: 'coding',
       title: problem.name,
       content: problem.description,
       language,
-      difficulty: codewarsService.difficultyToLevel(problem.difficulty),
-      points: 50 + (problem.difficulty * 10), // Scale points by difficulty
+      difficulty: difficultyLevel,
+      points,
       tags: [...(problem.tags || []), `codewars-${problem.slug}`],
       externalLink: `https://www.codewars.com/kata/${problem.slug}`,
       metadata: {
         codewarsId: problem.id,
-        codewarsDifficulty: problem.difficulty,
+        codewarsDifficulty: difficulty,
         codewarsStats: {
           totalAttempts: problem.totalAttempts,
           totalCompleted: problem.totalCompleted,
