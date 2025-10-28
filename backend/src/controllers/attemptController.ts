@@ -14,60 +14,88 @@ export const startAttempt = async (
   next: NextFunction
 ) => {
   try {
-    const { sessionId } = req.body;
+    const { assessmentId, sessionId } = req.body;
     const userId = req.user!.userId;
 
-    // Get session
-    const session = await Session.findById(sessionId).populate('assessmentId');
-    if (!session) {
-      throw new ApiError(404, 'Session not found');
-    }
+    let assessment: any;
 
-    if (!session.isActive) {
-      throw new ApiError(400, 'Session is not active');
-    }
+    // If sessionId is provided, use session-based approach
+    if (sessionId) {
+      // Get session
+      const session = await Session.findById(sessionId).populate('assessmentId');
+      if (!session) {
+        throw new ApiError(404, 'Session not found');
+      }
 
-    // Check if session is within time window
-    const now = new Date();
-    if (now < session.windowStart) {
-      throw new ApiError(400, 'Session has not started yet');
-    }
+      if (!session.isActive) {
+        throw new ApiError(400, 'Session is not active');
+      }
 
-    if (now > session.windowEnd && !session.policies.allowLateSubmission) {
-      throw new ApiError(400, 'Session has ended');
-    }
+      // Check if session is within time window
+      const now = new Date();
+      if (now < session.windowStart) {
+        throw new ApiError(400, 'Session has not started yet');
+      }
 
-    const assessment = session.assessmentId as any;
+      if (now > session.windowEnd && !session.policies.allowLateSubmission) {
+        throw new ApiError(400, 'Session has ended');
+      }
 
-    // Check if user already has an attempt for this session
-    const existingAttempt = await Attempt.findOne({
-      sessionId,
-      userId,
-    });
+      assessment = session.assessmentId as any;
 
-    if (existingAttempt) {
-      // If not submitted, return existing attempt (resume)
-      if (existingAttempt.status === AttemptStatus.IN_PROGRESS) {
+      // Check if user already has an attempt for this session
+      const existingAttempt = await Attempt.findOne({
+        sessionId,
+        userId,
+      });
+
+      if (existingAttempt) {
+        // If not submitted, return existing attempt (resume)
+        if (existingAttempt.status === AttemptStatus.IN_PROGRESS) {
+          return res.json({
+            success: true,
+            data: { attempt: existingAttempt, resumed: true },
+          });
+        }
+
+        // Check attempts allowed
+        const attemptCount = await Attempt.countDocuments({
+          sessionId,
+          userId,
+          status: { $in: [AttemptStatus.SUBMITTED, AttemptStatus.GRADED] },
+        });
+
+        if (attemptCount >= assessment.settings.attemptsAllowed) {
+          throw new ApiError(400, 'Maximum attempts reached for this assessment');
+        }
+      }
+    } else if (assessmentId) {
+      // Direct assessment attempt (no session required)
+      assessment = await Assessment.findById(assessmentId);
+      if (!assessment) {
+        throw new ApiError(404, 'Assessment not found');
+      }
+
+      // Check if user already has an in-progress attempt
+      const existingAttempt = await Attempt.findOne({
+        assessmentId,
+        userId,
+        status: AttemptStatus.IN_PROGRESS,
+      });
+
+      if (existingAttempt) {
+        // Return existing attempt (resume)
         return res.json({
           success: true,
           data: { attempt: existingAttempt, resumed: true },
         });
       }
-
-      // Check attempts allowed
-      const attemptCount = await Attempt.countDocuments({
-        sessionId,
-        userId,
-        status: { $in: [AttemptStatus.SUBMITTED, AttemptStatus.GRADED] },
-      });
-
-      if (attemptCount >= assessment.settings.attemptsAllowed) {
-        throw new ApiError(400, 'Maximum attempts reached for this assessment');
-      }
+    } else {
+      throw new ApiError(400, 'Either assessmentId or sessionId is required');
     }
 
     // Get all questions for the assessment
-    const questionIds = assessment.sections.flatMap((section: any) => section.questionIds);
+    const questionIds = assessment.sections?.flatMap((section: any) => section.questionIds) || [];
     const questions = await Question.find({ _id: { $in: questionIds } });
 
     // Create assessment snapshot
@@ -76,14 +104,9 @@ export const startAttempt = async (
       questions: questions.map((q) => q.toObject()),
     };
 
-    // Get user accommodations
-    const accommodation = session.accommodations.find(
-      (acc) => acc.userId.toString() === userId
-    );
-
     // Create attempt
     const attempt = new Attempt({
-      sessionId,
+      sessionId: sessionId || null,
       userId,
       assessmentId: assessment._id,
       assessmentSnapshot,
@@ -110,9 +133,9 @@ export const startAttempt = async (
     res.status(201).json({
       success: true,
       data: {
+        id: attempt._id,
         attempt,
-        accommodation,
-        timeMultiplier: accommodation?.timeMultiplier || 1,
+        timeMultiplier: 1,
       },
     });
   } catch (error) {

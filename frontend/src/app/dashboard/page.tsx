@@ -161,20 +161,12 @@ export default function DashboardPage() {
               <h1 className="text-4xl font-bold text-gradient">Dashboard</h1>
               <p className="text-gray-400 mt-1">Welcome back, {user?.firstName}!</p>
             </div>
-            <div className="flex gap-3">
-              <Link
-                href="/hackathon/teams"
-                className="px-6 py-2 bg-gradient-to-r from-neon-blue to-neon-purple text-white rounded-lg hover:shadow-lg hover:shadow-neon-blue/50 transition-all font-medium"
-              >
-                🚀 JTC Hackathon
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="px-6 py-2 bg-dark-700 border border-red-500/50 text-red-400 rounded-lg hover:bg-red-500/10 transition-all"
-              >
-                Logout
-              </button>
-            </div>
+            <button
+              onClick={handleLogout}
+              className="px-6 py-2 bg-dark-700 border border-red-500/50 text-red-400 rounded-lg hover:bg-red-500/10 transition-all"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </div>
@@ -186,6 +178,52 @@ export default function DashboardPage() {
             {error}
           </div>
         )}
+
+        {/* JTC Hackathon Section */}
+        <div className="mb-12">
+          <h2 className="text-2xl font-bold text-white mb-6">🚀 JTC Hackathon 2025</h2>
+          <Link href="/hackathon/teams">
+            <div className="glass rounded-xl p-8 border border-neon-blue/40 hover:border-neon-blue/70 transition-all cursor-pointer group relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-neon-blue/10 to-neon-purple/10 opacity-0 group-hover:opacity-100 transition-all"></div>
+              <div className="relative z-10">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="text-2xl font-bold text-gradient mb-3">Justice Through Code Hackathon</h3>
+                    <p className="text-gray-300 mb-4">
+                      Join 7 teams competing in a live collaborative coding challenge. Work together to solve Leetcode-style problems,
+                      compete on the leaderboard, and showcase your skills.
+                    </p>
+                    <div className="flex flex-wrap gap-4 text-sm text-gray-400 mb-4">
+                      <div className="flex items-center gap-2">
+                        <span>👥</span>
+                        <span>7 Teams</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span>💻</span>
+                        <span>Live Coding</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span>🎯</span>
+                        <span>Multiple Problems</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span>📊</span>
+                        <span>Live Leaderboard</span>
+                      </div>
+                    </div>
+                    <button className="px-6 py-3 bg-gradient-to-r from-neon-blue to-neon-purple text-white rounded-lg font-medium hover:shadow-lg hover:shadow-neon-blue/50 transition-all group-hover:scale-105">
+                      Join Teams →
+                    </button>
+                  </div>
+                  <div className="text-6xl opacity-60 group-hover:opacity-100 transition-all">🏆</div>
+                </div>
+              </div>
+            </div>
+          </Link>
+        </div>
+
+        {/* Assessments Section Header */}
+        <h2 className="text-2xl font-bold text-white mb-6">📋 Assessments</h2>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
