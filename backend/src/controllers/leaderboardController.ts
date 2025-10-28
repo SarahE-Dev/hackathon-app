@@ -1,4 +1,5 @@
 import { Response, NextFunction } from 'express';
+import mongoose from 'mongoose';
 import Leaderboard from '../models/Leaderboard';
 import JudgeScore from '../models/JudgeScore';
 import Team from '../models/Team';
@@ -90,7 +91,7 @@ export const refreshLeaderboard = async (
     }> = {};
 
     // Initialize teams
-    submittedTeams.forEach(team => {
+    submittedTeams.forEach((team: any) => {
       teamScores[team._id.toString()] = {
         teamId: team._id.toString(),
         teamName: team.name,
@@ -128,12 +129,12 @@ export const refreshLeaderboard = async (
       })
       .map((team, index) => ({
         rank: index + 1,
-        teamId: team.teamId,
+        teamId: new mongoose.Types.ObjectId(team.teamId),
         teamName: team.teamName,
         track: team.track,
         averageScore: team.averageScore,
         judgeScores: team.scores,
-        submittedAt: team.submittedAt.toISOString(),
+        submittedAt: team.submittedAt,
       }));
 
     // Update or create leaderboard

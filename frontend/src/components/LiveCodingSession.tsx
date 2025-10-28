@@ -528,12 +528,6 @@ Output: [0,1]
     }
   };
 
-  const handleCodeChange = (value: string | undefined) => {
-    if (value !== undefined) {
-      setCode(value);
-    }
-  };
-
   const getRiskLevel = () => {
     const totalViolations = copyPasteAttempts + tabSwitches + focusLosses;
     if (totalViolations > 10) return 'high';

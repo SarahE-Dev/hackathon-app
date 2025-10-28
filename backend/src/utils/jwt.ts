@@ -12,7 +12,7 @@ export interface TokenPayload {
   roles: any[];
 }
 
-export const generateAccessToken = (user: IUser): string => {
+export const generateAccessToken = (user: any): string => {
   const payload: TokenPayload = {
     userId: user._id.toString(),
     email: user.email,
@@ -20,11 +20,11 @@ export const generateAccessToken = (user: IUser): string => {
   };
 
   return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN,
-  });
+    expiresIn: JWT_EXPIRES_IN as string,
+  } as any);
 };
 
-export const generateRefreshToken = (user: IUser): string => {
+export const generateRefreshToken = (user: any): string => {
   const payload: TokenPayload = {
     userId: user._id.toString(),
     email: user.email,
@@ -32,8 +32,8 @@ export const generateRefreshToken = (user: IUser): string => {
   };
 
   return jwt.sign(payload, JWT_REFRESH_SECRET, {
-    expiresIn: JWT_REFRESH_EXPIRES_IN,
-  });
+    expiresIn: JWT_REFRESH_EXPIRES_IN as string,
+  } as any);
 };
 
 export const verifyAccessToken = (token: string): TokenPayload => {

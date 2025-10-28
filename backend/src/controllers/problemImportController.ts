@@ -59,9 +59,9 @@ export const importCodewarseProblem = async (
       type: questionData.type,
       title: questionData.title,
       content: {
-        prompt: questionData.content,
-        codeTemplate: questionData.codeTemplate,
-        language: questionData.language,
+        prompt: questionData.content.prompt,
+        codeTemplate: questionData.content.codeTemplate,
+        language: questionData.content.language,
       },
       tags: questionData.tags,
       difficulty: questionData.difficulty,

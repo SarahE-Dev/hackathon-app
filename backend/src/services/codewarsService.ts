@@ -141,7 +141,11 @@ export const codewarsService = {
     return {
       type: 'coding',
       title: problem.name,
-      content: problem.description,
+      content: {
+        prompt: problem.description,
+        language,
+        codeTemplate: '', // Codewars doesn't provide starter code
+      },
       language,
       difficulty: difficultyLevel,
       points,
