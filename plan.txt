@@ -1,8 +1,3 @@
-PRIMARY FOCUS: LeetCode-style Hackathon Platform with Live Proctoring
-============================================================================
-
-This application is a comprehensive assessment and hackathon platform with a primary focus on live, proctored coding challenges similar to HackerRank and LeetCode. Teams compete in real-time coding sessions with professional Monaco editors, visible test cases, and comprehensive proctoring features.
-
 Needs (Functional Requirements)
 User roles & permissions
 Applicant/Fellow (test-taker): take timed assessments; upload files; see their own results/feedback when released.
@@ -19,12 +14,10 @@ Sessions: timed windows, start/end, per-student time accommodations, autosubmit 
 Identity & integrity: pre-check (photo ID confirmation), tab-change detection, copy/paste/print detection, optional webcam + mic recording and periodic snapshots (with consent), IP/device fingerprint logging.
 Environment controls: disable back/forward, optional fullscreen/lockdown reminder, calculator/notes toggle (built-in scratchpad).
 Incidents: automatic flags (excess tab switches, idle), manual proctor notes; timestamps for all events.
-Coding questions (LeetCode-style interface)
-Editor: Monaco editor with Python/JS/Java support, syntax highlighting, line numbers, folding, word wrap.
-Live coding: real-time code editing with autosave, visible test cases with input/output examples.
-Code execution: integrated test runner with per-test scoring, time/memory limits, deterministic sandbox.
-Problem display: clear descriptions, constraints, examples; supports Codewars API integration.
-Test cases: visible examples for debugging, hidden tests for validation; point-based scoring.
+Coding questions
+Editor: language pickers (e.g., Python/JS/Java), linting, run code, stdin/stdout capture.
+Tests: hidden & visible tests; per-test scoring; time/memory limits; deterministic sandbox.
+Attachments: allow upload (e.g., notebook, CSV) in addition to code cell.
 Submissions & artifacts
 Timestamps: start, first answer, each question submit, tab switches, autosave, final submit.
 File attachments: PDFs, images, code zips, etc., with size/type limits and virus scan.
@@ -33,12 +26,8 @@ Grading & rubrics
 Rubrics: point scales, criteria, descriptors; per-question and overall; reusable templates.
 Workflows: self-assign or queue; double-blind optional; discrepancy resolution; regrade requests.
 Feedback: inline comments (code lines, freeform text), rubric feedback, summary; release controls.
-Hackathon mode (PRIMARY FOCUS - LeetCode-style with live proctoring)
+Hackathon mode
 Teams & projects: team registration, repo/link fields, short description, demo video link.
-Live coding interface: Monaco editor with Python/JS/Java support, visible test cases, real-time code execution.
-Problem selection: Teams choose from imported Codewars problems or custom questions in database.
-Live proctoring: tab-switch detection, copy-paste blocking, window focus monitoring, incident logging.
-Team dashboard: problem browser, code editor, test results display, submission interface.
 Judging forms: configurable rubric per track; private judge notes; conflict of interest flag.
 Standings page: real-time hidden leaderboard for admins; public reveal at scheduled time; tie-break rules.
 Results & analytics
@@ -60,25 +49,13 @@ Question bank: MCQ, freeform, coding; tags, difficulty; versioning.
 Assessment builder: sections, timers, randomization; publish snapshots.
 Delivery & autosave: timed sessions, accommodations, autosubmit, mobile-restricted UI.
 Basic proctoring: tab-change & blur detection, IP/device log, incident notes; (recording optional flag placeholder).
-Coding runner (Monaco editor integration): Python primary with JS/Java support; visible test cases display; per-test scoring; sandbox queue for code execution.
+Coding runner (one language to start, e.g., Python): run + visible tests; per-test scoring; sandbox queue.
 Submissions with attachments: file upload to secure object storage; audit log; timestamps.
 Grading UI + rubrics: criteria, inline comments, draft → submit grade → release.
 Results pages & export: per-student report, CSV export; simple item stats.
-Hackathon essentials: team pages with live coding interface, problem selection from database/Codewars, judge rubric form, offline leaderboard, reveal toggle.
+Hackathon essentials: team pages, judge rubric form, offline leaderboard, reveal toggle.
 Admin controls: banks, exams, cohorts; accommodation settings; retention policies.
 Analytics lite: time-on-task, flag counts, per-item correctness.
-
-CURRENT IMPLEMENTATION STATUS
-=============================
-✅ Database integration with Question model for coding problems
-✅ Codewars API integration for importing real coding challenges
-✅ Live team hackathon interface with Monaco editor
-✅ Problem selection and display with visible test cases
-✅ Live proctoring: tab-switch detection, copy-paste blocking, incident logging
-✅ Python primary language support with syntax highlighting
-✅ Responsive team dashboard with problem browser
-✅ TypeScript type safety and error handling
-
 Post-MVP / Phase 2
 Screen/webcam recording (storage-efficient, e.g., sampled frames), face-presence heuristics.
 Multi-language code support (JS, Java, C++), hidden tests & performance caps, diff viewer.
