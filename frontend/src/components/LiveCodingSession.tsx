@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
+import { io, Socket } from 'socket.io-client';
+import * as monaco from 'monaco-editor';
 import { codeExecutionAPI } from '../lib/api';
 
 interface ProctorEvent {
@@ -28,6 +30,23 @@ interface Problem {
   language: string;
   starterCode: string;
   testCases: TestCase[];
+}
+
+interface TeamPresence {
+  userId: string;
+  username: string;
+  cursorPosition?: { line: number; column: number };
+  lastActive: Date;
+  isOnline: boolean;
+}
+
+interface ChatMessage {
+  id: string;
+  userId: string;
+  username: string;
+  message: string;
+  timestamp: Date;
+  type: 'message' | 'system' | 'code-share';
 }
 
 interface LiveCodingSessionProps {
@@ -185,6 +204,16 @@ Output: [0,1]
   const [sessionTimer, setSessionTimer] = useState(0);
   const sessionStartRef = useRef<Date>(new Date());
 
+  // Team collaboration state
+  const [collaborationSocket, setCollaborationSocket] = useState<Socket | null>(null);
+  const [teamPresence, setTeamPresence] = useState<TeamPresence[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [isConnected, setIsConnected] = useState(false);
+  const [cursorDecorations, setCursorDecorations] = useState<any[]>([]);
+
+  const editorRef = useRef<any>(null);
+
   // Timer for session duration
   useEffect(() => {
     const interval = setInterval(() => {
@@ -288,6 +317,134 @@ Output: [0,1]
       setProctorEvents((prev) => [...prev, event]);
     }
   }, [copyPasteAttempts, tabSwitches]);
+
+  // Team collaboration socket connection
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    if (!token || !teamId) return;
+
+    const socket = io(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/collaboration`, {
+      auth: { token },
+    });
+
+    socket.on('connect', () => {
+      setIsConnected(true);
+      socket.emit('join-team', teamId);
+    });
+
+    socket.on('disconnect', () => {
+      setIsConnected(false);
+    });
+
+    socket.on('team-joined', (data: {
+      teamId: string;
+      presence: TeamPresence[];
+      chatHistory: ChatMessage[];
+      currentCode: string;
+    }) => {
+      setTeamPresence(data.presence);
+      setChatMessages(data.chatHistory);
+      if (data.currentCode && data.currentCode !== code) {
+        setCode(data.currentCode);
+      }
+    });
+
+    socket.on('user-joined', (data: { userId: string; presence: TeamPresence }) => {
+      setTeamPresence(prev => {
+        const filtered = prev.filter(p => p.userId !== data.userId);
+        return [...filtered, data.presence];
+      });
+    });
+
+    socket.on('user-left', (data: { userId: string }) => {
+      setTeamPresence(prev =>
+        prev.map(p => p.userId === data.userId ? { ...p, isOnline: false } : p)
+      );
+    });
+
+    socket.on('code-updated', (data: {
+      userId: string;
+      code: string;
+      cursorPosition?: { line: number; column: number };
+    }) => {
+      setCode(data.code);
+      // Update cursor decorations for other users
+      if (data.cursorPosition && data.userId !== JSON.parse(localStorage.getItem('user') || '{}')?.userId) {
+        updateCursorDecoration(data.userId, data.cursorPosition);
+      }
+    });
+
+    socket.on('cursor-moved', (data: { userId: string; position: { line: number; column: number } }) => {
+      if (data.userId !== JSON.parse(localStorage.getItem('user') || '{}')?.userId) {
+        updateCursorDecoration(data.userId, data.position);
+      }
+    });
+
+    socket.on('chat-message', (message: ChatMessage) => {
+      setChatMessages(prev => [...prev, message]);
+    });
+
+    socket.on('team-execution', (data: { userId: string; result: any; problemId: string }) => {
+      // Handle team member execution results
+      console.log('Team execution result:', data);
+    });
+
+    setCollaborationSocket(socket);
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [teamId]);
+
+  const updateCursorDecoration = (userId: string, position: { line: number; column: number }) => {
+    if (!editorRef.current) return;
+
+    // Remove existing decoration for this user
+    setCursorDecorations(prev => prev.filter(d => d.userId !== userId));
+
+    // Add new decoration
+    const decoration = {
+      userId,
+      range: new monaco.Range(position.line + 1, position.column + 1, position.line + 1, position.column + 1),
+      options: {
+        className: 'collaborative-cursor',
+        stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
+        afterContentClassName: 'collaborative-cursor-label',
+      },
+    };
+
+    editorRef.current.deltaDecorations([], [decoration]);
+  };
+
+  const handleCodeChange = (value: string | undefined) => {
+    if (value !== undefined) {
+      setCode(value);
+
+      // Send code update to team
+      if (collaborationSocket && isConnected) {
+        collaborationSocket.emit('code-update', {
+          code: value,
+        });
+      }
+    }
+  };
+
+  const handleCursorChange = (e: any) => {
+    const position = e.position;
+    if (collaborationSocket && isConnected) {
+      collaborationSocket.emit('cursor-move', {
+        line: position.lineNumber - 1,
+        column: position.column - 1,
+      });
+    }
+  };
+
+  const sendMessage = () => {
+    if (!newMessage.trim() || !collaborationSocket || !isConnected) return;
+
+    collaborationSocket.emit('send-message', { message: newMessage.trim() });
+    setNewMessage('');
+  };
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -479,6 +636,10 @@ Output: [0,1]
               value={code}
               onChange={handleCodeChange}
               theme="vs-dark"
+              onMount={(editor) => {
+                editorRef.current = editor;
+                editor.onDidChangeCursorPosition(handleCursorChange);
+              }}
               options={{
                 minimap: { enabled: false },
                 fontSize: 14,
@@ -524,8 +685,71 @@ Output: [0,1]
         </div>
       </div>
 
-      {/* Proctoring Panel */}
+      {/* Collaboration & Proctoring Panel */}
       <div className="lg:col-span-1 space-y-4">
+        {/* Team Presence */}
+        <div className="glass rounded-2xl p-4 border border-gray-800">
+          <h4 className="text-sm font-bold text-white mb-3">👥 Team ({teamPresence.length})</h4>
+          <div className="space-y-2">
+            {teamPresence.map((member) => (
+              <div key={member.userId} className="flex items-center gap-3 p-2 bg-dark-700 rounded">
+                <div className={`w-2 h-2 rounded-full ${member.isOnline ? 'bg-green-500' : 'bg-gray-500'}`}></div>
+                <span className="text-sm text-gray-300">{member.username}</span>
+                {member.cursorPosition && (
+                  <span className="text-xs text-gray-500 ml-auto">
+                    {member.cursorPosition.line}:{member.cursorPosition.column}
+                  </span>
+                )}
+              </div>
+            ))}
+            {!isConnected && (
+              <div className="text-xs text-yellow-400 text-center py-2">
+                🔄 Connecting to team...
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Team Chat */}
+        <div className="glass rounded-2xl p-4 border border-gray-800 flex flex-col h-96">
+          <h4 className="text-sm font-bold text-white mb-3">💬 Team Chat</h4>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto space-y-2 mb-3">
+            {chatMessages.map((message) => (
+              <div key={message.id} className="text-xs">
+                <span className="text-neon-blue font-medium">{message.username}:</span>
+                <span className="text-gray-300 ml-1">{message.message}</span>
+              </div>
+            ))}
+            {chatMessages.length === 0 && (
+              <div className="text-xs text-gray-500 text-center py-4">
+                No messages yet. Start collaborating! 💻
+              </div>
+            )}
+          </div>
+
+          {/* Message Input */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+              placeholder="Type a message..."
+              className="flex-1 px-3 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white text-sm focus:border-neon-blue outline-none"
+              disabled={!isConnected}
+            />
+            <button
+              onClick={sendMessage}
+              disabled={!isConnected || !newMessage.trim()}
+              className="px-3 py-2 bg-neon-blue text-white rounded-lg text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Send
+            </button>
+          </div>
+        </div>
+
         {/* Security Status */}
         <div className="glass rounded-2xl p-4 border border-gray-800">
           <h4 className="text-sm font-bold text-white mb-3">🛡️ Security Status</h4>

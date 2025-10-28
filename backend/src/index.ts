@@ -8,6 +8,7 @@ import { logger } from './utils/logger';
 import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
 import { ProctorService } from './services/proctorService';
+import { TeamCollaborationService } from './services/teamCollaborationService';
 
 // Routes
 import authRoutes from './routes/auth';
@@ -21,6 +22,8 @@ import proctoringRoutes from './routes/proctoring';
 import problemRoutes from './routes/problems';
 import organizationRoutes from './routes/organizations';
 import codeExecutionRoutes from './routes/codeExecution';
+import judgeScoreRoutes from './routes/judgeScores';
+import leaderboardRoutes from './routes/leaderboard';
 
 dotenv.config();
 
@@ -56,21 +59,27 @@ app.use('/api/proctoring', proctoringRoutes);
 app.use('/api/problems', problemRoutes);
 app.use('/api/organizations', organizationRoutes);
 app.use('/api/code', codeExecutionRoutes);
+app.use('/api/judge-scores', judgeScoreRoutes);
+app.use('/api/leaderboard', leaderboardRoutes);
 
 // Error handling
 app.use(errorHandler);
 
-// Initialize WebSocket proctoring service
+// Initialize WebSocket services
 let proctorService: ProctorService;
+let teamCollaborationService: TeamCollaborationService;
 
 // Start server
 const startServer = async () => {
   try {
     await connectDatabase();
 
-    // Initialize proctoring service after DB connection
+    // Initialize WebSocket services after DB connection
     proctorService = new ProctorService(httpServer);
     logger.info('Proctoring WebSocket service initialized');
+
+    teamCollaborationService = new TeamCollaborationService(httpServer);
+    logger.info('Team collaboration WebSocket service initialized');
 
     httpServer.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);
@@ -84,4 +93,4 @@ const startServer = async () => {
 
 startServer();
 
-export { proctorService };
+export { proctorService, teamCollaborationService };
