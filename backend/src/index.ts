@@ -20,6 +20,7 @@ import teamRoutes from './routes/teams';
 import proctoringRoutes from './routes/proctoring';
 import problemRoutes from './routes/problems';
 import organizationRoutes from './routes/organizations';
+import codeExecutionRoutes from './routes/codeExecution';
 
 dotenv.config();
 
@@ -54,6 +55,7 @@ app.use('/api/teams', teamRoutes);
 app.use('/api/proctoring', proctoringRoutes);
 app.use('/api/problems', problemRoutes);
 app.use('/api/organizations', organizationRoutes);
+app.use('/api/code', codeExecutionRoutes);
 
 // Error handling
 app.use(errorHandler);

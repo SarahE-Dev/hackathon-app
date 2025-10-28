@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
+import { codeExecutionAPI } from '../lib/api';
 
 interface ProctorEvent {
   type: 'tab-switch' | 'copy-paste' | 'focus-lost' | 'suspicious-activity';
@@ -300,41 +301,70 @@ Output: [0,1]
   const runCode = async () => {
     setRunning(true);
     setOutput('Running code...\n');
-    
+
     // Initialize test results
     const newTestResults: {[key: string]: 'pending' | 'passed' | 'failed'} = {};
     currentProblem.testCases.forEach(tc => {
-      newTestResults[tc.id] = 'pending';
+      newTestResults[tc.id] = tc.isHidden ? 'pending' : 'pending';
     });
     setTestResults(newTestResults);
 
     try {
-      // Simulate code execution - in real app this would call the code execution service
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock test results for demo
-      const mockResults: {[key: string]: 'pending' | 'passed' | 'failed'} = {
-        '1': 'passed',
-        '2': 'passed', 
-        '3': 'failed',
-        '4': 'pending',
-        '5': 'pending'
+      // Prepare test cases for API (only visible ones for now)
+      const visibleTestCases = currentProblem.testCases.filter(tc => !tc.isHidden);
+
+      const executionData = {
+        code: code,
+        language: currentProblem.language,
+        testCases: visibleTestCases.map(tc => ({
+          id: tc.id,
+          input: tc.input,
+          expectedOutput: tc.expectedOutput,
+        })),
+        timeLimit: 2000, // 2 seconds
+        memoryLimit: 256, // 256MB
       };
-      
-      setTestResults(mockResults);
-      setOutput(`Code executed successfully!
 
-Test Results:
-✓ Test Case 1: PASSED
-✓ Test Case 2: PASSED  
-✗ Test Case 3: FAILED
-? Test Case 4: HIDDEN
-? Test Case 5: HIDDEN
+      const response = await codeExecutionAPI.executeCode(executionData);
 
-Score: 4/10 points`);
-      
-    } catch (error) {
-      setOutput(`Error running code: ${error}`);
+      if (response.success) {
+        const { results, summary } = response.data;
+
+        // Update test results
+        const updatedResults: {[key: string]: 'pending' | 'passed' | 'failed'} = {};
+        results.forEach((result: any) => {
+          updatedResults[result.id] = result.passed ? 'passed' : 'failed';
+        });
+
+        // Mark hidden tests as pending
+        currentProblem.testCases.filter(tc => tc.isHidden).forEach(tc => {
+          updatedResults[tc.id] = 'pending';
+        });
+
+        setTestResults(updatedResults);
+
+        // Format output
+        const outputLines = [
+          `Code executed successfully!\n`,
+          `Test Results:`,
+          ...results.map((result: any) =>
+            `${result.passed ? '✓' : '✗'} Test Case ${result.id}: ${result.passed ? 'PASSED' : 'FAILED'} (${result.executionTime}ms)`
+          ),
+          ...currentProblem.testCases.filter(tc => tc.isHidden).map(tc =>
+            `? Test Case ${tc.id}: HIDDEN`
+          ),
+          ``,
+          `Score: ${summary.score} (${summary.passedTests}/${summary.totalTests} tests passed)`,
+        ];
+
+        setOutput(outputLines.join('\n'));
+      } else {
+        setOutput('Code execution failed. Please check your code and try again.');
+      }
+
+    } catch (error: any) {
+      console.error('Code execution error:', error);
+      setOutput(`Error running code: ${error?.response?.data?.message || error.message || 'Unknown error'}`);
       setTestResults({});
     } finally {
       setRunning(false);

@@ -330,4 +330,25 @@ export const problemImportAPI = {
   },
 };
 
+// Code Execution API
+export const codeExecutionAPI = {
+  // Execute code with test cases
+  executeCode: async (data: {
+    code: string;
+    language: string;
+    testCases: Array<{ id: string; input: string; expectedOutput: string }>;
+    timeLimit?: number;
+    memoryLimit?: number;
+  }) => {
+    const response = await api.post('/code/execute', data);
+    return response.data;
+  },
+
+  // Validate code syntax
+  validateCode: async (code: string, language: string) => {
+    const response = await api.post('/code/validate', { code, language });
+    return response.data;
+  },
+};
+
 export default api;
