@@ -32,6 +32,13 @@ interface AuthState {
   clearError: () => void;
   setUser: (user: User | null) => void;
   setAccessToken: (token: string | null) => void;
+
+  // Role checking utilities
+  hasRole: (role: 'Admin' | 'Proctor' | 'Grader' | 'Judge' | 'Applicant') => boolean;
+  hasAnyRole: (roles: Array<'Admin' | 'Proctor' | 'Grader' | 'Judge' | 'Applicant'>) => boolean;
+  isAdmin: () => boolean;
+  isJudge: () => boolean;
+  isApplicant: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -122,6 +129,31 @@ export const useAuthStore = create<AuthState>()(
       clearError: () => set({ error: null }),
       setUser: (user: User | null) => set({ user }),
       setAccessToken: (token: string | null) => set({ accessToken: token }),
+
+      // Role checking utilities
+      hasRole: (role: 'Admin' | 'Proctor' | 'Grader' | 'Judge' | 'Applicant') => {
+        const { user } = get();
+        if (!user || !user.roles) return false;
+        return user.roles.some((r) => r.role === role);
+      },
+
+      hasAnyRole: (roles: Array<'Admin' | 'Proctor' | 'Grader' | 'Judge' | 'Applicant'>) => {
+        const { user } = get();
+        if (!user || !user.roles) return false;
+        return user.roles.some((r) => roles.includes(r.role));
+      },
+
+      isAdmin: () => {
+        return get().hasRole('Admin');
+      },
+
+      isJudge: () => {
+        return get().hasRole('Judge');
+      },
+
+      isApplicant: () => {
+        return get().hasRole('Applicant');
+      },
     }),
     {
       name: 'auth-storage',
