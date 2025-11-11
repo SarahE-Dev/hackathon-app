@@ -35,14 +35,34 @@ export default function LoginPage() {
     }
   };
 
-  const fillDemoAccount = (type: 'admin' | 'proctor' | 'student') => {
+  const fillDemoAccount = async (type: 'admin' | 'proctor' | 'student') => {
     const accounts = {
       admin: { email: 'admin@demo.edu', password: 'password123' },
       proctor: { email: 'proctor@demo.edu', password: 'password123' },
       student: { email: 'student@demo.edu', password: 'password123' },
     };
-    setEmail(accounts[type].email);
-    setPassword(accounts[type].password);
+    const account = accounts[type];
+    setEmail(account.email);
+    setPassword(account.password);
+    setError('');
+    setLoading(true);
+
+    try {
+      const response = await authAPI.login(account.email, account.password);
+
+      // Store tokens
+      localStorage.setItem('accessToken', response.data.tokens.accessToken);
+      localStorage.setItem('refreshToken', response.data.tokens.refreshToken);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+
+      // Redirect to dashboard
+      router.push('/dashboard');
+    } catch (err: any) {
+      console.error('Demo account login error:', err);
+      setError(err.response?.data?.error?.message || `${type} login failed. Please try again.`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const quickDemoLogin = async () => {
@@ -50,7 +70,8 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await authAPI.login('demo@example.com', 'Demo@123456');
+      // Use the student demo account
+      const response = await authAPI.login('student@demo.edu', 'password123');
 
       // Store tokens
       localStorage.setItem('accessToken', response.data.tokens.accessToken);
@@ -62,6 +83,7 @@ export default function LoginPage() {
     } catch (err: any) {
       console.error('Quick demo login error:', err);
       setError(err.response?.data?.error?.message || 'Demo login failed. Please try again.');
+    } finally {
       setLoading(false);
     }
   };

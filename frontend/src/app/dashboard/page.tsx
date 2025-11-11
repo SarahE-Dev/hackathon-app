@@ -93,11 +93,18 @@ export default function DashboardPage() {
   const handleStartAssessment = async (assessmentId: string) => {
     try {
       const response = await attemptsAPI.start(assessmentId);
-      if (response.data?.id) {
-        router.push(`/assessments/${assessmentId}/attempt`);
+      console.log('Start assessment response:', response);
+
+      const attemptId = response.data?.id || response.data?.attempt?._id;
+      if (attemptId) {
+        // Redirect to the correct assessment page with attempt ID
+        router.push(`/assessment/${attemptId}`);
+      } else {
+        throw new Error('No attempt ID returned from server');
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to start assessment');
+      console.error('Start assessment error:', err);
+      setError(err.response?.data?.error?.message || err.message || 'Failed to start assessment');
     }
   };
 
