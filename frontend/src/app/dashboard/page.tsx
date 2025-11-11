@@ -25,7 +25,7 @@ interface Attempt {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user: authUser, isAdmin, isJudge, isAuthenticated } = useAuthStore();
+  const { user: authUser, isAdmin, isProctor, isJudge, isAuthenticated } = useAuthStore();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
@@ -189,7 +189,7 @@ export default function DashboardPage() {
         )}
 
         {/* Role-Based Quick Actions */}
-        {(isAdmin() || isJudge()) && (
+        {(isAdmin() || isProctor() || isJudge()) && (
           <div className="mb-8">
             <h2 className="text-xl font-bold text-white mb-4">Quick Actions</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -206,6 +206,17 @@ export default function DashboardPage() {
                       <p className="text-gray-400 text-sm">Manage users, teams, and judges</p>
                     </div>
                   </Link>
+                  <Link href="/admin/sessions">
+                    <div className="glass rounded-xl p-6 border border-neon-blue/40 hover:border-neon-blue transition-all cursor-pointer group">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-12 h-12 bg-neon-blue/20 rounded-lg flex items-center justify-center text-2xl">
+                          💻
+                        </div>
+                        <h3 className="text-lg font-bold">Hackathon Sessions</h3>
+                      </div>
+                      <p className="text-gray-400 text-sm">Manage live coding sessions</p>
+                    </div>
+                  </Link>
                   <Link href="/judge">
                     <div className="glass rounded-xl p-6 border border-neon-purple/40 hover:border-neon-purple transition-all cursor-pointer group">
                       <div className="flex items-center gap-3 mb-2">
@@ -219,7 +230,20 @@ export default function DashboardPage() {
                   </Link>
                 </>
               )}
-              {isJudge() && !isAdmin() && (
+              {isProctor() && !isAdmin() && (
+                <Link href="/proctor">
+                  <div className="glass rounded-xl p-6 border border-neon-pink/40 hover:border-neon-pink transition-all cursor-pointer group">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-12 h-12 bg-neon-pink/20 rounded-lg flex items-center justify-center text-2xl">
+                        👁️
+                      </div>
+                      <h3 className="text-lg font-bold">Proctor Dashboard</h3>
+                    </div>
+                    <p className="text-gray-400 text-sm">Monitor hackathon sessions</p>
+                  </div>
+                </Link>
+              )}
+              {isJudge() && !isAdmin() && !isProctor() && (
                 <Link href="/judge">
                   <div className="glass rounded-xl p-6 border border-neon-purple/40 hover:border-neon-purple transition-all cursor-pointer group">
                     <div className="flex items-center gap-3 mb-2">
@@ -239,44 +263,75 @@ export default function DashboardPage() {
         {/* JTC Hackathon Section */}
         <div className="mb-12">
           <h2 className="text-2xl font-bold text-white mb-6">🚀 JTC Hackathon 2025</h2>
-          <Link href="/hackathon/teams">
-            <div className="glass rounded-xl p-8 border border-neon-blue/40 hover:border-neon-blue/70 transition-all cursor-pointer group relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-neon-blue/10 to-neon-purple/10 opacity-0 group-hover:opacity-100 transition-all"></div>
-              <div className="relative z-10">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="text-2xl font-bold text-gradient mb-3">Justice Through Code Hackathon</h3>
-                    <p className="text-gray-300 mb-4">
-                      Join 7 teams competing in a live collaborative coding challenge. Work together to solve Leetcode-style problems,
-                      compete on the leaderboard, and showcase your skills.
-                    </p>
-                    <div className="flex flex-wrap gap-4 text-sm text-gray-400 mb-4">
-                      <div className="flex items-center gap-2">
-                        <span>👥</span>
-                        <span>7 Teams</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Link href="/hackathon/sessions">
+              <div className="glass rounded-xl p-8 border border-neon-blue/40 hover:border-neon-blue/70 transition-all cursor-pointer group relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-neon-blue/10 to-neon-purple/10 opacity-0 group-hover:opacity-100 transition-all"></div>
+                <div className="relative z-10">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-gradient mb-3">Live Coding Sessions</h3>
+                      <p className="text-gray-300 mb-4">
+                        Join active hackathon sessions and compete with your team in real-time coding challenges.
+                      </p>
+                      <div className="flex flex-wrap gap-4 text-sm text-gray-400 mb-4">
+                        <div className="flex items-center gap-2">
+                          <span>💻</span>
+                          <span>Live Coding</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span>🎯</span>
+                          <span>Multiple Problems</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span>📊</span>
+                          <span>Live Leaderboard</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span>💻</span>
-                        <span>Live Coding</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span>🎯</span>
-                        <span>Multiple Problems</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span>📊</span>
-                        <span>Live Leaderboard</span>
-                      </div>
+                      <button className="px-6 py-3 bg-gradient-to-r from-neon-blue to-neon-purple text-white rounded-lg font-medium hover:shadow-lg hover:shadow-neon-blue/50 transition-all group-hover:scale-105">
+                        View Sessions →
+                      </button>
                     </div>
-                    <button className="px-6 py-3 bg-gradient-to-r from-neon-blue to-neon-purple text-white rounded-lg font-medium hover:shadow-lg hover:shadow-neon-blue/50 transition-all group-hover:scale-105">
-                      Join Teams →
-                    </button>
+                    <div className="text-5xl opacity-60 group-hover:opacity-100 transition-all">💻</div>
                   </div>
-                  <div className="text-6xl opacity-60 group-hover:opacity-100 transition-all">🏆</div>
                 </div>
               </div>
-            </div>
-          </Link>
+            </Link>
+
+            <Link href="/hackathon/teams">
+              <div className="glass rounded-xl p-8 border border-neon-purple/40 hover:border-neon-purple/70 transition-all cursor-pointer group relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-neon-purple/10 to-neon-pink/10 opacity-0 group-hover:opacity-100 transition-all"></div>
+                <div className="relative z-10">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-gradient mb-3">Teams & Projects</h3>
+                      <p className="text-gray-300 mb-4">
+                        Browse all teams, view submitted projects, and check out what other teams are building.
+                      </p>
+                      <div className="flex flex-wrap gap-4 text-sm text-gray-400 mb-4">
+                        <div className="flex items-center gap-2">
+                          <span>👥</span>
+                          <span>7 Teams</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span>🚀</span>
+                          <span>Project Showcase</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span>🏆</span>
+                          <span>Competition</span>
+                        </div>
+                      </div>
+                      <button className="px-6 py-3 bg-gradient-to-r from-neon-purple to-neon-pink text-white rounded-lg font-medium hover:shadow-lg hover:shadow-neon-purple/50 transition-all group-hover:scale-105">
+                        Browse Teams →
+                      </button>
+                    </div>
+                    <div className="text-5xl opacity-60 group-hover:opacity-100 transition-all">👥</div>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          </div>
         </div>
 
         {/* Assessments Section Header */}

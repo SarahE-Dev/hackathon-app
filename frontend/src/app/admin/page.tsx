@@ -298,7 +298,38 @@ function AdminDashboardContent() {
         {/* Quick Actions */}
         <div className="mt-6 glass rounded-2xl p-6 border border-gray-800">
           <h2 className="text-xl font-bold mb-4 text-gradient">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Link
+              href="/admin/sessions"
+              className="p-4 bg-gradient-to-br from-neon-blue/20 to-neon-purple/20 hover:from-neon-blue/30 hover:to-neon-purple/30 rounded-lg border border-neon-blue/40 hover:border-neon-blue transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <svg className="w-6 h-6 text-neon-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <div>
+                  <div className="font-medium">Hackathon Sessions</div>
+                  <div className="text-xs text-gray-400">Manage live coding</div>
+                </div>
+              </div>
+            </Link>
+
+            <Link
+              href="/proctor/monitor"
+              className="p-4 bg-gradient-to-br from-neon-purple/20 to-neon-pink/20 hover:from-neon-purple/30 hover:to-neon-pink/30 rounded-lg border border-neon-purple/40 hover:border-neon-purple transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <svg className="w-6 h-6 text-neon-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                <div>
+                  <div className="font-medium">Proctor Monitor</div>
+                  <div className="text-xs text-gray-400">Real-time oversight</div>
+                </div>
+              </div>
+            </Link>
+
             <Link
               href="/admin/leaderboard"
               className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg border border-gray-600 hover:border-neon-blue transition-all"

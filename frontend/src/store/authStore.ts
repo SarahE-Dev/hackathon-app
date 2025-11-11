@@ -37,6 +37,7 @@ interface AuthState {
   hasRole: (role: 'Admin' | 'Proctor' | 'Grader' | 'Judge' | 'Applicant') => boolean;
   hasAnyRole: (roles: Array<'Admin' | 'Proctor' | 'Grader' | 'Judge' | 'Applicant'>) => boolean;
   isAdmin: () => boolean;
+  isProctor: () => boolean;
   isJudge: () => boolean;
   isApplicant: () => boolean;
 }
@@ -145,6 +146,10 @@ export const useAuthStore = create<AuthState>()(
 
       isAdmin: () => {
         return get().hasRole('Admin');
+      },
+
+      isProctor: () => {
+        return get().hasRole('Proctor');
       },
 
       isJudge: () => {

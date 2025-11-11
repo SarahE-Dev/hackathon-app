@@ -24,6 +24,7 @@ import organizationRoutes from './routes/organizations';
 import codeExecutionRoutes from './routes/codeExecution';
 import judgeScoreRoutes from './routes/judgeScores';
 import leaderboardRoutes from './routes/leaderboard';
+import hackathonSessionRoutes from './routes/hackathonSessions';
 
 dotenv.config();
 
@@ -61,6 +62,7 @@ app.use('/api/organizations', organizationRoutes);
 app.use('/api/code', codeExecutionRoutes);
 app.use('/api/judge-scores', judgeScoreRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
+app.use('/api/hackathon-sessions', hackathonSessionRoutes);
 
 // Error handling
 app.use(errorHandler);

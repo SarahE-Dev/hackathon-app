@@ -415,4 +415,158 @@ export const codeExecutionAPI = {
   },
 };
 
+// Hackathon Sessions API
+export const hackathonSessionsAPI = {
+  // Get all hackathon sessions
+  getAll: async (params?: any) => {
+    const response = await api.get('/hackathon-sessions', { params });
+    return response.data;
+  },
+
+  // Get session by ID
+  getById: async (id: string) => {
+    const response = await api.get(`/hackathon-sessions/${id}`);
+    return response.data;
+  },
+
+  // Create new hackathon session
+  create: async (data: any) => {
+    const response = await api.post('/hackathon-sessions', data);
+    return response.data;
+  },
+
+  // Update session
+  update: async (id: string, data: any) => {
+    const response = await api.put(`/hackathon-sessions/${id}`, data);
+    return response.data;
+  },
+
+  // Start session
+  start: async (id: string) => {
+    const response = await api.post(`/hackathon-sessions/${id}/start`);
+    return response.data;
+  },
+
+  // Pause session
+  pause: async (id: string, reason?: string) => {
+    const response = await api.post(`/hackathon-sessions/${id}/pause`, { reason });
+    return response.data;
+  },
+
+  // Resume session
+  resume: async (id: string) => {
+    const response = await api.post(`/hackathon-sessions/${id}/resume`);
+    return response.data;
+  },
+
+  // Complete session
+  complete: async (id: string) => {
+    const response = await api.post(`/hackathon-sessions/${id}/complete`);
+    return response.data;
+  },
+
+  // Get session leaderboard
+  getLeaderboard: async (id: string) => {
+    const response = await api.get(`/hackathon-sessions/${id}/leaderboard`);
+    return response.data;
+  },
+
+  // Delete session
+  delete: async (id: string) => {
+    const response = await api.delete(`/hackathon-sessions/${id}`);
+    return response.data;
+  },
+
+  // Team operations
+  joinSession: async (sessionId: string, teamId: string) => {
+    const response = await api.post('/hackathon-sessions/team/join', {
+      sessionId,
+      teamId,
+    });
+    return response.data;
+  },
+
+  // Get team session
+  getTeamSession: async (sessionId: string, teamId: string) => {
+    const response = await api.get(`/hackathon-sessions/${sessionId}/team/${teamId}`);
+    return response.data;
+  },
+
+  // Update problem progress
+  updateProblemProgress: async (
+    sessionId: string,
+    teamId: string,
+    data: { problemId: string; code: string; language: string }
+  ) => {
+    const response = await api.put(
+      `/hackathon-sessions/${sessionId}/team/${teamId}/problem`,
+      data
+    );
+    return response.data;
+  },
+
+  // Submit problem solution
+  submitProblem: async (
+    sessionId: string,
+    teamId: string,
+    data: { problemId: string; testResults: any[] }
+  ) => {
+    const response = await api.post(
+      `/hackathon-sessions/${sessionId}/team/${teamId}/problem/submit`,
+      data
+    );
+    return response.data;
+  },
+
+  // Submit final session
+  submitSession: async (sessionId: string, teamId: string) => {
+    const response = await api.post(
+      `/hackathon-sessions/${sessionId}/team/${teamId}/submit`
+    );
+    return response.data;
+  },
+
+  // Log proctoring event
+  logProctorEvent: async (
+    sessionId: string,
+    teamId: string,
+    event: {
+      type: string;
+      details?: string;
+      severity?: 'low' | 'medium' | 'high';
+    }
+  ) => {
+    const response = await api.post(
+      `/hackathon-sessions/${sessionId}/team/${teamId}/event`,
+      event
+    );
+    return response.data;
+  },
+
+  // Get all active sessions for monitoring
+  getActiveSessions: async (sessionId?: string) => {
+    const response = await api.get('/hackathon-sessions/monitor/active', {
+      params: { sessionId },
+    });
+    return response.data;
+  },
+
+  // Pause team session (proctor)
+  pauseTeamSession: async (sessionId: string, teamId: string, reason?: string) => {
+    const response = await api.post(
+      `/hackathon-sessions/${sessionId}/team/${teamId}/pause`,
+      { reason }
+    );
+    return response.data;
+  },
+
+  // Resume team session (proctor)
+  resumeTeamSession: async (sessionId: string, teamId: string) => {
+    const response = await api.post(
+      `/hackathon-sessions/${sessionId}/team/${teamId}/resume`
+    );
+    return response.data;
+  },
+};
+
 export default api;
