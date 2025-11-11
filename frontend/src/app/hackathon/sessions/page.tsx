@@ -86,10 +86,11 @@ export default function HackathonSessionsListPage() {
     return session.teams.some((t: any) => t._id === userTeam._id || t === userTeam._id);
   };
 
-  if (!isAuthenticated) {
-    router.push('/auth/login');
-    return null;
-  }
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/auth/login');
+    }
+  }, [isAuthenticated, router]);
 
   if (loading) {
     return (
