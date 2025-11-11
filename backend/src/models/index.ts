@@ -10,3 +10,5 @@ export { default as Grade } from './Grade';
 export { default as Team } from './Team';
 export { default as JudgeScore } from './JudgeScore';
 export { default as Leaderboard } from './Leaderboard';
+export { default as HackathonSession } from './HackathonSession';
+export { default as TeamSession } from './TeamSession';
