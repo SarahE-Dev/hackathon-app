@@ -49,13 +49,14 @@ const seed = async () => {
     await org.save();
     logger.info(`Created organization: ${org.name}`);
 
-    // Create Users
-    const adminPassword = await hashPassword('Admin123!');
+    // Create Users (all with password: password123)
+    const demoPassword = await hashPassword('password123');
+
     const admin = new User({
       email: 'admin@demo.edu',
       firstName: 'Admin',
       lastName: 'User',
-      passwordHash: adminPassword,
+      passwordHash: demoPassword,
       roles: [{ role: UserRole.ADMIN, organizationId: org._id }],
       isActive: true,
       emailVerified: true,
@@ -63,12 +64,11 @@ const seed = async () => {
     await admin.save();
     logger.info(`Created admin: ${admin.email}`);
 
-    const proctorPassword = await hashPassword('Proctor123!');
     const proctor = new User({
       email: 'proctor@demo.edu',
       firstName: 'Proctor',
       lastName: 'User',
-      passwordHash: proctorPassword,
+      passwordHash: demoPassword,
       roles: [
         { role: UserRole.PROCTOR, organizationId: org._id },
         { role: UserRole.GRADER, organizationId: org._id },
@@ -79,18 +79,29 @@ const seed = async () => {
     await proctor.save();
     logger.info(`Created proctor: ${proctor.email}`);
 
-    const studentPassword = await hashPassword('Student123!');
     const student = new User({
       email: 'student@demo.edu',
       firstName: 'Student',
       lastName: 'User',
-      passwordHash: studentPassword,
+      passwordHash: demoPassword,
       roles: [{ role: UserRole.APPLICANT, organizationId: org._id, cohortId: org.cohorts[0]._id }],
       isActive: true,
       emailVerified: true,
     });
     await student.save();
     logger.info(`Created student: ${student.email}`);
+
+    const judge = new User({
+      email: 'judge@demo.edu',
+      firstName: 'Judge',
+      lastName: 'User',
+      passwordHash: demoPassword,
+      roles: [{ role: UserRole.JUDGE, organizationId: org._id }],
+      isActive: true,
+      emailVerified: true,
+    });
+    await judge.save();
+    logger.info(`Created judge: ${judge.email}`);
 
     // Create Sample Questions
 
@@ -252,18 +263,22 @@ const seed = async () => {
     console.log('\n' + '='.repeat(60));
     console.log('🎉 Database Seeded Successfully!');
     console.log('='.repeat(60));
-    console.log('\n📋 Test Accounts:');
+    console.log('\n📋 Test Accounts (all use password: password123):');
     console.log('\n  Admin:');
     console.log(`    Email: admin@demo.edu`);
-    console.log(`    Password: Admin123!`);
+    console.log(`    Password: password123`);
     console.log(`    Role: Admin`);
+    console.log('\n  Judge:');
+    console.log(`    Email: judge@demo.edu`);
+    console.log(`    Password: password123`);
+    console.log(`    Role: Judge`);
     console.log('\n  Proctor/Grader:');
     console.log(`    Email: proctor@demo.edu`);
-    console.log(`    Password: Proctor123!`);
+    console.log(`    Password: password123`);
     console.log(`    Roles: Proctor, Grader`);
     console.log('\n  Student:');
     console.log(`    Email: student@demo.edu`);
-    console.log(`    Password: Student123!`);
+    console.log(`    Password: password123`);
     console.log(`    Role: Applicant`);
     console.log('\n📚 Sample Data:');
     console.log(`  Organization: ${org.name}`);

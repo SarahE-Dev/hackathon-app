@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useProctoring } from '@/hooks/useProctoring';
+import { MCQQuestion } from '@/components/assessment/MCQQuestion';
+import { CodingQuestion } from '@/components/assessment/CodingQuestion';
 import axios from 'axios';
 
 interface Answer {
@@ -328,17 +330,71 @@ export default function TakeAssessmentPage() {
                 <p className="text-gray-300 mb-6">{currentQuestion.description}</p>
               )}
 
-              {/* Question-specific component will go here */}
+              {/* Question-specific component */}
               <div className="mt-6">
-                <p className="text-gray-500 text-sm italic">
-                  Question component for type "{currentQuestion.type}" will be rendered here
-                </p>
-                <textarea
-                  className="w-full mt-4 px-4 py-3 bg-dark-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-neon-blue transition-all min-h-[200px]"
-                  placeholder="Your answer..."
-                  value={answers[currentQuestion._id] || ''}
-                  onChange={(e) => handleAnswerChange(currentQuestion._id, e.target.value)}
-                />
+                {currentQuestion.type === 'multiple-choice' && (
+                  <MCQQuestion
+                    question={currentQuestion}
+                    answer={answers[currentQuestion._id]}
+                    onChange={(answer) => handleAnswerChange(currentQuestion._id, answer)}
+                    disabled={submitting}
+                  />
+                )}
+
+                {currentQuestion.type === 'coding' && (
+                  <CodingQuestion
+                    question={currentQuestion}
+                    answer={answers[currentQuestion._id]}
+                    onChange={(answer) => handleAnswerChange(currentQuestion._id, answer)}
+                    disabled={submitting}
+                  />
+                )}
+
+                {currentQuestion.type === 'short-answer' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Your Answer
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-3 bg-dark-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-neon-blue transition-all"
+                      placeholder="Type your answer here..."
+                      value={answers[currentQuestion._id] || ''}
+                      onChange={(e) => handleAnswerChange(currentQuestion._id, e.target.value)}
+                      disabled={submitting}
+                    />
+                  </div>
+                )}
+
+                {currentQuestion.type === 'long-answer' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Your Answer
+                    </label>
+                    <textarea
+                      className="w-full px-4 py-3 bg-dark-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-neon-blue transition-all min-h-[200px]"
+                      placeholder="Type your detailed answer here..."
+                      value={answers[currentQuestion._id] || ''}
+                      onChange={(e) => handleAnswerChange(currentQuestion._id, e.target.value)}
+                      disabled={submitting}
+                    />
+                  </div>
+                )}
+
+                {!['multiple-choice', 'coding', 'short-answer', 'long-answer'].includes(currentQuestion.type) && (
+                  <div>
+                    <p className="text-gray-500 text-sm italic mb-4">
+                      Question type "{currentQuestion.type}" - Generic input
+                    </p>
+                    <textarea
+                      className="w-full px-4 py-3 bg-dark-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-neon-blue transition-all min-h-[200px]"
+                      placeholder="Your answer..."
+                      value={answers[currentQuestion._id] || ''}
+                      onChange={(e) => handleAnswerChange(currentQuestion._id, e.target.value)}
+                      disabled={submitting}
+                    />
+                  </div>
+                )}
               </div>
             </div>
 

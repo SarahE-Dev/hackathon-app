@@ -101,6 +101,11 @@ export const authAPI = {
 
 // Users API
 export const usersAPI = {
+  getAllUsers: async (params?: any) => {
+    const response = await api.get('/users', { params });
+    return response.data;
+  },
+
   getAll: async (params?: any) => {
     const response = await api.get('/users', { params });
     return response.data;
@@ -123,6 +128,65 @@ export const usersAPI = {
 
   delete: async (id: string) => {
     const response = await api.delete(`/users/${id}`);
+    return response.data;
+  },
+
+  addUserRole: async (userId: string, roleData: { role: string; organizationId?: string; cohortId?: string }) => {
+    const response = await api.post(`/users/${userId}/roles`, roleData);
+    return response.data;
+  },
+
+  removeUserRole: async (userId: string, roleData: { role: string; organizationId?: string }) => {
+    const response = await api.delete(`/users/${userId}/roles`, { data: roleData });
+    return response.data;
+  },
+};
+
+// Teams API
+export const teamsAPI = {
+  getAllTeams: async (params?: any) => {
+    const response = await api.get('/teams', { params });
+    return response.data;
+  },
+
+  getTeamById: async (id: string) => {
+    const response = await api.get(`/teams/${id}`);
+    return response.data;
+  },
+
+  createTeam: async (data: { name: string; description?: string; track?: string }) => {
+    const response = await api.post('/teams', data);
+    return response.data;
+  },
+
+  updateTeam: async (id: string, data: any) => {
+    const response = await api.put(`/teams/${id}`, data);
+    return response.data;
+  },
+
+  deleteTeam: async (id: string) => {
+    const response = await api.delete(`/teams/${id}`);
+    return response.data;
+  },
+
+  addMember: async (teamId: string, userId: string) => {
+    const response = await api.post(`/teams/${teamId}/members`, { userId });
+    return response.data;
+  },
+
+  removeMember: async (teamId: string, userId: string) => {
+    const response = await api.delete(`/teams/${teamId}/members/${userId}`);
+    return response.data;
+  },
+
+  submitProject: async (teamId: string, data: {
+    projectTitle: string;
+    description: string;
+    repoUrl?: string;
+    demoUrl?: string;
+    videoUrl?: string;
+  }) => {
+    const response = await api.post(`/teams/${teamId}/submit`, data);
     return response.data;
   },
 };

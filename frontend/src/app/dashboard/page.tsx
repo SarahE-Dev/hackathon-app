@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { assessmentsAPI, attemptsAPI, gradesAPI } from '@/lib/api';
+import { useAuthStore } from '@/store/authStore';
 
 interface Assessment {
   id: string;
@@ -24,6 +25,7 @@ interface Attempt {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { user: authUser, isAdmin, isJudge, isAuthenticated } = useAuthStore();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
@@ -91,11 +93,18 @@ export default function DashboardPage() {
   const handleStartAssessment = async (assessmentId: string) => {
     try {
       const response = await attemptsAPI.start(assessmentId);
-      if (response.data?.id) {
-        router.push(`/assessments/${assessmentId}/attempt`);
+      console.log('Start assessment response:', response);
+
+      const attemptId = response.data?.id || response.data?.attempt?._id;
+      if (attemptId) {
+        // Redirect to the correct assessment page with attempt ID
+        router.push(`/assessment/${attemptId}`);
+      } else {
+        throw new Error('No attempt ID returned from server');
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to start assessment');
+      console.error('Start assessment error:', err);
+      setError(err.response?.data?.error?.message || err.message || 'Failed to start assessment');
     }
   };
 
@@ -176,6 +185,54 @@ export default function DashboardPage() {
         {error && (
           <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400">
             {error}
+          </div>
+        )}
+
+        {/* Role-Based Quick Actions */}
+        {(isAdmin() || isJudge()) && (
+          <div className="mb-8">
+            <h2 className="text-xl font-bold text-white mb-4">Quick Actions</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {isAdmin() && (
+                <>
+                  <Link href="/admin">
+                    <div className="glass rounded-xl p-6 border border-neon-blue/40 hover:border-neon-blue transition-all cursor-pointer group">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-12 h-12 bg-neon-blue/20 rounded-lg flex items-center justify-center text-2xl">
+                          ⚙️
+                        </div>
+                        <h3 className="text-lg font-bold">Admin Dashboard</h3>
+                      </div>
+                      <p className="text-gray-400 text-sm">Manage users, teams, and judges</p>
+                    </div>
+                  </Link>
+                  <Link href="/judge">
+                    <div className="glass rounded-xl p-6 border border-neon-purple/40 hover:border-neon-purple transition-all cursor-pointer group">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-12 h-12 bg-neon-purple/20 rounded-lg flex items-center justify-center text-2xl">
+                          ⚖️
+                        </div>
+                        <h3 className="text-lg font-bold">Judge Dashboard</h3>
+                      </div>
+                      <p className="text-gray-400 text-sm">Review and score projects</p>
+                    </div>
+                  </Link>
+                </>
+              )}
+              {isJudge() && !isAdmin() && (
+                <Link href="/judge">
+                  <div className="glass rounded-xl p-6 border border-neon-purple/40 hover:border-neon-purple transition-all cursor-pointer group">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-12 h-12 bg-neon-purple/20 rounded-lg flex items-center justify-center text-2xl">
+                        ⚖️
+                      </div>
+                      <h3 className="text-lg font-bold">Judge Dashboard</h3>
+                    </div>
+                    <p className="text-gray-400 text-sm">Review and score hackathon projects</p>
+                  </div>
+                </Link>
+              )}
+            </div>
           </div>
         )}
 

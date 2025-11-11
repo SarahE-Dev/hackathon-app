@@ -35,35 +35,24 @@ export default function LoginPage() {
     }
   };
 
-  const fillDemoAccount = (type: 'admin' | 'proctor' | 'student') => {
+  const fillDemoAccount = (type: 'admin' | 'judge' | 'proctor' | 'student') => {
     const accounts = {
       admin: { email: 'admin@demo.edu', password: 'password123' },
+      judge: { email: 'judge@demo.edu', password: 'password123' },
       proctor: { email: 'proctor@demo.edu', password: 'password123' },
       student: { email: 'student@demo.edu', password: 'password123' },
     };
-    setEmail(accounts[type].email);
-    setPassword(accounts[type].password);
+    const account = accounts[type];
+    setEmail(account.email);
+    setPassword(account.password);
+    setError(''); // Clear any previous errors
   };
 
-  const quickDemoLogin = async () => {
+  const quickDemoLogin = () => {
+    // Just prefill with student demo account
+    setEmail('student@demo.edu');
+    setPassword('password123');
     setError('');
-    setLoading(true);
-
-    try {
-      const response = await authAPI.login('demo@example.com', 'Demo@123456');
-
-      // Store tokens
-      localStorage.setItem('accessToken', response.data.tokens.accessToken);
-      localStorage.setItem('refreshToken', response.data.tokens.refreshToken);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-
-      // Redirect to dashboard
-      router.push('/dashboard');
-    } catch (err: any) {
-      console.error('Quick demo login error:', err);
-      setError(err.response?.data?.error?.message || 'Demo login failed. Please try again.');
-      setLoading(false);
-    }
   };
 
   return (
@@ -103,17 +92,7 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full mb-6 py-3 bg-gradient-to-r from-neon-green to-neon-blue text-white font-semibold rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed glow-green relative z-10"
           >
-            {loading ? (
-              <span className="flex items-center justify-center">
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Loading demo...
-              </span>
-            ) : (
-              '🚀 Try Demo (Assessment Ready)'
-            )}
+            🚀 Quick Start (Student Demo)
           </button>
 
           <div className="relative mb-6 relative z-10">
@@ -177,25 +156,35 @@ export default function LoginPage() {
 
           {/* Demo accounts */}
           <div className="mt-6 pt-6 border-t border-gray-700 relative z-10">
-            <p className="text-xs text-gray-400 mb-3 text-center">Quick demo accounts:</p>
-            <div className="grid grid-cols-3 gap-2">
+            <p className="text-xs text-gray-400 mb-3 text-center">Quick demo accounts (click to prefill):</p>
+            <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => fillDemoAccount('admin')}
-                className="px-3 py-2 bg-dark-700 hover:bg-dark-600 border border-neon-blue/30 rounded text-xs text-gray-300 hover:text-neon-blue transition-all"
+                disabled={loading}
+                className="px-3 py-2 bg-dark-700 hover:bg-dark-600 border border-neon-blue/30 rounded text-xs text-gray-300 hover:text-neon-blue transition-all disabled:opacity-50"
               >
-                Admin
+                👑 Admin
+              </button>
+              <button
+                onClick={() => fillDemoAccount('judge')}
+                disabled={loading}
+                className="px-3 py-2 bg-dark-700 hover:bg-dark-600 border border-neon-purple/30 rounded text-xs text-gray-300 hover:text-neon-purple transition-all disabled:opacity-50"
+              >
+                ⚖️ Judge
               </button>
               <button
                 onClick={() => fillDemoAccount('proctor')}
-                className="px-3 py-2 bg-dark-700 hover:bg-dark-600 border border-neon-purple/30 rounded text-xs text-gray-300 hover:text-neon-purple transition-all"
+                disabled={loading}
+                className="px-3 py-2 bg-dark-700 hover:bg-dark-600 border border-neon-pink/30 rounded text-xs text-gray-300 hover:text-neon-pink transition-all disabled:opacity-50"
               >
-                Proctor
+                👁️ Proctor
               </button>
               <button
                 onClick={() => fillDemoAccount('student')}
-                className="px-3 py-2 bg-dark-700 hover:bg-dark-600 border border-neon-pink/30 rounded text-xs text-gray-300 hover:text-neon-pink transition-all"
+                disabled={loading}
+                className="px-3 py-2 bg-dark-700 hover:bg-dark-600 border border-neon-green/30 rounded text-xs text-gray-300 hover:text-neon-green transition-all disabled:opacity-50"
               >
-                Student
+                🎓 Student
               </button>
             </div>
           </div>

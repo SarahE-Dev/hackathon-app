@@ -6,7 +6,8 @@ import {
   getJudgeScores,
   deleteJudgeScore,
 } from '../controllers/judgeScoreController';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireRole } from '../middleware/auth';
+import { UserRole } from '../../../shared/src/types/common';
 
 const router = Router();
 
@@ -15,9 +16,9 @@ router.use(authenticate);
 
 /**
  * POST /api/judge-scores
- * Create or update a judge score
+ * Create or update a judge score (judges and admins only)
  */
-router.post('/', createOrUpdateJudgeScore);
+router.post('/', requireRole(UserRole.JUDGE, UserRole.ADMIN), createOrUpdateJudgeScore);
 
 /**
  * GET /api/judge-scores/team/:teamId
@@ -39,8 +40,8 @@ router.get('/:teamId/:judgeId', getJudgeScore);
 
 /**
  * DELETE /api/judge-scores/:teamId/:judgeId
- * Delete a judge score
+ * Delete a judge score (judges and admins only)
  */
-router.delete('/:teamId/:judgeId', deleteJudgeScore);
+router.delete('/:teamId/:judgeId', requireRole(UserRole.JUDGE, UserRole.ADMIN), deleteJudgeScore);
 
 export default router;
