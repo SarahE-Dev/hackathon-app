@@ -432,15 +432,15 @@ export default function DashboardPage() {
                           {assessment.description || 'No description provided'}
                         </p>
                         <div className="flex flex-wrap gap-4 text-xs text-gray-500">
-                          <div key="points">📌 {assessment.totalPoints} points</div>
-                          <div key="date">📅 {dueDate.toLocaleDateString()}</div>
+                          <div key={`${assessment.id}-points`}>📌 {assessment.totalPoints} points</div>
+                          <div key={`${assessment.id}-date`}>📅 {dueDate.toLocaleDateString()}</div>
                           {attempt && status !== 'available' && (
-                            <div key="started">
+                            <div key={`${assessment.id}-started`}>
                               ⏱️ Started {new Date(attempt.startedAt).toLocaleDateString()}
                             </div>
                           )}
                           {attempt?.status === 'graded' && attempt?.score !== undefined && (
-                            <div key="score" className="text-neon-green font-medium">
+                            <div key={`${assessment.id}-score`} className="text-neon-green font-medium">
                               ✓ Score: {attempt.score}/{assessment.totalPoints}
                             </div>
                           )}
@@ -455,20 +455,20 @@ export default function DashboardPage() {
                             Start
                           </button>
                         )}
-                        {status === 'in_progress' && (
+                        {status === 'in_progress' && attempt && (
                           <button
                             onClick={() =>
-                              router.push(`/assessments/${assessment.id}/attempt`)
+                              router.push(`/assessment/${attempt.id}`)
                             }
                             className="px-4 py-2 bg-neon-purple/20 border border-neon-purple text-neon-purple rounded-lg text-sm font-medium hover:bg-neon-purple/30 transition-all"
                           >
                             Continue
                           </button>
                         )}
-                        {status === 'completed' && (
+                        {status === 'completed' && attempt && (
                           <button
                             onClick={() =>
-                              router.push(`/assessments/${assessment.id}/results`)
+                              router.push(`/assessment/${attempt.id}`)
                             }
                             className="px-4 py-2 bg-neon-green/20 border border-neon-green text-neon-green rounded-lg text-sm font-medium hover:bg-neon-green/30 transition-all"
                           >

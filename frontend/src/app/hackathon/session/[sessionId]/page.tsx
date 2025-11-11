@@ -191,14 +191,19 @@ export default function HackathonSessionPage() {
 
   const handleVisibilityChange = () => {
     if (document.hidden) {
-      logEvent('tab-switch', 'Switched to another tab', 'medium');
-      showWarning('Tab switching detected!');
+      console.log('[Proctoring] Tab visibility lost');
+      logEvent('tab-switch', 'Switched to another tab or minimized window', 'medium');
+      showWarning('⚠️ Tab switching detected!');
     }
   };
 
   const handleWindowBlur = () => {
-    logEvent('tab-switch', 'Window lost focus', 'medium');
-    showWarning('Please keep focus on this window!');
+    console.log('[Proctoring] Window focus lost');
+    // Only log if not already tracked by visibility change
+    if (!document.hidden) {
+      logEvent('tab-switch', 'Window lost focus to another application', 'medium');
+      showWarning('⚠️ Please keep focus on this window!');
+    }
   };
 
   const handleCopy = (e: ClipboardEvent) => {

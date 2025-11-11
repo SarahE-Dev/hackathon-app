@@ -319,81 +319,30 @@ Output: [0,1]
   }, [copyPasteAttempts, tabSwitches]);
 
   // Team collaboration socket connection
+  // TODO: Implement WebSocket backend for real-time collaboration
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    if (!token || !teamId) return;
-
-    const socket = io(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/collaboration`, {
-      auth: { token },
-    });
-
-    socket.on('connect', () => {
-      setIsConnected(true);
-      socket.emit('join-team', teamId);
-    });
-
-    socket.on('disconnect', () => {
-      setIsConnected(false);
-    });
-
-    socket.on('team-joined', (data: {
-      teamId: string;
-      presence: TeamPresence[];
-      chatHistory: ChatMessage[];
-      currentCode: string;
-    }) => {
-      setTeamPresence(data.presence);
-      setChatMessages(data.chatHistory);
-      if (data.currentCode && data.currentCode !== code) {
-        setCode(data.currentCode);
-      }
-    });
-
-    socket.on('user-joined', (data: { userId: string; presence: TeamPresence }) => {
-      setTeamPresence(prev => {
-        const filtered = prev.filter(p => p.userId !== data.userId);
-        return [...filtered, data.presence];
-      });
-    });
-
-    socket.on('user-left', (data: { userId: string }) => {
-      setTeamPresence(prev =>
-        prev.map(p => p.userId === data.userId ? { ...p, isOnline: false } : p)
-      );
-    });
-
-    socket.on('code-updated', (data: {
-      userId: string;
-      code: string;
-      cursorPosition?: { line: number; column: number };
-    }) => {
-      setCode(data.code);
-      // Update cursor decorations for other users
-      if (data.cursorPosition && data.userId !== JSON.parse(localStorage.getItem('user') || '{}')?.userId) {
-        updateCursorDecoration(data.userId, data.cursorPosition);
-      }
-    });
-
-    socket.on('cursor-moved', (data: { userId: string; position: { line: number; column: number } }) => {
-      if (data.userId !== JSON.parse(localStorage.getItem('user') || '{}')?.userId) {
-        updateCursorDecoration(data.userId, data.position);
-      }
-    });
-
-    socket.on('chat-message', (message: ChatMessage) => {
-      setChatMessages(prev => [...prev, message]);
-    });
-
-    socket.on('team-execution', (data: { userId: string; result: any; problemId: string }) => {
-      // Handle team member execution results
-      console.log('Team execution result:', data);
-    });
-
-    setCollaborationSocket(socket);
-
-    return () => {
-      socket.disconnect();
-    };
+    // Collaboration features disabled until backend WebSocket support is added
+    // const token = localStorage.getItem('accessToken');
+    // if (!token || !teamId) return;
+    //
+    // const socket = io(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/collaboration`, {
+    //   auth: { token },
+    // });
+    //
+    // socket.on('connect', () => {
+    //   setIsConnected(true);
+    //   socket.emit('join-team', teamId);
+    // });
+    //
+    // socket.on('disconnect', () => {
+    //   setIsConnected(false);
+    // });
+    //
+    // setCollaborationSocket(socket);
+    //
+    // return () => {
+    //   socket.disconnect();
+    // };
   }, [teamId]);
 
   const updateCursorDecoration = (userId: string, position: { line: number; column: number }) => {
