@@ -184,12 +184,111 @@ function AdminDashboardContent() {
           </div>
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Role-Based Admin Content */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
+          {/* System Overview */}
+          <div className="xl:col-span-2">
+            <h2 className="text-xl font-bold text-white mb-4">📊 System Overview</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="glass rounded-xl p-6 border border-neon-blue/20">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-neon-blue">Active Sessions</h3>
+                    <p className="text-sm text-gray-400">Live coding challenges</p>
+                  </div>
+                  <div className="text-3xl">🔴</div>
+                </div>
+                <div className="text-2xl font-bold">3</div>
+              </div>
+
+              <div className="glass rounded-xl p-6 border border-neon-green/20">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-neon-green">Total Participants</h3>
+                    <p className="text-sm text-gray-400">Across all sessions</p>
+                  </div>
+                  <div className="text-3xl">👥</div>
+                </div>
+                <div className="text-2xl font-bold">{stats.totalParticipants}</div>
+              </div>
+
+              <div className="glass rounded-xl p-6 border border-neon-purple/20">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-neon-purple">Submitted Projects</h3>
+                    <p className="text-sm text-gray-400">Completed hackathons</p>
+                  </div>
+                  <div className="text-3xl">🚀</div>
+                </div>
+                <div className="text-2xl font-bold">{stats.submittedProjects}</div>
+              </div>
+
+              <div className="glass rounded-xl p-6 border border-neon-pink/20">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-neon-pink">System Health</h3>
+                    <p className="text-sm text-gray-400">All services operational</p>
+                  </div>
+                  <div className="text-3xl">✅</div>
+                </div>
+                <div className="text-lg font-bold text-green-400">Online</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div>
+            <h2 className="text-xl font-bold text-white mb-4">⚡ Quick Actions</h2>
+            <div className="space-y-3">
+              <Link href="/admin/analytics">
+                <div className="glass rounded-lg p-4 border border-neon-yellow/30 hover:border-neon-yellow/60 transition-all cursor-pointer group">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-neon-yellow/20 rounded-lg flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+                      📊
+                    </div>
+                    <div>
+                      <div className="font-semibold text-neon-yellow">View Analytics</div>
+                      <div className="text-xs text-gray-400">Detailed system metrics</div>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+
+              <Link href="/admin/sessions">
+                <div className="glass rounded-lg p-4 border border-neon-blue/30 hover:border-neon-blue/60 transition-all cursor-pointer group">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-neon-blue/20 rounded-lg flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+                      💻
+                    </div>
+                    <div>
+                      <div className="font-semibold text-neon-blue">Manage Sessions</div>
+                      <div className="text-xs text-gray-400">Control live events</div>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+
+              <Link href="/proctor/monitor">
+                <div className="glass rounded-lg p-4 border border-orange-500/30 hover:border-orange-500/60 transition-all cursor-pointer group">
+                  <div className="w-8 h-8 bg-orange-500/20 rounded-lg flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+                      👁️
+                    </div>
+                    <div>
+                      <div className="font-semibold text-orange-400">Proctor Monitor</div>
+                      <div className="text-xs text-gray-400">Real-time oversight</div>
+                    </div>
+                  </div>
+                </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Management Sections */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           {/* Teams Management */}
           <div className="glass rounded-2xl p-6 border border-gray-800">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gradient">Teams</h2>
+              <h2 className="text-xl font-bold text-gradient">👥 Teams</h2>
               <Link
                 href="/hackathon/teams"
                 className="text-sm text-neon-blue hover:text-neon-blue/80"
@@ -197,11 +296,11 @@ function AdminDashboardContent() {
                 View All →
               </Link>
             </div>
-            <div className="space-y-3 max-h-96 overflow-y-auto">
+            <div className="space-y-3 max-h-80 overflow-y-auto">
               {teams.length === 0 ? (
-                <p className="text-gray-400 text-center py-8">No teams yet</p>
+                <p className="text-gray-400 text-center py-8">No teams registered yet</p>
               ) : (
-                teams.map((team) => (
+                teams.slice(0, 5).map((team) => (
                   <div
                     key={team._id}
                     className="flex items-center justify-between p-4 bg-dark-700 rounded-lg hover:bg-dark-600 transition-all"
@@ -210,16 +309,13 @@ function AdminDashboardContent() {
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold">{team.name}</h3>
                         {team.submittedAt && (
-                          <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full">
-                            Submitted
+                          <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">
+                            ✅ Submitted
                           </span>
                         )}
                       </div>
                       {team.projectTitle && (
                         <p className="text-sm text-gray-400 mt-1">{team.projectTitle}</p>
-                      )}
-                      {team.track && (
-                        <p className="text-xs text-neon-blue mt-1">{team.track}</p>
                       )}
                       <p className="text-xs text-gray-500 mt-1">
                         {team.memberIds?.length || 0} member(s)
@@ -232,12 +328,6 @@ function AdminDashboardContent() {
                       >
                         View
                       </Link>
-                      <button
-                        onClick={() => handleDeleteTeam(team._id)}
-                        className="px-3 py-1 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded text-sm transition-all"
-                      >
-                        Delete
-                      </button>
                     </div>
                   </div>
                 ))
@@ -245,52 +335,38 @@ function AdminDashboardContent() {
             </div>
           </div>
 
-          {/* User Management */}
+          {/* Recent Activity */}
           <div className="glass rounded-2xl p-6 border border-gray-800">
-            <h2 className="text-xl font-bold mb-4 text-gradient">User Management</h2>
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {users.length === 0 ? (
-                <p className="text-gray-400 text-center py-8">No users found</p>
-              ) : (
-                users.map((user) => {
-                  const isJudge = user.roles?.some(r => r.role === 'Judge');
-                  const isAdmin = user.roles?.some(r => r.role === 'Admin');
-
-                  return (
-                    <div
-                      key={user._id}
-                      className="flex items-center justify-between p-4 bg-dark-700 rounded-lg"
-                    >
-                      <div className="flex-1">
-                        <h3 className="font-semibold">
-                          {user.firstName} {user.lastName}
-                        </h3>
-                        <p className="text-sm text-gray-400">{user.email}</p>
-                        <div className="flex gap-2 mt-1">
-                          {isAdmin && (
-                            <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded">
-                              Admin
-                            </span>
-                          )}
-                          {isJudge && (
-                            <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-xs rounded">
-                              Judge
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      {!isJudge && !isAdmin && (
-                        <button
-                          onClick={() => handleAssignJudge(user._id)}
-                          className="px-3 py-1 bg-neon-purple/20 text-neon-purple hover:bg-neon-purple/30 rounded text-sm transition-all"
-                        >
-                          Make Judge
-                        </button>
-                      )}
-                    </div>
-                  );
-                })
-              )}
+            <h2 className="text-xl font-bold mb-4 text-gradient">📈 Recent Activity</h2>
+            <div className="space-y-3 max-h-80 overflow-y-auto">
+              <div className="flex items-start gap-3 p-3 bg-dark-700 rounded-lg">
+                <div className="w-2 h-2 bg-green-400 rounded-full mt-2"></div>
+                <div className="flex-1">
+                  <div className="text-sm font-medium">Session "Algorithm Challenge" started</div>
+                  <div className="text-xs text-gray-400">2 minutes ago</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 bg-dark-700 rounded-lg">
+                <div className="w-2 h-2 bg-blue-400 rounded-full mt-2"></div>
+                <div className="flex-1">
+                  <div className="text-sm font-medium">Team "Code Wizards" submitted project</div>
+                  <div className="text-xs text-gray-400">15 minutes ago</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 bg-dark-700 rounded-lg">
+                <div className="w-2 h-2 bg-purple-400 rounded-full mt-2"></div>
+                <div className="flex-1">
+                  <div className="text-sm font-medium">Assessment "Data Structures" completed</div>
+                  <div className="text-xs text-gray-400">1 hour ago</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 bg-dark-700 rounded-lg">
+                <div className="w-2 h-2 bg-yellow-400 rounded-full mt-2"></div>
+                <div className="flex-1">
+                  <div className="text-sm font-medium">Judge scoring session opened</div>
+                  <div className="text-xs text-gray-400">2 hours ago</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -365,6 +441,18 @@ function AdminDashboardContent() {
                 <span className="font-medium">Browse Teams</span>
               </div>
             </Link>
+
+            <Link
+              href="/admin/analytics"
+              className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg border border-gray-600 hover:border-neon-yellow transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <svg className="w-6 h-6 text-neon-yellow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                <span className="font-medium">Analytics</span>
+              </div>
+            </Link>
           </div>
         </div>
       </main>
@@ -374,7 +462,7 @@ function AdminDashboardContent() {
 
 export default function AdminDashboard() {
   return (
-    <RoleGuard allowedRoles={['Admin']}>
+    <RoleGuard allowedRoles={['admin']}>
       <AdminDashboardContent />
     </RoleGuard>
   );

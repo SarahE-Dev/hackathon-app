@@ -194,39 +194,39 @@ export default function AdminSessionsPage() {
   }
 
   return (
-    <RoleGuard allowedRoles={['Admin', 'Proctor']}>
-      <div className="min-h-screen bg-gray-50 p-6">
+    <RoleGuard allowedRoles={['admin', 'proctor']}>
+      <div className="min-h-screen bg-dark-900 text-white p-6">
         <div className="max-w-7xl mx-auto">
           <div className="mb-6 flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Hackathon Sessions</h1>
-              <p className="text-gray-600">Manage live coding challenge sessions</p>
+              <h1 className="text-3xl font-bold text-gradient mb-2">Hackathon Sessions</h1>
+              <p className="text-gray-400">Manage live coding challenge sessions</p>
             </div>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              className="px-4 py-2 bg-gradient-to-r from-neon-blue to-neon-purple text-white rounded-lg hover:opacity-90 transition-all"
             >
               Create Session
             </button>
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400">
               {error}
             </div>
           )}
 
           {loading ? (
             <div className="text-center py-12">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-              <p className="mt-4 text-gray-600">Loading sessions...</p>
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-neon-blue"></div>
+              <p className="mt-4 text-gray-400">Loading sessions...</p>
             </div>
           ) : sessions.length === 0 ? (
-            <div className="bg-white rounded-lg shadow p-8 text-center">
-              <p className="text-gray-600 mb-4">No hackathon sessions found</p>
+            <div className="glass rounded-lg border border-gray-800 p-8 text-center">
+              <p className="text-gray-400 mb-4">No hackathon sessions found</p>
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                className="px-4 py-2 bg-gradient-to-r from-neon-blue to-neon-purple text-white rounded-lg hover:opacity-90 transition-all"
               >
                 Create Your First Session
               </button>
@@ -234,14 +234,14 @@ export default function AdminSessionsPage() {
           ) : (
             <div className="grid grid-cols-1 gap-6">
               {sessions.map((session) => (
-                <div key={session._id} className="bg-white rounded-lg shadow overflow-hidden">
+                <div key={session._id} className="glass rounded-lg border border-gray-800 overflow-hidden">
                   <div className="p-6">
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                        <h3 className="text-xl font-semibold text-white mb-2">
                           {session.title}
                         </h3>
-                        <p className="text-sm text-gray-600 mb-2">{session.description}</p>
+                        <p className="text-sm text-gray-400 mb-2">{session.description}</p>
                         <div className="flex items-center gap-4 text-sm text-gray-500">
                           <span>Duration: {session.duration} min</span>
                           <span>Teams: {session.teams.length}</span>
@@ -259,11 +259,11 @@ export default function AdminSessionsPage() {
 
                     {/* Proctoring Settings */}
                     {session.proctoring.enabled && (
-                      <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                        <p className="text-sm font-medium text-blue-900 mb-2">
+                      <div className="mb-4 p-3 bg-neon-blue/5 border border-neon-blue/20 rounded-lg">
+                        <p className="text-sm font-medium text-neon-blue mb-2">
                           Proctoring Enabled
                         </p>
-                        <div className="grid grid-cols-2 gap-2 text-xs text-blue-700">
+                        <div className="grid grid-cols-2 gap-2 text-xs text-neon-blue">
                           {session.proctoring.requireFullscreen && <span>✓ Fullscreen</span>}
                           {session.proctoring.detectTabSwitch && <span>✓ Tab Detection</span>}
                           {session.proctoring.detectCopyPaste && <span>✓ Copy/Paste Detection</span>}
@@ -277,7 +277,7 @@ export default function AdminSessionsPage() {
                       {session.status === 'scheduled' && (
                         <button
                           onClick={() => handleStartSession(session._id)}
-                          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+                          className="px-4 py-2 bg-neon-green hover:bg-neon-green/80 text-white rounded text-sm transition-all"
                         >
                           Start Session
                         </button>
@@ -286,13 +286,13 @@ export default function AdminSessionsPage() {
                         <>
                           <button
                             onClick={() => handlePauseSession(session._id)}
-                            className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 text-sm"
+                            className="px-4 py-2 bg-neon-purple hover:bg-neon-purple/80 text-white rounded text-sm transition-all"
                           >
                             Pause
                           </button>
                           <button
                             onClick={() => handleCompleteSession(session._id)}
-                            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                            className="px-4 py-2 bg-neon-blue hover:bg-neon-blue/80 text-white rounded text-sm transition-all"
                           >
                             Complete
                           </button>
@@ -301,7 +301,7 @@ export default function AdminSessionsPage() {
                       {session.status === 'paused' && (
                         <button
                           onClick={() => handleResumeSession(session._id)}
-                          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+                          className="px-4 py-2 bg-neon-green hover:bg-neon-green/80 text-white rounded text-sm transition-all"
                         >
                           Resume
                         </button>
@@ -311,21 +311,21 @@ export default function AdminSessionsPage() {
                         session.status === 'completed') && (
                         <button
                           onClick={() => handleViewLeaderboard(session._id)}
-                          className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm"
+                          className="px-4 py-2 bg-gradient-to-r from-neon-blue to-neon-purple text-white rounded text-sm hover:opacity-90 transition-all"
                         >
                           Leaderboard
                         </button>
                       )}
                       <button
                         onClick={() => router.push(`/admin/sessions/${session._id}/edit`)}
-                        className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm"
+                        className="px-4 py-2 bg-dark-700 hover:bg-dark-600 border border-gray-600 text-white rounded text-sm transition-all"
                       >
                         Edit
                       </button>
                       {session.status === 'scheduled' && (
                         <button
                           onClick={() => handleDeleteSession(session._id)}
-                          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+                          className="px-4 py-2 bg-red-500 hover:bg-red-500/80 text-white rounded text-sm transition-all"
                         >
                           Delete
                         </button>
@@ -340,14 +340,14 @@ export default function AdminSessionsPage() {
 
         {/* Create Session Modal */}
         {showCreateModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+            <div className="glass rounded-lg border border-gray-800 shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-2xl font-bold text-gray-900">Create Hackathon Session</h2>
+                  <h2 className="text-2xl font-bold text-white">Create Hackathon Session</h2>
                   <button
                     onClick={() => setShowCreateModal(false)}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-gray-400 hover:text-gray-300"
                   >
                     ✕
                   </button>
@@ -355,7 +355,7 @@ export default function AdminSessionsPage() {
 
                 <form onSubmit={handleCreateSession} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
                       Title *
                     </label>
                     <input
@@ -363,36 +363,36 @@ export default function AdminSessionsPage() {
                       required
                       value={formData.title}
                       onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-neon-blue transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
                       Description
                     </label>
                     <textarea
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       rows={3}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-neon-blue transition-all"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
                         Start Time
                       </label>
                       <input
                         type="datetime-local"
                         value={formData.startTime}
                         onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white focus:border-neon-blue transition-all"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
                         Duration (minutes) *
                       </label>
                       <input
@@ -402,13 +402,13 @@ export default function AdminSessionsPage() {
                         onChange={(e) =>
                           setFormData({ ...formData, duration: parseInt(e.target.value) })
                         }
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white focus:border-neon-blue transition-all"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Teams</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Teams</label>
                     <select
                       multiple
                       value={formData.teams}
@@ -418,7 +418,7 @@ export default function AdminSessionsPage() {
                           teams: Array.from(e.target.selectedOptions, (option) => option.value),
                         })
                       }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white focus:border-neon-blue transition-all"
                       size={5}
                     >
                       {teams.map((team) => (
@@ -432,8 +432,8 @@ export default function AdminSessionsPage() {
                     </p>
                   </div>
 
-                  <div className="border-t pt-4">
-                    <h3 className="text-lg font-medium text-gray-900 mb-3">
+                  <div className="border-t border-gray-700 pt-4">
+                    <h3 className="text-lg font-medium text-white mb-3">
                       Proctoring Settings
                     </h3>
                     <div className="space-y-2">
@@ -450,9 +450,9 @@ export default function AdminSessionsPage() {
                               },
                             })
                           }
-                          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                          className="h-4 w-4 text-neon-blue focus:ring-neon-blue border-gray-600 rounded bg-dark-700"
                         />
-                        <span className="ml-2 text-sm text-gray-700">Enable Proctoring</span>
+                        <span className="ml-2 text-sm text-gray-300">Enable Proctoring</span>
                       </label>
 
                       {formData.proctoring.enabled && (
@@ -470,9 +470,9 @@ export default function AdminSessionsPage() {
                                   },
                                 })
                               }
-                              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                              className="h-4 w-4 text-neon-blue focus:ring-neon-blue border-gray-600 rounded bg-dark-700"
                             />
-                            <span className="ml-2 text-sm text-gray-700">Require Fullscreen</span>
+                            <span className="ml-2 text-sm text-gray-300">Require Fullscreen</span>
                           </label>
                           <label className="flex items-center ml-6">
                             <input
@@ -487,9 +487,9 @@ export default function AdminSessionsPage() {
                                   },
                                 })
                               }
-                              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                              className="h-4 w-4 text-neon-blue focus:ring-neon-blue border-gray-600 rounded bg-dark-700"
                             />
-                            <span className="ml-2 text-sm text-gray-700">Detect Tab Switches</span>
+                            <span className="ml-2 text-sm text-gray-300">Detect Tab Switches</span>
                           </label>
                           <label className="flex items-center ml-6">
                             <input
@@ -504,9 +504,9 @@ export default function AdminSessionsPage() {
                                   },
                                 })
                               }
-                              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                              className="h-4 w-4 text-neon-blue focus:ring-neon-blue border-gray-600 rounded bg-dark-700"
                             />
-                            <span className="ml-2 text-sm text-gray-700">
+                            <span className="ml-2 text-sm text-gray-300">
                               Detect Copy/Paste
                             </span>
                           </label>
@@ -523,9 +523,9 @@ export default function AdminSessionsPage() {
                                   },
                                 })
                               }
-                              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                              className="h-4 w-4 text-neon-blue focus:ring-neon-blue border-gray-600 rounded bg-dark-700"
                             />
-                            <span className="ml-2 text-sm text-gray-700">Detect Idle</span>
+                            <span className="ml-2 text-sm text-gray-300">Detect Idle</span>
                           </label>
                         </>
                       )}
@@ -536,13 +536,13 @@ export default function AdminSessionsPage() {
                     <button
                       type="button"
                       onClick={() => setShowCreateModal(false)}
-                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                      className="px-4 py-2 bg-dark-700 hover:bg-dark-600 border border-gray-600 rounded-lg text-gray-300 hover:text-white transition-all"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                      className="px-4 py-2 bg-gradient-to-r from-neon-blue to-neon-purple text-white rounded-lg hover:opacity-90 transition-all"
                     >
                       Create Session
                     </button>

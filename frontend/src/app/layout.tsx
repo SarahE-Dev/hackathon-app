@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { NotificationProvider } from '@/contexts/NotificationContext';
+import { ToastContainer } from '@/components/notifications/ToastContainer';
 
 export const metadata: Metadata = {
   title: 'CodeArena - Justice Through Code',
@@ -13,7 +15,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <NotificationProvider>
+          {children}
+          <ToastContainer />
+        </NotificationProvider>
+      </body>
     </html>
   );
 }

@@ -2,13 +2,16 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authAPI } from '@/lib/api';
 
+// Role type matching backend (lowercase)
+export type UserRole = 'admin' | 'proctor' | 'grader' | 'judge' | 'applicant';
+
 export interface User {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
   roles: Array<{
-    role: 'Admin' | 'Proctor' | 'Grader' | 'Judge' | 'Applicant';
+    role: UserRole;
     organizationId?: string;
     cohortId?: string;
   }>;
@@ -34,8 +37,8 @@ interface AuthState {
   setAccessToken: (token: string | null) => void;
 
   // Role checking utilities
-  hasRole: (role: 'Admin' | 'Proctor' | 'Grader' | 'Judge' | 'Applicant') => boolean;
-  hasAnyRole: (roles: Array<'Admin' | 'Proctor' | 'Grader' | 'Judge' | 'Applicant'>) => boolean;
+  hasRole: (role: UserRole) => boolean;
+  hasAnyRole: (roles: UserRole[]) => boolean;
   isAdmin: () => boolean;
   isProctor: () => boolean;
   isJudge: () => boolean;
@@ -55,9 +58,22 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         try {
           const response = await authAPI.login(email, password);
+          // Backend returns { success: true, data: { user, tokens } }
+          const userData = response.data?.user || response.user;
+          const token = response.data?.tokens?.accessToken || response.accessToken;
+          const refreshToken = response.data?.tokens?.refreshToken || response.refreshToken;
+
+          // Store tokens in localStorage for API interceptor
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('accessToken', token);
+            if (refreshToken) {
+              localStorage.setItem('refreshToken', refreshToken);
+            }
+          }
+
           set({
-            user: response.user,
-            accessToken: response.accessToken,
+            user: userData,
+            accessToken: token,
             isAuthenticated: true,
             isLoading: false,
           });
@@ -74,9 +90,22 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         try {
           const response = await authAPI.register({ email, firstName, lastName, password });
+          // Backend returns { success: true, data: { user, tokens } }
+          const userData = response.data?.user || response.user;
+          const token = response.data?.tokens?.accessToken || response.accessToken;
+          const refreshToken = response.data?.tokens?.refreshToken || response.refreshToken;
+
+          // Store tokens in localStorage for API interceptor
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('accessToken', token);
+            if (refreshToken) {
+              localStorage.setItem('refreshToken', refreshToken);
+            }
+          }
+
           set({
-            user: response.user,
-            accessToken: response.accessToken,
+            user: userData,
+            accessToken: token,
             isAuthenticated: true,
             isLoading: false,
           });
@@ -93,6 +122,11 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true });
         try {
           await authAPI.logout();
+          // Clear localStorage
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+          }
           set({
             user: null,
             accessToken: null,
@@ -100,8 +134,17 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
           });
         } catch (error) {
-          set({ isLoading: false });
-          throw error;
+          // Even if API call fails, clear local state
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+          }
+          set({
+            user: null,
+            accessToken: null,
+            isAuthenticated: false,
+            isLoading: false,
+          });
         }
       },
 
@@ -132,32 +175,32 @@ export const useAuthStore = create<AuthState>()(
       setAccessToken: (token: string | null) => set({ accessToken: token }),
 
       // Role checking utilities
-      hasRole: (role: 'Admin' | 'Proctor' | 'Grader' | 'Judge' | 'Applicant') => {
+      hasRole: (role: UserRole) => {
         const { user } = get();
         if (!user || !user.roles) return false;
         return user.roles.some((r) => r.role === role);
       },
 
-      hasAnyRole: (roles: Array<'Admin' | 'Proctor' | 'Grader' | 'Judge' | 'Applicant'>) => {
+      hasAnyRole: (roles: UserRole[]) => {
         const { user } = get();
         if (!user || !user.roles) return false;
         return user.roles.some((r) => roles.includes(r.role));
       },
 
       isAdmin: () => {
-        return get().hasRole('Admin');
+        return get().hasRole('admin');
       },
 
       isProctor: () => {
-        return get().hasRole('Proctor');
+        return get().hasRole('proctor');
       },
 
       isJudge: () => {
-        return get().hasRole('Judge');
+        return get().hasRole('judge');
       },
 
       isApplicant: () => {
-        return get().hasRole('Applicant');
+        return get().hasRole('applicant');
       },
     }),
     {

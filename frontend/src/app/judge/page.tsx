@@ -422,7 +422,7 @@ function JudgeDashboardContent() {
 
 export default function JudgeDashboard() {
   return (
-    <RoleGuard allowedRoles={['Judge', 'Admin']}>
+    <RoleGuard allowedRoles={['judge', 'admin']}>
       <JudgeDashboardContent />
     </RoleGuard>
   );

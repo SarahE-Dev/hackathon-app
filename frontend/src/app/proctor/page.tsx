@@ -81,18 +81,18 @@ function ProctorDashboardContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-dark-900 text-white">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+      <header className="glass border-b border-gray-800 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Proctor Dashboard</h1>
-              <p className="text-gray-600 mt-1">Monitor and manage hackathon sessions</p>
+              <h1 className="text-3xl font-bold text-gradient">Proctor Dashboard</h1>
+              <p className="text-gray-400 mt-1">Monitor and manage hackathon sessions</p>
             </div>
             <Link
               href="/dashboard"
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg transition-all"
+              className="px-4 py-2 bg-dark-700 hover:bg-dark-600 border border-gray-600 rounded-lg transition-all"
             >
               ← Back to Dashboard
             </Link>
@@ -104,11 +104,11 @@ function ProctorDashboardContent() {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Active Sessions */}
-          <div className="bg-white rounded-xl p-6 border-2 border-blue-200 hover:border-blue-400 transition-all shadow-sm">
+          <div className="glass rounded-xl p-6 border-2 border-neon-blue/20 hover:border-neon-blue transition-all">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-gray-600 text-sm font-medium">Active Sessions</h3>
+              <h3 className="text-gray-400 text-sm font-medium">Active Sessions</h3>
               <svg
-                className="w-8 h-8 text-blue-600"
+                className="w-8 h-8 text-neon-blue"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -121,15 +121,15 @@ function ProctorDashboardContent() {
                 />
               </svg>
             </div>
-            <p className="text-4xl font-bold text-gray-900">{stats.activeSessions}</p>
+            <p className="text-4xl font-bold text-neon-blue">{stats.activeSessions}</p>
           </div>
 
           {/* Active Teams */}
-          <div className="bg-white rounded-xl p-6 border-2 border-green-200 hover:border-green-400 transition-all shadow-sm">
+          <div className="glass rounded-xl p-6 border-2 border-neon-green/20 hover:border-neon-green transition-all">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-gray-600 text-sm font-medium">Active Teams</h3>
+              <h3 className="text-gray-400 text-sm font-medium">Active Teams</h3>
               <svg
-                className="w-8 h-8 text-green-600"
+                className="w-8 h-8 text-neon-green"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -142,15 +142,15 @@ function ProctorDashboardContent() {
                 />
               </svg>
             </div>
-            <p className="text-4xl font-bold text-gray-900">{stats.activeTeams}</p>
+            <p className="text-4xl font-bold text-neon-green">{stats.activeTeams}</p>
           </div>
 
           {/* Total Violations */}
-          <div className="bg-white rounded-xl p-6 border-2 border-red-200 hover:border-red-400 transition-all shadow-sm">
+          <div className="glass rounded-xl p-6 border-2 border-neon-pink/20 hover:border-neon-pink transition-all">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-gray-600 text-sm font-medium">Total Violations</h3>
+              <h3 className="text-gray-400 text-sm font-medium">Total Violations</h3>
               <svg
-                className="w-8 h-8 text-red-600"
+                className="w-8 h-8 text-neon-pink"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -163,15 +163,15 @@ function ProctorDashboardContent() {
                 />
               </svg>
             </div>
-            <p className="text-4xl font-bold text-gray-900">{stats.totalViolations}</p>
+            <p className="text-4xl font-bold text-neon-pink">{stats.totalViolations}</p>
           </div>
 
           {/* Paused Teams */}
-          <div className="bg-white rounded-xl p-6 border-2 border-yellow-200 hover:border-yellow-400 transition-all shadow-sm">
+          <div className="glass rounded-xl p-6 border-2 border-neon-purple/20 hover:border-neon-purple transition-all">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-gray-600 text-sm font-medium">Paused Teams</h3>
+              <h3 className="text-gray-400 text-sm font-medium">Paused Teams</h3>
               <svg
-                className="w-8 h-8 text-yellow-600"
+                className="w-8 h-8 text-neon-purple"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -184,25 +184,25 @@ function ProctorDashboardContent() {
                 />
               </svg>
             </div>
-            <p className="text-4xl font-bold text-gray-900">{stats.pausedTeams}</p>
+            <p className="text-4xl font-bold text-neon-purple">{stats.pausedTeams}</p>
           </div>
         </div>
 
         {/* Active Sessions List */}
-        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Active Sessions</h2>
+        <div className="glass rounded-xl p-6 border border-gray-800 mb-8">
+          <h2 className="text-xl font-bold text-white mb-4">Active Sessions</h2>
           <div className="space-y-3">
             {sessions.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">No active sessions</p>
+              <p className="text-gray-400 text-center py-8">No active sessions</p>
             ) : (
               sessions.map((session) => (
                 <div
                   key={session._id}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all"
+                  className="flex items-center justify-between p-4 bg-dark-700 rounded-lg hover:bg-dark-600 transition-all"
                 >
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">{session.title}</h3>
-                    <p className="text-sm text-gray-600 mt-1">{session.description}</p>
+                    <h3 className="font-semibold text-white">{session.title}</h3>
+                    <p className="text-sm text-gray-400 mt-1">{session.description}</p>
                     <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
                       <span>
                         {session.teams?.length || 0} team{session.teams?.length !== 1 ? 's' : ''}
@@ -218,15 +218,15 @@ function ProctorDashboardContent() {
                     <span
                       className={`px-3 py-1 rounded-full text-sm font-medium ${
                         session.status === 'active'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-yellow-100 text-yellow-800'
+                          ? 'bg-neon-green/20 text-neon-green border border-neon-green/50'
+                          : 'bg-neon-purple/20 text-neon-purple border border-neon-purple/50'
                       }`}
                     >
                       {session.status}
                     </span>
                     <Link
                       href={`/leaderboard/${session._id}`}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                      className="px-4 py-2 bg-gradient-to-r from-neon-blue to-neon-purple text-white rounded-lg hover:opacity-90 text-sm"
                     >
                       Leaderboard
                     </Link>
@@ -238,15 +238,15 @@ function ProctorDashboardContent() {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
+        <div className="glass rounded-xl p-6 border border-gray-800">
+          <h2 className="text-xl font-bold text-white mb-4">Quick Actions</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <Link
               href="/proctor/monitor"
-              className="p-6 bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 rounded-lg text-white transition-all shadow-md hover:shadow-lg"
+              className="p-6 bg-gradient-to-br from-neon-blue/20 to-neon-purple/20 hover:from-neon-blue/30 hover:to-neon-purple/30 rounded-lg border border-neon-blue/40 hover:border-neon-blue transition-all group"
             >
               <div className="flex items-center gap-3 mb-2">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-neon-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -261,18 +261,18 @@ function ProctorDashboardContent() {
                   />
                 </svg>
                 <div>
-                  <div className="font-semibold">Monitor Teams</div>
-                  <div className="text-sm opacity-90">Real-time oversight</div>
+                  <div className="font-semibold text-white">Monitor Teams</div>
+                  <div className="text-sm text-gray-400">Real-time oversight</div>
                 </div>
               </div>
             </Link>
 
             <Link
               href="/admin/sessions"
-              className="p-6 bg-gray-700 hover:bg-gray-800 rounded-lg text-white transition-all shadow-md hover:shadow-lg"
+              className="p-6 bg-dark-700 hover:bg-dark-600 rounded-lg border border-gray-600 hover:border-neon-blue transition-all group"
             >
               <div className="flex items-center gap-3 mb-2">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-neon-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -281,18 +281,18 @@ function ProctorDashboardContent() {
                   />
                 </svg>
                 <div>
-                  <div className="font-semibold">Manage Sessions</div>
-                  <div className="text-sm opacity-90">View all sessions</div>
+                  <div className="font-semibold text-white">Manage Sessions</div>
+                  <div className="text-sm text-gray-400">View all sessions</div>
                 </div>
               </div>
             </Link>
 
             <Link
               href="/hackathon/teams"
-              className="p-6 bg-gray-700 hover:bg-gray-800 rounded-lg text-white transition-all shadow-md hover:shadow-lg"
+              className="p-6 bg-dark-700 hover:bg-dark-600 rounded-lg border border-gray-600 hover:border-neon-green transition-all group"
             >
               <div className="flex items-center gap-3 mb-2">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-neon-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -301,8 +301,8 @@ function ProctorDashboardContent() {
                   />
                 </svg>
                 <div>
-                  <div className="font-semibold">View Teams</div>
-                  <div className="text-sm opacity-90">Browse all teams</div>
+                  <div className="font-semibold text-white">View Teams</div>
+                  <div className="text-sm text-gray-400">Browse all teams</div>
                 </div>
               </div>
             </Link>
@@ -315,7 +315,7 @@ function ProctorDashboardContent() {
 
 export default function ProctorDashboard() {
   return (
-    <RoleGuard allowedRoles={['Admin', 'Proctor']}>
+    <RoleGuard allowedRoles={['admin', 'proctor']}>
       <ProctorDashboardContent />
     </RoleGuard>
   );

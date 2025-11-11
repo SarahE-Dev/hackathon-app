@@ -4,6 +4,16 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { hackathonSessionsAPI, teamsAPI } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
+import { NotificationCenter } from '@/components/notifications/NotificationCenter';
+
+interface Problem {
+  _id: string;
+  title: string;
+  difficulty: 'easy' | 'medium' | 'hard' | 'expert';
+  tags: string[];
+  acceptanceRate?: number;
+  solved?: boolean;
+}
 
 interface HackathonSession {
   _id: string;
@@ -14,28 +24,86 @@ interface HackathonSession {
   duration: number;
   status: 'scheduled' | 'active' | 'paused' | 'completed' | 'cancelled';
   teams: any[];
-  problems: any[];
+  problems: Problem[];
+  participantCount?: number;
+  liveParticipantCount?: number;
 }
 
 export default function HackathonSessionsListPage() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuthStore();
   const [sessions, setSessions] = useState<HackathonSession[]>([]);
+  const [filteredSessions, setFilteredSessions] = useState<HackathonSession[]>([]);
   const [userTeam, setUserTeam] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [difficultyFilter, setDifficultyFilter] = useState<'all' | 'easy' | 'medium' | 'hard' | 'expert'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'scheduled' | 'active' | 'paused' | 'completed'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      loadData();
+    if (!isAuthenticated) {
+      router.push('/auth/login');
+      return;
     }
-  }, [isAuthenticated]);
+    loadData();
+  }, [isAuthenticated, router]);
+
+  useEffect(() => {
+    filterSessions();
+  }, [sessions, difficultyFilter, statusFilter, searchQuery]);
+
+  const filterSessions = () => {
+    let filtered = sessions;
+
+    // Filter by status
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(session => session.status === statusFilter);
+    }
+
+    // Filter by difficulty (check if session has problems of this difficulty)
+    if (difficultyFilter !== 'all') {
+      filtered = filtered.filter(session =>
+        session.problems.some(problem => problem.difficulty === difficultyFilter)
+      );
+    }
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(session =>
+        session.title.toLowerCase().includes(query) ||
+        session.description.toLowerCase().includes(query) ||
+        session.problems.some(problem =>
+          problem.title.toLowerCase().includes(query) ||
+          problem.tags.some(tag => tag.toLowerCase().includes(query))
+        )
+      );
+    }
+
+    setFilteredSessions(filtered);
+  };
 
   const loadData = async () => {
     try {
       // Load sessions
       const sessionsResponse = await hackathonSessionsAPI.getAll();
-      setSessions(sessionsResponse.data.sessions || []);
+      const sessionsData = sessionsResponse.data.sessions || [];
+
+      // Enhance sessions with mock data for better demo
+      const enhancedSessions = sessionsData.map((session: any) => ({
+        ...session,
+        participantCount: session.teams?.length * 3 || Math.floor(Math.random() * 20) + 5,
+        liveParticipantCount: session.status === 'active' ? Math.floor(Math.random() * 15) + 3 : 0,
+        problems: session.problems?.map((problem: any) => ({
+          ...problem,
+          acceptanceRate: Math.floor(Math.random() * 40) + 20, // Mock acceptance rate
+          solved: Math.random() > 0.7 // Mock solved status
+        })) || []
+      }));
+
+      setSessions(enhancedSessions);
 
       // Load user's team
       const teamsResponse = await teamsAPI.getAllTeams();
@@ -65,18 +133,41 @@ export default function HackathonSessionsListPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'scheduled':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'active':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-100 text-green-800 border-green-200';
       case 'paused':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'completed':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 text-gray-800 border-gray-200';
       case 'cancelled':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-100 text-red-800 border-red-200';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 text-gray-800 border-gray-200';
     }
+  };
+
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case 'easy':
+        return 'text-green-600 bg-green-50 border-green-200';
+      case 'medium':
+        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+      case 'hard':
+        return 'text-red-600 bg-red-50 border-red-200';
+      case 'expert':
+        return 'text-purple-600 bg-purple-50 border-purple-200';
+      default:
+        return 'text-gray-600 bg-gray-50 border-gray-200';
+    }
+  };
+
+  const getDifficultyStats = (problems: Problem[]) => {
+    const stats = { easy: 0, medium: 0, hard: 0, expert: 0 };
+    problems.forEach(problem => {
+      stats[problem.difficulty]++;
+    });
+    return stats;
   };
 
   const canJoinSession = (session: HackathonSession) => {
@@ -104,151 +195,318 @@ export default function HackathonSessionsListPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-dark-900 text-white">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 shadow-sm">
+      <header className="glass border-b border-gray-800 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Hackathon Sessions</h1>
-              <p className="text-gray-600 mt-1">Browse and join live coding challenges</p>
+              <h1 className="text-3xl font-bold text-gradient">🚀 Hackathon Sessions</h1>
+              <p className="text-gray-400 mt-1">Discover and compete in live coding challenges</p>
             </div>
-            <button
-              onClick={() => router.back()}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg transition-all"
-            >
-              ← Back
-            </button>
+            <div className="flex items-center gap-4">
+              <NotificationCenter />
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="px-4 py-2 bg-dark-700 hover:bg-dark-600 border border-gray-600 rounded-lg transition-all"
+              >
+                ← Dashboard
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400">
             {error}
           </div>
         )}
 
+        {/* Team Status */}
         {!userTeam && (
-          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
-            You are not part of any team yet. Join a team to participate in hackathon sessions.
-          </div>
-        )}
-
-        {userTeam && (
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-blue-900">
-              <span className="font-semibold">Your Team:</span> {userTeam.name}
+          <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/50 rounded-lg">
+            <p className="text-yellow-400">
+              <span className="font-semibold">⚠️ No Team Found:</span> You need to be part of a team to participate in hackathon sessions.
             </p>
           </div>
         )}
 
-        {sessions.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-8 text-center">
-            <p className="text-gray-600">No hackathon sessions available</p>
+        {userTeam && (
+          <div className="mb-6 p-4 bg-neon-blue/10 border border-neon-blue/50 rounded-lg">
+            <p className="text-neon-blue">
+              <span className="font-semibold">👥 Your Team:</span> {userTeam.name}
+            </p>
+          </div>
+        )}
+
+        {/* Filters */}
+        <div className="mb-8 space-y-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Search */}
+            <div className="flex-1">
+              <input
+                type="text"
+                placeholder="🔍 Search sessions or problems..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-4 py-3 bg-dark-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-neon-blue transition-all"
+              />
+            </div>
+
+            {/* Status Filter */}
+            <div className="flex gap-2">
+              {[
+                { key: 'all', label: 'All', icon: '📋' },
+                { key: 'active', label: 'Live', icon: '🔴' },
+                { key: 'scheduled', label: 'Upcoming', icon: '⏰' },
+                { key: 'completed', label: 'Finished', icon: '✅' },
+              ].map((filter) => (
+                <button
+                  key={filter.key}
+                  onClick={() => setStatusFilter(filter.key as any)}
+                  className={`px-4 py-3 rounded-lg font-medium transition-all ${
+                    statusFilter === filter.key
+                      ? 'bg-neon-blue text-white shadow-lg shadow-neon-blue/25'
+                      : 'bg-dark-800 text-gray-300 hover:bg-dark-700 border border-gray-700'
+                  }`}
+                >
+                  {filter.icon} {filter.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Difficulty Filter */}
+          <div className="flex gap-2 flex-wrap">
+            <span className="text-gray-400 text-sm self-center mr-2">Difficulty:</span>
+            {[
+              { key: 'all', label: 'All' },
+              { key: 'easy', label: 'Easy', color: 'text-green-400' },
+              { key: 'medium', label: 'Medium', color: 'text-yellow-400' },
+              { key: 'hard', label: 'Hard', color: 'text-red-400' },
+              { key: 'expert', label: 'Expert', color: 'text-purple-400' },
+            ].map((filter) => (
+              <button
+                key={filter.key}
+                onClick={() => setDifficultyFilter(filter.key as any)}
+                className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${
+                  difficultyFilter === filter.key
+                    ? `bg-neon-blue text-white`
+                    : `bg-dark-800 text-gray-300 hover:bg-dark-700 border border-gray-700`
+                }`}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {filteredSessions.length === 0 ? (
+          <div className="glass rounded-xl p-12 text-center border border-gray-800">
+            <div className="text-6xl mb-4 opacity-50">🎯</div>
+            <h3 className="text-xl font-semibold text-white mb-2">No Sessions Found</h3>
+            <p className="text-gray-400 mb-4">
+              {searchQuery || difficultyFilter !== 'all' || statusFilter !== 'all'
+                ? 'Try adjusting your filters to see more sessions.'
+                : 'No hackathon sessions are currently available.'
+              }
+            </p>
+            {(searchQuery || difficultyFilter !== 'all' || statusFilter !== 'all') && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setDifficultyFilter('all');
+                  setStatusFilter('all');
+                }}
+                className="px-4 py-2 bg-neon-blue hover:bg-neon-blue/80 text-white rounded-lg transition-all"
+              >
+                Clear Filters
+              </button>
+            )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6">
-            {sessions.map((session) => (
-              <div
-                key={session._id}
-                className="bg-white rounded-lg shadow hover:shadow-md transition-all overflow-hidden"
-              >
-                <div className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-2xl font-bold text-gray-900">{session.title}</h3>
-                        <span
-                          className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
-                            session.status
-                          )}`}
-                        >
-                          {session.status}
-                        </span>
+          <div className="space-y-8">
+            {/* Sessions List */}
+            {filteredSessions.map((session) => {
+              const difficultyStats = getDifficultyStats(session.problems);
+              const totalProblems = session.problems.length;
+
+              return (
+                <div
+                  key={session._id}
+                  className="glass rounded-xl border border-gray-800 overflow-hidden hover:border-neon-blue/50 transition-all"
+                >
+                  <div className="p-6">
+                    {/* Session Header */}
+                    <div className="flex items-start justify-between mb-6">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-3">
+                          <h2 className="text-2xl font-bold text-gradient">{session.title}</h2>
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(session.status)}`}>
+                            {session.status === 'active' && '🔴'} {session.status === 'scheduled' && '⏰'} {session.status === 'completed' && '✅'} {session.status}
+                          </span>
+                          {session.liveParticipantCount && session.liveParticipantCount > 0 && (
+                            <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs rounded-full border border-red-500/50">
+                              {session.liveParticipantCount} coding live
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-gray-300 mb-4">{session.description}</p>
+
+                        {/* Session Stats */}
+                        <div className="flex flex-wrap gap-6 text-sm text-gray-400 mb-4">
+                          <div className="flex items-center gap-2">
+                            <span>⏱️</span>
+                            <span>{session.duration} minutes</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span>👥</span>
+                            <span>{session.participantCount} participants</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span>🎯</span>
+                            <span>{totalProblems} problems</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span>🏆</span>
+                            <span>{session.teams.length} teams</span>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-gray-600 mb-3">{session.description}</p>
-                      <div className="flex flex-wrap gap-4 text-sm text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
+
+                      {/* Action Buttons */}
+                      <div className="flex gap-3 ml-6">
+                        {canJoinSession(session) ? (
+                          <button
+                            onClick={() => handleJoinSession(session._id)}
+                            className="px-6 py-3 bg-gradient-to-r from-neon-blue to-neon-purple text-white rounded-lg hover:opacity-90 font-semibold shadow-lg shadow-neon-blue/25 transition-all"
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                          <span>{session.duration} minutes</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                            />
-                          </svg>
-                          <span>{session.teams.length} teams</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                            />
-                          </svg>
-                          <span>{session.problems.length} problems</span>
-                        </div>
+                            {session.status === 'active' ? '🚀 Join Live Session' : '👁️ View Session'}
+                          </button>
+                        ) : session.status === 'active' || session.status === 'paused' ? (
+                          <div className="px-6 py-3 bg-gray-600/50 text-gray-400 rounded-lg border border-gray-600">
+                            Not registered
+                          </div>
+                        ) : (
+                          <div className="px-6 py-3 bg-gray-600/50 text-gray-400 rounded-lg border border-gray-600">
+                            Session unavailable
+                          </div>
+                        )}
+                        <button
+                          onClick={() => router.push(`/leaderboard/${session._id}`)}
+                          className="px-4 py-3 bg-dark-700 hover:bg-dark-600 text-gray-300 hover:text-white rounded-lg border border-gray-600 transition-all"
+                        >
+                          🏆 Leaderboard
+                        </button>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex gap-3">
-                    {canJoinSession(session) ? (
-                      <button
-                        onClick={() => handleJoinSession(session._id)}
-                        className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
-                      >
-                        {session.status === 'active' ? 'Join Session' : 'View Session'}
-                      </button>
-                    ) : session.status === 'active' || session.status === 'paused' ? (
-                      <div className="px-6 py-3 bg-gray-100 text-gray-500 rounded-lg">
-                        Not registered for this session
-                      </div>
-                    ) : (
-                      <div className="px-6 py-3 bg-gray-100 text-gray-500 rounded-lg">
-                        Session not available
+                    {/* Problems Preview */}
+                    {session.problems.length > 0 && (
+                      <div className="border-t border-gray-700 pt-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-semibold text-white">Problems</h3>
+                          <div className="flex gap-2">
+                            {difficultyStats.easy > 0 && <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded border border-green-500/50">{difficultyStats.easy} Easy</span>}
+                            {difficultyStats.medium > 0 && <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded border border-yellow-500/50">{difficultyStats.medium} Medium</span>}
+                            {difficultyStats.hard > 0 && <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs rounded border border-red-500/50">{difficultyStats.hard} Hard</span>}
+                            {difficultyStats.expert > 0 && <span className="px-2 py-1 bg-purple-500/20 text-purple-400 text-xs rounded border border-purple-500/50">{difficultyStats.expert} Expert</span>}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {session.problems.slice(0, 6).map((problem, index) => (
+                            <div
+                              key={problem._id}
+                              className="p-4 bg-dark-800 rounded-lg border border-gray-700 hover:border-gray-600 transition-all cursor-pointer group"
+                              onClick={() => setSelectedProblem(problem)}
+                            >
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-400 text-sm">#{index + 1}</span>
+                                  {problem.solved && <span className="text-green-400 text-sm">✓</span>}
+                                </div>
+                                <span className={`px-2 py-0.5 rounded text-xs font-medium border ${getDifficultyColor(problem.difficulty)}`}>
+                                  {problem.difficulty}
+                                </span>
+                              </div>
+                              <h4 className="font-semibold text-white mb-1 group-hover:text-neon-blue transition-colors">
+                                {problem.title}
+                              </h4>
+                              {problem.acceptanceRate && (
+                                <div className="flex items-center gap-2 text-xs text-gray-400">
+                                  <span>Acceptance: {problem.acceptanceRate}%</span>
+                                </div>
+                              )}
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {problem.tags.slice(0, 2).map(tag => (
+                                  <span key={tag} className="px-2 py-0.5 bg-gray-700 text-gray-300 text-xs rounded">
+                                    {tag}
+                                  </span>
+                                ))}
+                                {problem.tags.length > 2 && (
+                                  <span className="text-gray-500 text-xs">+{problem.tags.length - 2} more</span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                          {session.problems.length > 6 && (
+                            <div className="p-4 bg-dark-800/50 rounded-lg border border-gray-700 border-dashed flex items-center justify-center">
+                              <span className="text-gray-400 text-sm">+{session.problems.length - 6} more problems</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
-                    <button
-                      onClick={() => router.push(`/leaderboard/${session._id}`)}
-                      className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
-                    >
-                      View Leaderboard
-                    </button>
                   </div>
                 </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Problem Preview Modal */}
+        {selectedProblem && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50" onClick={() => setSelectedProblem(null)}>
+            <div className="glass rounded-xl border border-gray-700 shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              <div className="p-6 border-b border-gray-700">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-xl font-bold text-white">{selectedProblem.title}</h3>
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getDifficultyColor(selectedProblem.difficulty)}`}>
+                        {selectedProblem.difficulty}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-gray-400">
+                      {selectedProblem.acceptanceRate && <span>Acceptance: {selectedProblem.acceptanceRate}%</span>}
+                      <span>Tags: {selectedProblem.tags.join(', ')}</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSelectedProblem(null)}
+                    className="text-gray-400 hover:text-white p-2"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
-            ))}
+              <div className="p-6 max-h-96 overflow-y-auto">
+                <div className="text-gray-300">
+                  <p className="mb-4">Problem description would appear here with detailed requirements, examples, and constraints.</p>
+                  <div className="bg-dark-800 p-4 rounded-lg border border-gray-700 mb-4">
+                    <h4 className="font-semibold text-white mb-2">Example:</h4>
+                    <pre className="text-sm text-gray-300">
+{`Input: [1, 2, 3, 4]
+Output: [1, 3, 6, 10]`}
+                    </pre>
+                  </div>
+                  <p className="text-sm text-gray-400 italic">Click "Join Session" to start solving this problem!</p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </main>

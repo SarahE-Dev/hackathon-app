@@ -145,29 +145,29 @@ export default function ProctorMonitorPage() {
   }
 
   return (
-    <RoleGuard allowedRoles={['Admin', 'Proctor']}>
-      <div className="min-h-screen bg-gray-50 p-6">
+    <RoleGuard allowedRoles={['admin', 'proctor']}>
+      <div className="min-h-screen bg-dark-900 text-white p-6">
         <div className="max-w-7xl mx-auto">
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Proctor Monitoring</h1>
-            <p className="text-gray-600">Monitor active hackathon sessions in real-time</p>
+            <h1 className="text-3xl font-bold text-gradient mb-2">Proctor Monitoring</h1>
+            <p className="text-gray-400">Monitor active hackathon sessions in real-time</p>
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400">
               {error}
             </div>
           )}
 
           {/* Session Selector */}
-          <div className="mb-6 bg-white rounded-lg shadow p-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+          <div className="mb-6 glass rounded-lg p-4 border border-gray-800">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
               Select Session
             </label>
             <select
               value={selectedSession}
               onChange={(e) => setSelectedSession(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white focus:border-neon-blue transition-all"
             >
               <option value="">Select a session...</option>
               {sessions.map((session) => (
@@ -180,52 +180,52 @@ export default function ProctorMonitorPage() {
 
           {loading ? (
             <div className="text-center py-12">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-              <p className="mt-4 text-gray-600">Loading team sessions...</p>
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-neon-blue"></div>
+              <p className="mt-4 text-gray-400">Loading team sessions...</p>
             </div>
           ) : teamSessions.length === 0 ? (
-            <div className="bg-white rounded-lg shadow p-8 text-center">
-              <p className="text-gray-600">No active team sessions found</p>
+            <div className="glass rounded-lg p-8 border border-gray-800 text-center">
+              <p className="text-gray-400">No active team sessions found</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6">
               {/* Team Sessions List */}
-              <div className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                  <h2 className="text-lg font-semibold text-gray-900">Active Team Sessions</h2>
+              <div className="glass rounded-lg border border-gray-800 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-700 bg-dark-800">
+                  <h2 className="text-lg font-semibold text-white">Active Team Sessions</h2>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-gray-700">
+                    <thead className="bg-dark-800">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                           Team
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                           Status
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                           Score
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                           Violations
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                           Actions
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-dark-900 divide-y divide-gray-700">
                       {teamSessions.map((session) => (
                         <tr
                           key={session._id}
-                          className={`hover:bg-gray-50 cursor-pointer ${
-                            getTotalViolations(session) > 5 ? 'bg-red-50' : ''
+                          className={`hover:bg-dark-800 cursor-pointer transition-all ${
+                            getTotalViolations(session) > 5 ? 'bg-red-500/5' : ''
                           }`}
                           onClick={() => setSelectedTeam(session)}
                         >
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className="text-sm font-medium text-white">
                               {session.teamId.name}
                             </div>
                             <div className="text-xs text-gray-500">
@@ -234,20 +234,20 @@ export default function ProctorMonitorPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             {session.isPaused ? (
-                              <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                              <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-neon-purple/20 text-neon-purple border border-neon-purple/50">
                                 Paused
                               </span>
                             ) : (
-                              <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                              <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-neon-green/20 text-neon-green border border-neon-green/50">
                                 Active
                               </span>
                             )}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                             {session.totalScore} / {session.maxScore}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
+                            <div className="text-sm text-white">
                               Total: {getTotalViolations(session)}
                             </div>
                             <div className="text-xs text-gray-500">
@@ -262,7 +262,7 @@ export default function ProctorMonitorPage() {
                                   e.stopPropagation();
                                   handleResumeTeam(session.teamId._id);
                                 }}
-                                className="text-green-600 hover:text-green-900"
+                                className="text-neon-green hover:text-neon-green/80"
                               >
                                 Resume
                               </button>
@@ -272,7 +272,7 @@ export default function ProctorMonitorPage() {
                                   e.stopPropagation();
                                   setSelectedTeam(session);
                                 }}
-                                className="text-yellow-600 hover:text-yellow-900"
+                                className="text-neon-purple hover:text-neon-purple/80"
                               >
                                 Pause
                               </button>
@@ -287,24 +287,24 @@ export default function ProctorMonitorPage() {
 
               {/* Selected Team Details */}
               {selectedTeam && (
-                <div className="bg-white rounded-lg shadow p-6">
+                <div className="glass rounded-lg border border-gray-800 p-6">
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h3 className="text-xl font-semibold text-gray-900">
+                      <h3 className="text-xl font-semibold text-white">
                         {selectedTeam.teamId.name}
                       </h3>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-400">
                         Started: {new Date(selectedTeam.startedAt).toLocaleString()}
                       </p>
                       {selectedTeam.isPaused && selectedTeam.pauseReason && (
-                        <p className="text-sm text-yellow-600 mt-1">
+                        <p className="text-sm text-neon-purple mt-1">
                           Paused: {selectedTeam.pauseReason}
                         </p>
                       )}
                     </div>
                     <button
                       onClick={() => setSelectedTeam(null)}
-                      className="text-gray-400 hover:text-gray-600"
+                      className="text-gray-400 hover:text-gray-300"
                     >
                       ✕
                     </button>
@@ -312,19 +312,19 @@ export default function ProctorMonitorPage() {
 
                   {/* Problem Progress */}
                   <div className="mb-6">
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">
+                    <h4 className="text-sm font-medium text-gray-300 mb-2">
                       Problem Progress
                     </h4>
                     <div className="space-y-2">
                       {selectedTeam.problemProgress.map((problem, index) => (
                         <div
                           key={problem.problemId}
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded"
+                          className="flex items-center justify-between p-3 bg-dark-700 rounded"
                         >
-                          <span className="text-sm text-gray-700">Problem {index + 1}</span>
+                          <span className="text-sm text-gray-300">Problem {index + 1}</span>
                           <div className="flex items-center gap-4">
-                            <span className="text-sm text-gray-600">{problem.status}</span>
-                            <span className="text-sm font-medium text-gray-900">
+                            <span className="text-sm text-gray-400">{problem.status}</span>
+                            <span className="text-sm font-medium text-white">
                               {problem.score} pts
                             </span>
                           </div>
@@ -335,7 +335,7 @@ export default function ProctorMonitorPage() {
 
                   {/* Recent Events */}
                   <div className="mb-6">
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">Recent Events</h4>
+                    <h4 className="text-sm font-medium text-gray-300 mb-2">Recent Events</h4>
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                       {selectedTeam.events
                         .slice()
@@ -344,7 +344,7 @@ export default function ProctorMonitorPage() {
                         .map((event, index) => (
                           <div
                             key={index}
-                            className="flex items-start gap-3 p-3 bg-gray-50 rounded"
+                            className="flex items-start gap-3 p-3 bg-dark-700 rounded"
                           >
                             <span
                               className={`text-xs font-medium ${getSeverityColor(
@@ -354,7 +354,7 @@ export default function ProctorMonitorPage() {
                               {event.type}
                             </span>
                             <div className="flex-1">
-                              <p className="text-sm text-gray-700">{event.details}</p>
+                              <p className="text-sm text-gray-300">{event.details}</p>
                               <p className="text-xs text-gray-500">
                                 {new Date(event.timestamp).toLocaleTimeString()}
                               </p>
@@ -366,8 +366,8 @@ export default function ProctorMonitorPage() {
 
                   {/* Pause Team Action */}
                   {!selectedTeam.isPaused && (
-                    <div className="border-t pt-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <div className="border-t border-gray-700 pt-4">
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
                         Pause Team Session
                       </label>
                       <div className="flex gap-2">
@@ -376,11 +376,11 @@ export default function ProctorMonitorPage() {
                           value={pauseReason}
                           onChange={(e) => setPauseReason(e.target.value)}
                           placeholder="Reason for pausing..."
-                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                          className="flex-1 px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-neon-blue transition-all"
                         />
                         <button
                           onClick={() => handlePauseTeam(selectedTeam.teamId._id)}
-                          className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
+                          className="px-4 py-2 bg-neon-purple hover:bg-neon-purple/80 text-white rounded-lg transition-all"
                         >
                           Pause
                         </button>

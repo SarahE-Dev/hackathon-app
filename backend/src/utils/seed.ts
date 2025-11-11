@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import { User, Organization, Question, Assessment } from '../models';
+import { User, Organization, Question, Assessment, Team } from '../models';
 import { hashPassword } from './password';
 import { UserRole, QuestionType, DifficultyLevel, AssessmentStatus } from '../../../shared/src/types/common';
 import { logger } from './logger';
@@ -19,6 +19,7 @@ const seed = async () => {
       Organization.deleteMany({}),
       Question.deleteMany({}),
       Assessment.deleteMany({}),
+      Team.deleteMany({}),
     ]);
     logger.info('Cleared existing data');
 
@@ -52,8 +53,9 @@ const seed = async () => {
     // Create Users (all with password: password123)
     const demoPassword = await hashPassword('password123');
 
+    // Create users with new email domains for proper role differentiation
     const admin = new User({
-      email: 'admin@demo.edu',
+      email: 'admin@codearena.edu',
       firstName: 'Admin',
       lastName: 'User',
       passwordHash: demoPassword,
@@ -65,7 +67,7 @@ const seed = async () => {
     logger.info(`Created admin: ${admin.email}`);
 
     const proctor = new User({
-      email: 'proctor@demo.edu',
+      email: 'proctor@codearena.edu',
       firstName: 'Proctor',
       lastName: 'User',
       passwordHash: demoPassword,
@@ -80,7 +82,7 @@ const seed = async () => {
     logger.info(`Created proctor: ${proctor.email}`);
 
     const student = new User({
-      email: 'student@demo.edu',
+      email: 'student@codearena.edu',
       firstName: 'Student',
       lastName: 'User',
       passwordHash: demoPassword,
@@ -92,7 +94,7 @@ const seed = async () => {
     logger.info(`Created student: ${student.email}`);
 
     const judge = new User({
-      email: 'judge@demo.edu',
+      email: 'judge@codearena.edu',
       firstName: 'Judge',
       lastName: 'User',
       passwordHash: demoPassword,
@@ -102,6 +104,80 @@ const seed = async () => {
     });
     await judge.save();
     logger.info(`Created judge: ${judge.email}`);
+
+    // Create Teams and assign students to them
+    const team1 = new Team({
+      name: 'Code Warriors',
+      projectTitle: 'Warrior Web App',
+      description: 'A fierce team of coding warriors building innovative web applications',
+      organizationId: org._id,
+      memberIds: [student._id],
+      track: 'Full Stack',
+      disqualified: false,
+    });
+    await team1.save();
+    logger.info(`Created team: ${team1.name} with ${team1.memberIds.length} members`);
+
+    const team2 = new Team({
+      name: 'Algorithm Avengers',
+      projectTitle: 'Smart Algorithm Library',
+      description: 'Masters of algorithms building intelligent data processing solutions',
+      organizationId: org._id,
+      memberIds: [student._id],
+      track: 'Algorithms',
+      disqualified: false,
+    });
+    await team2.save();
+    logger.info(`Created team: ${team2.name} with ${team2.memberIds.length} members`);
+
+    // Also create the old demo users for backwards compatibility
+    const oldAdminPassword = await hashPassword('password123');
+    const oldAdmin = new User({
+      email: 'admin@demo.edu',
+      firstName: 'Old Admin',
+      lastName: 'User',
+      passwordHash: oldAdminPassword,
+      roles: [{ role: UserRole.ADMIN, organizationId: org._id }],
+      isActive: true,
+      emailVerified: true,
+    });
+    await oldAdmin.save();
+
+    const oldProctor = new User({
+      email: 'proctor@demo.edu',
+      firstName: 'Old Proctor',
+      lastName: 'User',
+      passwordHash: oldAdminPassword,
+      roles: [
+        { role: UserRole.PROCTOR, organizationId: org._id },
+        { role: UserRole.GRADER, organizationId: org._id },
+      ],
+      isActive: true,
+      emailVerified: true,
+    });
+    await oldProctor.save();
+
+    const oldStudent = new User({
+      email: 'student@demo.edu',
+      firstName: 'Old Student',
+      lastName: 'User',
+      passwordHash: oldAdminPassword,
+      roles: [{ role: UserRole.APPLICANT, organizationId: org._id, cohortId: org.cohorts[0]._id }],
+      isActive: true,
+      emailVerified: true,
+    });
+    await oldStudent.save();
+
+    const oldJudge = new User({
+      email: 'judge@demo.edu',
+      firstName: 'Old Judge',
+      lastName: 'User',
+      passwordHash: oldAdminPassword,
+      roles: [{ role: UserRole.JUDGE, organizationId: org._id }],
+      isActive: true,
+      emailVerified: true,
+    });
+    await oldJudge.save();
 
     // Create Sample Questions
 
@@ -264,30 +340,33 @@ const seed = async () => {
     console.log('🎉 Database Seeded Successfully!');
     console.log('='.repeat(60));
     console.log('\n📋 Test Accounts (all use password: password123):');
-    console.log('\n  Admin:');
-    console.log(`    Email: admin@demo.edu`);
+    console.log('\n  🔴 Admin:');
+    console.log(`    Email: admin@codearena.edu`);
     console.log(`    Password: password123`);
-    console.log(`    Role: Admin`);
-    console.log('\n  Judge:');
-    console.log(`    Email: judge@demo.edu`);
+    console.log(`    Role: Admin (Full platform control)`);
+    console.log('\n  🟡 Judge:');
+    console.log(`    Email: judge@codearena.edu`);
     console.log(`    Password: password123`);
-    console.log(`    Role: Judge`);
-    console.log('\n  Proctor/Grader:');
-    console.log(`    Email: proctor@demo.edu`);
+    console.log(`    Role: Judge (Evaluate hackathon submissions)`);
+    console.log('\n  🟠 Proctor:');
+    console.log(`    Email: proctor@codearena.edu`);
     console.log(`    Password: password123`);
-    console.log(`    Roles: Proctor, Grader`);
-    console.log('\n  Student:');
-    console.log(`    Email: student@demo.edu`);
+    console.log(`    Role: Proctor + Grader (Monitor sessions & grade assessments)`);
+    console.log('\n  🟢 Student:');
+    console.log(`    Email: student@codearena.edu`);
     console.log(`    Password: password123`);
-    console.log(`    Role: Applicant`);
+    console.log(`    Role: Applicant (Take assessments & participate in hackathons)`);
     console.log('\n📚 Sample Data:');
     console.log(`  Organization: ${org.name}`);
+    console.log(`  Users: 8 (4 new + 4 legacy)`);
+    console.log(`  Teams: 2 (Code Warriors, Algorithm Avengers)`);
     console.log(`  Questions: 3 (MCQ, Coding, Freeform)`);
     console.log(`  Assessment: ${assessment.title}`);
     console.log('\n🚀 Next Steps:');
-    console.log('  1. Login with any account above');
-    console.log('  2. View the sample assessment');
-    console.log('  3. Create your own questions and assessments\n');
+    console.log('  1. Login with any account above to see role-specific dashboards');
+    console.log('  2. Students are already assigned to teams for hackathon participation');
+    console.log('  3. Admins can manage team assignments and create new teams');
+    console.log('  4. Judges and proctors can monitor sessions and evaluate submissions\n');
     console.log('='.repeat(60) + '\n');
 
     process.exit(0);

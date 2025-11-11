@@ -37,7 +37,7 @@ export default function LeaderboardPage() {
   const [revealed, setRevealed] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  const isAdminOrProctor = hasRole('Admin') || hasRole('Proctor');
+  const isAdminOrProctor = hasRole('admin') || hasRole('proctor');
 
   useEffect(() => {
     if (isAuthenticated) {

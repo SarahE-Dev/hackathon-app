@@ -3,13 +3,26 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { assessmentsAPI, attemptsAPI, gradesAPI } from '@/lib/api';
+import { assessmentsAPI, attemptsAPI, gradesAPI, teamsAPI } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
+import { NotificationCenter } from '@/components/notifications/NotificationCenter';
+import { useNotifications } from '@/contexts/NotificationContext';
+import { IQuestion } from '@/components/questions/QuestionRenderer';
 
 interface Assessment {
   id: string;
   title: string;
   description?: string;
+  settings?: {
+    timeLimit?: number;
+    proctoring?: {
+      enabled: boolean;
+      requireWebcam: boolean;
+      detectTabSwitch: boolean;
+      preventCopyPaste: boolean;
+    };
+  };
+  questions?: IQuestion[];
   totalPoints: number;
   createdAt: string;
 }
@@ -23,28 +36,31 @@ interface Attempt {
   status: 'in_progress' | 'submitted' | 'graded';
 }
 
+interface Team {
+  id: string;
+  name: string;
+  memberIds: string[];
+  leaderId: string;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
-  const { user: authUser, isAdmin, isProctor, isJudge, isAuthenticated } = useAuthStore();
-  const [user, setUser] = useState<any>(null);
+  const { user: authUser, isAdmin, isProctor, isJudge, isAuthenticated, logout } = useAuthStore();
+  const { addNotification } = useNotifications();
   const [loading, setLoading] = useState(true);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [attempts, setAttempts] = useState<Map<string, Attempt>>(new Map());
+  const [userTeam, setUserTeam] = useState<Team | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'available' | 'in_progress' | 'completed'>('available');
 
   useEffect(() => {
     const initializeDashboard = async () => {
-      const token = localStorage.getItem('accessToken');
-      const userData = localStorage.getItem('user');
-
-      if (!token || !userData) {
+      // Use authStore instead of manual localStorage reads
+      if (!isAuthenticated || !authUser) {
         router.push('/auth/login');
         return;
       }
-
-      const parsedUser = JSON.parse(userData);
-      setUser(parsedUser);
 
       try {
         // Fetch assessments
@@ -54,22 +70,49 @@ export default function DashboardPage() {
 
         // Fetch user's attempts to determine status
         try {
-          const attemptsData = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/attempts/my-attempts`, {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-            },
-          }).then(r => r.json());
+          const attemptsData = await attemptsAPI.getAll();
 
           const attemptsMap = new Map();
-          if (attemptsData.data && Array.isArray(attemptsData.data)) {
-            attemptsData.data.forEach((attempt: Attempt) => {
+          const attemptsList = attemptsData.data?.attempts || attemptsData.data || [];
+          if (Array.isArray(attemptsList)) {
+            attemptsList.forEach((attempt: Attempt) => {
               attemptsMap.set(attempt.assessmentId, attempt);
             });
           }
           setAttempts(attemptsMap);
+
+          // Check for newly graded assessments and show notifications
+          const gradedAttempts = attemptsList.filter((a: Attempt) => a.status === 'graded') || [];
+          if (gradedAttempts.length > 0) {
+            gradedAttempts.forEach((attempt: Attempt) => {
+              const assessment = assessmentsList.find((a: Assessment) => a.id === attempt.assessmentId);
+              if (assessment) {
+                addNotification({
+                  type: 'success',
+                  title: 'Assessment Graded',
+                  message: `${assessment.title} has been graded. Click to view results.`,
+                  action: {
+                    label: 'View Results',
+                    onClick: () => router.push(`/assessment/${attempt.id}/results`)
+                  }
+                });
+              }
+            });
+          }
         } catch (attemptsErr) {
           console.warn('Could not load attempts, treating all as available:', attemptsErr);
           setAttempts(new Map());
+        }
+
+        // Fetch user's team (if any)
+        try {
+          const teamsData = await teamsAPI.getAllTeams();
+          const teams = teamsData.data?.teams || [];
+          const userTeamData = teams.find((team: Team) => team.memberIds?.includes(authUser.id) || team.leaderId === authUser.id);
+          setUserTeam(userTeamData || null);
+        } catch (teamErr) {
+          console.warn('Could not load team data:', teamErr);
+          setUserTeam(null);
         }
       } catch (err: any) {
         console.error('Error loading dashboard:', err);
@@ -80,14 +123,17 @@ export default function DashboardPage() {
     };
 
     initializeDashboard();
-  }, [router]);
+  }, [router, isAuthenticated, authUser, addNotification]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
-    localStorage.removeItem('auth-storage');
-    router.push('/auth/login');
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push('/auth/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Force logout even on error
+      router.push('/auth/login');
+    }
   };
 
   const handleStartAssessment = async (assessmentId: string) => {
@@ -160,6 +206,143 @@ export default function DashboardPage() {
     );
   }
 
+  // Render different dashboards based on role
+  const renderDashboard = () => {
+    if (isAdmin()) {
+      return <AdminDashboard />;
+    } else if (isProctor()) {
+      return <ProctorDashboard />;
+    } else if (isJudge()) {
+      return <JudgeDashboard />;
+    } else {
+      return <StudentDashboard />;
+    }
+  };
+
+  // Admin Dashboard Component
+  const AdminDashboard = () => (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold">⚙️ Admin Control Panel</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Link href="/admin/assessments">
+          <div className="glass p-6 rounded-xl border border-red-500/30 hover:border-red-500 transition-all cursor-pointer">
+            <div className="text-4xl mb-3">📝</div>
+            <h3 className="text-xl font-bold mb-2">Manage Assessments</h3>
+            <p className="text-gray-400 text-sm">Create, edit, and publish assessments</p>
+          </div>
+        </Link>
+        <Link href="/admin/sessions">
+          <div className="glass p-6 rounded-xl border border-orange-500/30 hover:border-orange-500 transition-all cursor-pointer">
+            <div className="text-4xl mb-3">🎯</div>
+            <h3 className="text-xl font-bold mb-2">Manage Sessions</h3>
+            <p className="text-gray-400 text-sm">Control live coding sessions</p>
+          </div>
+        </Link>
+        <Link href="/admin/analytics">
+          <div className="glass p-6 rounded-xl border border-purple-500/30 hover:border-purple-500 transition-all cursor-pointer">
+            <div className="text-4xl mb-3">📊</div>
+            <h3 className="text-xl font-bold mb-2">Analytics</h3>
+            <p className="text-gray-400 text-sm">View platform statistics</p>
+          </div>
+        </Link>
+      </div>
+    </div>
+  );
+
+  // Proctor Dashboard Component
+  const ProctorDashboard = () => (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold">👁️ Proctor Dashboard</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Link href="/proctor/monitor">
+          <div className="glass p-6 rounded-xl border border-orange-500/30 hover:border-orange-500 transition-all cursor-pointer">
+            <div className="text-4xl mb-3">📹</div>
+            <h3 className="text-xl font-bold mb-2">Monitor Sessions</h3>
+            <p className="text-gray-400 text-sm">Watch live assessment attempts</p>
+          </div>
+        </Link>
+        <Link href="/admin/assessments">
+          <div className="glass p-6 rounded-xl border border-blue-500/30 hover:border-blue-500 transition-all cursor-pointer">
+            <div className="text-4xl mb-3">✍️</div>
+            <h3 className="text-xl font-bold mb-2">Grade Submissions</h3>
+            <p className="text-gray-400 text-sm">Review and grade assessments</p>
+          </div>
+        </Link>
+      </div>
+    </div>
+  );
+
+  // Judge Dashboard Component
+  const JudgeDashboard = () => (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold">⚖️ Judge Dashboard</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Link href="/judge">
+          <div className="glass p-6 rounded-xl border border-purple-500/30 hover:border-purple-500 transition-all cursor-pointer">
+            <div className="text-4xl mb-3">🏆</div>
+            <h3 className="text-xl font-bold mb-2">View Submissions</h3>
+            <p className="text-gray-400 text-sm">Evaluate hackathon projects</p>
+          </div>
+        </Link>
+        <Link href="/hackathon/sessions">
+          <div className="glass p-6 rounded-xl border border-green-500/30 hover:border-green-500 transition-all cursor-pointer">
+            <div className="text-4xl mb-3">🎮</div>
+            <h3 className="text-xl font-bold mb-2">Active Sessions</h3>
+            <p className="text-gray-400 text-sm">Monitor ongoing competitions</p>
+          </div>
+        </Link>
+      </div>
+    </div>
+  );
+
+  // Student Dashboard Component
+  const StudentDashboard = () => (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold">🎓 Student Dashboard</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Link href="/assessments">
+          <div className="glass p-6 rounded-xl border border-neon-blue/40 hover:border-neon-blue transition-all cursor-pointer">
+            <div className="text-4xl mb-3">📋</div>
+            <h3 className="text-xl font-bold mb-2">Available Assessments</h3>
+            <p className="text-gray-400 text-sm">{assessments.length} assessments ready</p>
+          </div>
+        </Link>
+        {userTeam ? (
+          <Link href="/hackathon/teams">
+            <div className="glass p-6 rounded-xl border border-neon-purple/40 hover:border-neon-purple transition-all cursor-pointer">
+              <div className="text-4xl mb-3">👥</div>
+              <h3 className="text-xl font-bold mb-2">Team: {userTeam.name}</h3>
+              <p className="text-gray-400 text-sm">Join your team hackathon</p>
+            </div>
+          </Link>
+        ) : (
+          <div className="glass p-6 rounded-xl border border-yellow-500/40">
+            <div className="text-4xl mb-3">⚠️</div>
+            <h3 className="text-xl font-bold mb-2">No Team</h3>
+            <p className="text-gray-400 text-sm">Contact admin to join a team</p>
+          </div>
+        )}
+      </div>
+      <div className="glass p-6 rounded-xl border border-neon-green/30">
+        <h3 className="text-lg font-bold mb-4">📈 Your Progress</h3>
+        <div className="space-y-2">
+          <div className="flex justify-between">
+            <span className="text-gray-400">Total Attempts:</span>
+            <span className="font-bold">{attempts.size}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-400">In Progress:</span>
+            <span className="font-bold text-neon-purple">{inProgressCount}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-400">Completed:</span>
+            <span className="font-bold text-neon-green">{completedCount}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-dark-900 text-white">
       {/* Header */}
@@ -168,14 +351,23 @@ export default function DashboardPage() {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-4xl font-bold text-gradient">Dashboard</h1>
-              <p className="text-gray-400 mt-1">Welcome back, {user?.firstName}!</p>
+              <p className="text-gray-400 mt-1">
+                Welcome back, {authUser?.firstName}! 
+                {isAdmin() && <span className="ml-2 text-red-400">(Admin)</span>}
+                {isProctor() && !isAdmin() && <span className="ml-2 text-orange-400">(Proctor)</span>}
+                {isJudge() && !isAdmin() && !isProctor() && <span className="ml-2 text-purple-400">(Judge)</span>}
+                {!isAdmin() && !isProctor() && !isJudge() && <span className="ml-2 text-green-400">(Student)</span>}
+              </p>
             </div>
-            <button
-              onClick={handleLogout}
-              className="px-6 py-2 bg-dark-700 border border-red-500/50 text-red-400 rounded-lg hover:bg-red-500/10 transition-all"
-            >
-              Logout
-            </button>
+            <div className="flex items-center gap-4">
+              <NotificationCenter />
+              <button
+                onClick={handleLogout}
+                className="px-6 py-2 bg-dark-700 border border-red-500/50 text-red-400 rounded-lg hover:bg-red-500/10 transition-all"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -188,322 +380,20 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Role-Based Quick Actions */}
-        {(isAdmin() || isProctor() || isJudge()) && (
-          <div className="mb-8">
-            <h2 className="text-xl font-bold text-white mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {isAdmin() && (
-                <>
-                  <Link href="/admin">
-                    <div className="glass rounded-xl p-6 border border-neon-blue/40 hover:border-neon-blue transition-all cursor-pointer group">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="w-12 h-12 bg-neon-blue/20 rounded-lg flex items-center justify-center text-2xl">
-                          ⚙️
-                        </div>
-                        <h3 className="text-lg font-bold">Admin Dashboard</h3>
-                      </div>
-                      <p className="text-gray-400 text-sm">Manage users, teams, and judges</p>
-                    </div>
-                  </Link>
-                  <Link href="/admin/sessions">
-                    <div className="glass rounded-xl p-6 border border-neon-blue/40 hover:border-neon-blue transition-all cursor-pointer group">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="w-12 h-12 bg-neon-blue/20 rounded-lg flex items-center justify-center text-2xl">
-                          💻
-                        </div>
-                        <h3 className="text-lg font-bold">Hackathon Sessions</h3>
-                      </div>
-                      <p className="text-gray-400 text-sm">Manage live coding sessions</p>
-                    </div>
-                  </Link>
-                  <Link href="/judge">
-                    <div className="glass rounded-xl p-6 border border-neon-purple/40 hover:border-neon-purple transition-all cursor-pointer group">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="w-12 h-12 bg-neon-purple/20 rounded-lg flex items-center justify-center text-2xl">
-                          ⚖️
-                        </div>
-                        <h3 className="text-lg font-bold">Judge Dashboard</h3>
-                      </div>
-                      <p className="text-gray-400 text-sm">Review and score projects</p>
-                    </div>
-                  </Link>
-                </>
-              )}
-              {isProctor() && !isAdmin() && (
-                <Link href="/proctor">
-                  <div className="glass rounded-xl p-6 border border-neon-pink/40 hover:border-neon-pink transition-all cursor-pointer group">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-12 h-12 bg-neon-pink/20 rounded-lg flex items-center justify-center text-2xl">
-                        👁️
-                      </div>
-                      <h3 className="text-lg font-bold">Proctor Dashboard</h3>
-                    </div>
-                    <p className="text-gray-400 text-sm">Monitor hackathon sessions</p>
-                  </div>
-                </Link>
-              )}
-              {isJudge() && !isAdmin() && !isProctor() && (
-                <Link href="/judge">
-                  <div className="glass rounded-xl p-6 border border-neon-purple/40 hover:border-neon-purple transition-all cursor-pointer group">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-12 h-12 bg-neon-purple/20 rounded-lg flex items-center justify-center text-2xl">
-                        ⚖️
-                      </div>
-                      <h3 className="text-lg font-bold">Judge Dashboard</h3>
-                    </div>
-                    <p className="text-gray-400 text-sm">Review and score hackathon projects</p>
-                  </div>
-                </Link>
-              )}
-            </div>
-          </div>
-        )}
+        {/* Role-Based Dashboard Content */}
+        {renderDashboard()}
 
-        {/* JTC Hackathon Section */}
-        <div className="mb-12">
-          <h2 className="text-2xl font-bold text-white mb-6">🚀 JTC Hackathon 2025</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Link href="/hackathon/sessions">
-              <div className="glass rounded-xl p-8 border border-neon-blue/40 hover:border-neon-blue/70 transition-all cursor-pointer group relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-neon-blue/10 to-neon-purple/10 opacity-0 group-hover:opacity-100 transition-all"></div>
-                <div className="relative z-10">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-gradient mb-3">Live Coding Sessions</h3>
-                      <p className="text-gray-300 mb-4">
-                        Join active hackathon sessions and compete with your team in real-time coding challenges.
-                      </p>
-                      <div className="flex flex-wrap gap-4 text-sm text-gray-400 mb-4">
-                        <div className="flex items-center gap-2">
-                          <span>💻</span>
-                          <span>Live Coding</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span>🎯</span>
-                          <span>Multiple Problems</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span>📊</span>
-                          <span>Live Leaderboard</span>
-                        </div>
-                      </div>
-                      <button className="px-6 py-3 bg-gradient-to-r from-neon-blue to-neon-purple text-white rounded-lg font-medium hover:shadow-lg hover:shadow-neon-blue/50 transition-all group-hover:scale-105">
-                        View Sessions →
-                      </button>
-                    </div>
-                    <div className="text-5xl opacity-60 group-hover:opacity-100 transition-all">💻</div>
-                  </div>
-                </div>
-              </div>
+        {/* Quick Links */}
+        <div className="text-center pb-8 mt-8">
+          <div className="flex justify-center gap-4 text-sm text-gray-400">
+            <Link href="/assessments" className="hover:text-neon-blue transition-colors">
+              View Assessments
             </Link>
-
-            <Link href="/hackathon/teams">
-              <div className="glass rounded-xl p-8 border border-neon-purple/40 hover:border-neon-purple/70 transition-all cursor-pointer group relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-neon-purple/10 to-neon-pink/10 opacity-0 group-hover:opacity-100 transition-all"></div>
-                <div className="relative z-10">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-gradient mb-3">Teams & Projects</h3>
-                      <p className="text-gray-300 mb-4">
-                        Browse all teams, view submitted projects, and check out what other teams are building.
-                      </p>
-                      <div className="flex flex-wrap gap-4 text-sm text-gray-400 mb-4">
-                        <div className="flex items-center gap-2">
-                          <span>👥</span>
-                          <span>7 Teams</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span>🚀</span>
-                          <span>Project Showcase</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span>🏆</span>
-                          <span>Competition</span>
-                        </div>
-                      </div>
-                      <button className="px-6 py-3 bg-gradient-to-r from-neon-purple to-neon-pink text-white rounded-lg font-medium hover:shadow-lg hover:shadow-neon-purple/50 transition-all group-hover:scale-105">
-                        Browse Teams →
-                      </button>
-                    </div>
-                    <div className="text-5xl opacity-60 group-hover:opacity-100 transition-all">👥</div>
-                  </div>
-                </div>
-              </div>
+            <span>•</span>
+            <Link href="/hackathon/teams" className="hover:text-neon-blue transition-colors">
+              Team Dashboard
             </Link>
           </div>
-        </div>
-
-        {/* Assessments Section Header */}
-        <h2 className="text-2xl font-bold text-white mb-6">📋 Assessments</h2>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div className="glass rounded-xl p-4 border border-neon-blue/20">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Available</p>
-                <p className="text-3xl font-bold text-neon-blue">{availableCount}</p>
-              </div>
-              <div className="text-4xl opacity-50">📋</div>
-            </div>
-          </div>
-
-          <div className="glass rounded-xl p-4 border border-neon-purple/20">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">In Progress</p>
-                <p className="text-3xl font-bold text-neon-purple">{inProgressCount}</p>
-              </div>
-              <div className="text-4xl opacity-50">⏳</div>
-            </div>
-          </div>
-
-          <div className="glass rounded-xl p-4 border border-neon-green/20">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Completed</p>
-                <p className="text-3xl font-bold text-neon-green">{completedCount}</p>
-              </div>
-              <div className="text-4xl opacity-50">✓</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-white/10">
-          {[
-            { key: 'available', label: 'Available', count: availableCount },
-            { key: 'in_progress', label: 'In Progress', count: inProgressCount },
-            { key: 'completed', label: 'Completed', count: completedCount },
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key as any)}
-              className={`px-4 py-3 border-b-2 transition-all ${
-                activeTab === tab.key
-                  ? 'border-neon-blue text-neon-blue'
-                  : 'border-transparent text-gray-400 hover:text-white'
-              }`}
-            >
-              {tab.label} {tab.count > 0 && <span className="ml-1 text-xs">({tab.count})</span>}
-            </button>
-          ))}
-        </div>
-
-        {/* Assessments Section */}
-        <div className="mb-12">
-          {filterAssessments(activeTab).length === 0 ? (
-            <div className="glass rounded-xl p-8 border border-white/10 text-center">
-              <div className="text-4xl mb-3 opacity-50">🎯</div>
-              <p className="text-gray-400">No {activeTab} assessments</p>
-            </div>
-          ) : (
-            <div className="grid gap-4">
-              {filterAssessments(activeTab).map((assessment) => {
-                const status = getAssessmentStatus(assessment.id);
-                const attempt = attempts.get(assessment.id);
-                const dueDate = new Date(assessment.createdAt);
-
-                return (
-                  <div
-                    key={assessment.id}
-                    className={`glass rounded-xl p-6 border transition-all hover:border-opacity-100 ${getStatusColor(
-                      status
-                    )}`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-xl font-semibold text-white">{assessment.title}</h3>
-                          <span
-                            className={`px-2 py-1 rounded text-xs font-medium ${getStatusBadgeColor(
-                              status
-                            )}`}
-                          >
-                            {status === 'available'
-                              ? 'Available'
-                              : status === 'in_progress'
-                              ? 'In Progress'
-                              : 'Completed'}
-                          </span>
-                        </div>
-                        <p className="text-gray-400 text-sm mb-3">
-                          {assessment.description || 'No description provided'}
-                        </p>
-                        <div className="flex flex-wrap gap-4 text-xs text-gray-500">
-                          <div key={`${assessment.id}-points`}>📌 {assessment.totalPoints} points</div>
-                          <div key={`${assessment.id}-date`}>📅 {dueDate.toLocaleDateString()}</div>
-                          {attempt && status !== 'available' && (
-                            <div key={`${assessment.id}-started`}>
-                              ⏱️ Started {new Date(attempt.startedAt).toLocaleDateString()}
-                            </div>
-                          )}
-                          {attempt?.status === 'graded' && attempt?.score !== undefined && (
-                            <div key={`${assessment.id}-score`} className="text-neon-green font-medium">
-                              ✓ Score: {attempt.score}/{assessment.totalPoints}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="ml-4">
-                        {status === 'available' && (
-                          <button
-                            onClick={() => handleStartAssessment(assessment.id)}
-                            className="px-4 py-2 bg-gradient-to-r from-neon-blue to-neon-purple text-white rounded-lg text-sm font-medium hover:opacity-90 transition-all glow-blue"
-                          >
-                            Start
-                          </button>
-                        )}
-                        {status === 'in_progress' && attempt && (
-                          <button
-                            onClick={() =>
-                              router.push(`/assessment/${attempt.id}`)
-                            }
-                            className="px-4 py-2 bg-neon-purple/20 border border-neon-purple text-neon-purple rounded-lg text-sm font-medium hover:bg-neon-purple/30 transition-all"
-                          >
-                            Continue
-                          </button>
-                        )}
-                        {status === 'completed' && attempt && (
-                          <button
-                            onClick={() =>
-                              router.push(`/assessment/${attempt.id}`)
-                            }
-                            className="px-4 py-2 bg-neon-green/20 border border-neon-green text-neon-green rounded-lg text-sm font-medium hover:bg-neon-green/30 transition-all"
-                          >
-                            View Results
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Results Section */}
-        <div className="mb-12">
-          <h2 className="text-2xl font-bold text-white mb-6">📊 Results Summary</h2>
-          <div className="glass rounded-xl p-8 border border-neon-pink/20">
-            <div className="text-center">
-              <div className="text-5xl mb-3">📈</div>
-              <h3 className="text-xl font-semibold text-white mb-2">Results Coming Soon</h3>
-              <p className="text-gray-400">
-                Complete an assessment to see your detailed results, scores, and feedback here.
-              </p>
-            </div>
-          </div>
-        </div>
-
-
-        {/* Back Link */}
-        <div className="text-center pb-8">
-          <Link href="/" className="text-neon-blue hover:text-neon-blue/80 transition-colors">
-            ← Back to home
-          </Link>
         </div>
       </div>
     </div>

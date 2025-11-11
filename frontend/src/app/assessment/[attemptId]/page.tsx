@@ -1,11 +1,75 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useProctoring } from '@/hooks/useProctoring';
-import { MCQQuestion } from '@/components/assessment/MCQQuestion';
-import { CodingQuestion } from '@/components/assessment/CodingQuestion';
+import { QuestionRenderer, IQuestion } from '@/components/questions/QuestionRenderer';
+import { Timer } from '@/components/assessment/Timer';
+import { useNotifications } from '@/contexts/NotificationContext';
 import axios from 'axios';
+
+// Custom hook for debounced autosave
+function useDebouncedAutosave(delay: number = 2000) {
+  const timeoutRef = useRef<NodeJS.Timeout>();
+  const pendingSavesRef = useRef<Map<string, any>>(new Map());
+
+  const debouncedSave = useCallback((questionId: string, answer: any, saveFunction: (id: string, ans: any) => Promise<void>) => {
+    // Store the latest answer for this question
+    pendingSavesRef.current.set(questionId, answer);
+
+    // Clear existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    // Set new timeout
+    timeoutRef.current = setTimeout(async () => {
+      // Save all pending changes
+      const saves = Array.from(pendingSavesRef.current.entries());
+      pendingSavesRef.current.clear();
+
+      // Execute saves (could be done in parallel or sequentially)
+      for (const [id, ans] of saves) {
+        try {
+          await saveFunction(id, ans);
+        } catch (error) {
+          console.error(`Failed to save answer for question ${id}:`, error);
+          // Re-queue failed saves
+          pendingSavesRef.current.set(id, ans);
+        }
+      }
+    }, delay);
+  }, [delay]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Force save all pending changes
+  const forceSave = useCallback(async (saveFunction: (id: string, ans: any) => Promise<void>) => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    const saves = Array.from(pendingSavesRef.current.entries());
+    pendingSavesRef.current.clear();
+
+    for (const [id, ans] of saves) {
+      try {
+        await saveFunction(id, ans);
+      } catch (error) {
+        console.error(`Failed to save answer for question ${id}:`, error);
+      }
+    }
+  }, []);
+
+  return { debouncedSave, forceSave };
+}
 
 interface Answer {
   questionId: string;
@@ -14,14 +78,24 @@ interface Answer {
   timeSpent: number;
 }
 
-interface Question {
+// Use the standardized Question interface from QuestionRenderer
+interface Question extends IQuestion {
   _id: string;
-  type: 'multiple-choice' | 'short-answer' | 'long-answer' | 'coding' | 'file-upload' | 'multi-select';
-  title: string;
-  description: string;
-  points: number;
-  content: any;
+  description?: string; // Backend field mapping
 }
+
+// Map backend question types to QuestionRenderer types
+const mapQuestionType = (backendType: string): 'MCQ' | 'Multi-Select' | 'Short-Answer' | 'Long-Answer' | 'Coding' | 'File-Upload' => {
+  switch (backendType) {
+    case 'multiple-choice': return 'MCQ';
+    case 'multi-select': return 'Multi-Select';
+    case 'short-answer': return 'Short-Answer';
+    case 'long-answer': return 'Long-Answer';
+    case 'coding': return 'Coding';
+    case 'file-upload': return 'File-Upload';
+    default: return 'Short-Answer'; // Default fallback
+  }
+};
 
 interface Attempt {
   _id: string;
@@ -50,6 +124,7 @@ export default function TakeAssessmentPage() {
   const router = useRouter();
   const params = useParams();
   const attemptId = params.attemptId as string;
+  const { addNotification } = useNotifications();
 
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -58,6 +133,45 @@ export default function TakeAssessmentPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Use debounced autosave hook
+  const { debouncedSave, forceSave } = useDebouncedAutosave(2000);
+
+  // Save answer function (used by debounced autosave) - declared early
+  const saveAnswer = useCallback(
+    async (questionId: string, answer: any) => {
+      try {
+        setSaving(true);
+        const token = localStorage.getItem('accessToken');
+        await axios.put(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}/api/attempts/${attemptId}/answer`,
+          {
+            questionId,
+            answer,
+            timeSpent: 0, // TODO: Track actual time spent per question
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        setSaving(false);
+      } catch (error) {
+        console.error('Error saving answer:', error);
+        setSaving(false);
+        throw error; // Re-throw so debounced save can handle it
+      }
+    },
+    [attemptId]
+  );
+
+  // Cleanup: save any pending changes when component unmounts
+  useEffect(() => {
+    return () => {
+      forceSave(saveAnswer).catch(error => {
+        console.error('Failed to save on unmount:', error);
+      });
+    };
+  }, [forceSave, saveAnswer]);
 
   // Load attempt
   useEffect(() => {
@@ -127,42 +241,14 @@ export default function TakeAssessmentPage() {
     return () => clearInterval(interval);
   }, [timeRemaining]);
 
-  // Auto-save answers
-  const saveAnswer = useCallback(
-    async (questionId: string, answer: any) => {
-      try {
-        setSaving(true);
-        const token = localStorage.getItem('accessToken');
-        await axios.put(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}/api/attempts/${attemptId}/answer`,
-          {
-            questionId,
-            answer,
-            timeSpent: 0, // TODO: Track actual time spent per question
-          },
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        setSaving(false);
-      } catch (error) {
-        console.error('Error saving answer:', error);
-        setSaving(false);
-      }
-    },
-    [attemptId]
-  );
 
-  // Handle answer change
+  // Handle answer change with debounced autosave
   const handleAnswerChange = (questionId: string, answer: any) => {
     setAnswers((prev) => ({ ...prev, [questionId]: answer }));
-    // Auto-save after 2 seconds of no changes
-    setTimeout(() => {
-      saveAnswer(questionId, answer);
-    }, 2000);
+    debouncedSave(questionId, answer, saveAnswer);
   };
 
-  // Submit assessment
+  // Submit assessment (force save all pending changes first)
   const handleSubmit = async () => {
     if (submitting) return;
 
@@ -174,6 +260,10 @@ export default function TakeAssessmentPage() {
 
     try {
       setSubmitting(true);
+
+      // Force save all pending changes before submitting
+      await forceSave(saveAnswer);
+
       const token = localStorage.getItem('accessToken');
       await axios.post(
         `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}/api/attempts/${attemptId}/submit`,
@@ -182,6 +272,13 @@ export default function TakeAssessmentPage() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+
+      // Show success notification
+      addNotification({
+        type: 'success',
+        title: 'Assessment Submitted',
+        message: `${attempt?.assessmentSnapshot.title} has been submitted successfully.`,
+      });
 
       router.push('/dashboard?submitted=true');
     } catch (error) {
@@ -198,13 +295,6 @@ export default function TakeAssessmentPage() {
     }
   }, [forceSubmit, router]);
 
-  // Format time
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
 
   if (loading) {
     return (
@@ -248,9 +338,13 @@ export default function TakeAssessmentPage() {
             <div className="flex items-center gap-6">
               {/* Time remaining */}
               {timeRemaining !== null && (
-                <div className={`text-center ${timeRemaining < 300 ? 'text-red-400' : 'text-neon-blue'}`}>
+                <div className="text-center">
                   <div className="text-xs text-gray-400 mb-1">Time Remaining</div>
-                  <div className="text-2xl font-mono font-bold">{formatTime(timeRemaining)}</div>
+                  <Timer
+                    secondsRemaining={timeRemaining}
+                    onTimeUp={() => handleSubmit()}
+                    warningAt={300}
+                  />
                 </div>
               )}
 
@@ -332,69 +426,17 @@ export default function TakeAssessmentPage() {
 
               {/* Question-specific component */}
               <div className="mt-6">
-                {currentQuestion.type === 'multiple-choice' && (
-                  <MCQQuestion
-                    question={currentQuestion}
-                    answer={answers[currentQuestion._id]}
-                    onChange={(answer) => handleAnswerChange(currentQuestion._id, answer)}
-                    disabled={submitting}
-                  />
-                )}
-
-                {currentQuestion.type === 'coding' && (
-                  <CodingQuestion
-                    question={currentQuestion}
-                    answer={answers[currentQuestion._id]}
-                    onChange={(answer) => handleAnswerChange(currentQuestion._id, answer)}
-                    disabled={submitting}
-                  />
-                )}
-
-                {currentQuestion.type === 'short-answer' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Your Answer
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full px-4 py-3 bg-dark-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-neon-blue transition-all"
-                      placeholder="Type your answer here..."
-                      value={answers[currentQuestion._id] || ''}
-                      onChange={(e) => handleAnswerChange(currentQuestion._id, e.target.value)}
-                      disabled={submitting}
-                    />
-                  </div>
-                )}
-
-                {currentQuestion.type === 'long-answer' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Your Answer
-                    </label>
-                    <textarea
-                      className="w-full px-4 py-3 bg-dark-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-neon-blue transition-all min-h-[200px]"
-                      placeholder="Type your detailed answer here..."
-                      value={answers[currentQuestion._id] || ''}
-                      onChange={(e) => handleAnswerChange(currentQuestion._id, e.target.value)}
-                      disabled={submitting}
-                    />
-                  </div>
-                )}
-
-                {!['multiple-choice', 'coding', 'short-answer', 'long-answer'].includes(currentQuestion.type) && (
-                  <div>
-                    <p className="text-gray-500 text-sm italic mb-4">
-                      Question type "{currentQuestion.type}" - Generic input
-                    </p>
-                    <textarea
-                      className="w-full px-4 py-3 bg-dark-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-neon-blue transition-all min-h-[200px]"
-                      placeholder="Your answer..."
-                      value={answers[currentQuestion._id] || ''}
-                      onChange={(e) => handleAnswerChange(currentQuestion._id, e.target.value)}
-                      disabled={submitting}
-                    />
-                  </div>
-                )}
+                <QuestionRenderer
+                  question={{
+                    ...currentQuestion,
+                    id: currentQuestion._id, // Map _id to id
+                    type: mapQuestionType(currentQuestion.type), // Map backend type to renderer type
+                    content: currentQuestion.description || currentQuestion.content || '', // Map description to content
+                  }}
+                  currentAnswer={answers[currentQuestion._id]}
+                  onChange={(answer) => handleAnswerChange(currentQuestion._id, answer)}
+                  readOnly={submitting}
+                />
               </div>
             </div>
 

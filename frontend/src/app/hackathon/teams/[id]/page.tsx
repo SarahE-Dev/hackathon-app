@@ -73,18 +73,23 @@ export default function TeamDetailPage() {
   useEffect(() => {
     const initializePage = async () => {
       const token = localStorage.getItem('accessToken');
+      const userData = localStorage.getItem('user');
 
-      if (!token) {
+      if (!token || !userData) {
         router.push('/auth/login');
         return;
       }
+
+      const user = JSON.parse(userData);
 
       try {
         // Fetch team details
         const teamResponse = await axios.get(`${API_URL}/api/teams/${teamId}`, {
           headers: { 'Authorization': `Bearer ${token}` },
         });
-        setTeam(teamResponse.data.data.team);
+        const teamData = teamResponse.data.data.team;
+        setTeam(teamData);
+
 
         // Fetch coding problems for hackathon
         const problemsResponse = await axios.get(`${API_URL}/api/assessments/questions/list`, {

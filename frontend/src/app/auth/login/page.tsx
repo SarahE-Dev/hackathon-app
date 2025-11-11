@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { authAPI } from '@/lib/api';
+import { useAuthStore } from '@/store/authStore';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -18,18 +19,15 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await authAPI.login(email, password);
-
-      // Store tokens
-      localStorage.setItem('accessToken', response.data.tokens.accessToken);
-      localStorage.setItem('refreshToken', response.data.tokens.refreshToken);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      // Use the authStore login method which handles everything
+      await login(email, password);
+      console.log('Login successful');
 
       // Redirect to dashboard
       router.push('/dashboard');
     } catch (err: any) {
       console.error('Login error:', err);
-      setError(err.response?.data?.error?.message || 'Login failed. Please try again.');
+      setError(err.response?.data?.error?.message || err.response?.data?.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -37,10 +35,10 @@ export default function LoginPage() {
 
   const fillDemoAccount = (type: 'admin' | 'judge' | 'proctor' | 'student') => {
     const accounts = {
-      admin: { email: 'admin@demo.edu', password: 'password123' },
-      judge: { email: 'judge@demo.edu', password: 'password123' },
-      proctor: { email: 'proctor@demo.edu', password: 'password123' },
-      student: { email: 'student@demo.edu', password: 'password123' },
+      admin: { email: 'admin@codearena.edu', password: 'password123' },
+      judge: { email: 'judge@codearena.edu', password: 'password123' },
+      proctor: { email: 'proctor@codearena.edu', password: 'password123' },
+      student: { email: 'student@codearena.edu', password: 'password123' },
     };
     const account = accounts[type];
     setEmail(account.email);
@@ -50,7 +48,7 @@ export default function LoginPage() {
 
   const quickDemoLogin = () => {
     // Just prefill with student demo account
-    setEmail('student@demo.edu');
+    setEmail('student@codearena.edu');
     setPassword('password123');
     setError('');
   };

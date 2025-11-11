@@ -23,9 +23,16 @@ export default function HackathonTeamsPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [error, setError] = useState<string>('');
 
   useEffect(() => {
     const initializePage = async () => {
+      // Check for error parameter in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('error') === 'not-a-member') {
+        setError('You are not a member of that team. Please select a team you belong to.');
+      }
+
       const token = localStorage.getItem('accessToken');
       const userData = localStorage.getItem('user');
 
@@ -85,6 +92,12 @@ export default function HackathonTeamsPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8">
+        {error && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400">
+            {error}
+          </div>
+        )}
+
         <div className="mb-8">
           <h2 className="text-2xl font-bold mb-2">Teams ({teams.length})</h2>
           <p className="text-gray-400">Select a team to join the live coding session</p>
