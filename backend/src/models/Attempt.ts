@@ -25,7 +25,7 @@ export interface IAttemptEvent {
 }
 
 export interface IAttempt extends Document {
-  sessionId: mongoose.Types.ObjectId;
+  sessionId?: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
   assessmentId: mongoose.Types.ObjectId;
   assessmentSnapshot: any;
@@ -117,7 +117,7 @@ const AttemptSchema = new Schema({
   sessionId: {
     type: Schema.Types.ObjectId,
     ref: 'Session',
-    required: true,
+    required: false, // Optional - only required for session-based assessments
     index: true,
   },
   userId: {

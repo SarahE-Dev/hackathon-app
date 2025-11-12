@@ -206,6 +206,9 @@ export default function AssessmentsPage() {
                         <button
                           onClick={async () => {
                             try {
+                              const requestBody = { assessmentId };
+                              console.log('🚀 Starting assessment with request:', requestBody);
+
                               // Create a new attempt - sessionId is optional
                               const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/attempts/start`, {
                                 method: 'POST',
@@ -213,21 +216,22 @@ export default function AssessmentsPage() {
                                   'Content-Type': 'application/json',
                                   'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
                                 },
-                                body: JSON.stringify({
-                                  assessmentId,
-                                  // sessionId is optional - not required for direct assessment attempts
-                                }),
+                                body: JSON.stringify(requestBody),
                               });
+
+                              console.log('📥 Response status:', response.status, response.statusText);
 
                               if (!response.ok) {
                                 const errorData = await response.json();
-                                console.error('Start assessment error:', errorData);
+                                console.error('❌ Start assessment error:', errorData);
+                                console.error('Full error object:', JSON.stringify(errorData, null, 2));
                                 alert('Failed to start assessment: ' + (errorData.error?.message || errorData.message || `HTTP ${response.status}`));
                                 return;
                               }
 
                               const data = await response.json();
-                              console.log('Start assessment response:', data);
+                              console.log('✅ Start assessment SUCCESS:', data);
+                              console.log('Full response:', JSON.stringify(data, null, 2));
 
                               if (data.success && data.data) {
                                 const attemptId = data.data.id || data.data.attempt?._id || data.data.attempt?.id;
