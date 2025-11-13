@@ -25,6 +25,9 @@ import codeExecutionRoutes from './routes/codeExecution';
 import judgeScoreRoutes from './routes/judgeScores';
 import leaderboardRoutes from './routes/leaderboard';
 import hackathonSessionRoutes from './routes/hackathonSessions';
+import fileUploadRoutes from './routes/fileUpload';
+import FileUploadService from './services/fileUploadService';
+import { join } from 'path';
 
 dotenv.config();
 
@@ -48,6 +51,9 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Static file serving for uploads
+app.use('/api/uploads', express.static(join(process.cwd(), 'uploads')));
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -63,6 +69,7 @@ app.use('/api/code', codeExecutionRoutes);
 app.use('/api/judge-scores', judgeScoreRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/hackathon-sessions', hackathonSessionRoutes);
+app.use('/api/upload', fileUploadRoutes);
 
 // Error handling
 app.use(errorHandler);
@@ -75,6 +82,10 @@ let teamCollaborationService: TeamCollaborationService;
 const startServer = async () => {
   try {
     await connectDatabase();
+
+    // Initialize file upload directory
+    await FileUploadService.initializeUploadDirectory();
+    logger.info('File upload directory initialized');
 
     // Initialize WebSocket services after DB connection
     proctorService = new ProctorService(httpServer);

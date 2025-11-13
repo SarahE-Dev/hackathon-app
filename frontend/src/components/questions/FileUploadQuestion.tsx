@@ -53,7 +53,16 @@ export default function FileUploadQuestion({
     setUploading(true);
 
     try {
-      const uploadedFiles = [];
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        alert('You must be logged in to upload files');
+        setUploading(false);
+        return;
+      }
+
+      // Create FormData to send files
+      const formData = new FormData();
+      const validFiles: File[] = [];
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -71,21 +80,42 @@ export default function FileUploadQuestion({
           continue;
         }
 
-        // TODO: Upload to S3 or file storage service
-        // For now, we'll create a mock URL
-        const mockUrl = `https://storage.example.com/${Date.now()}-${file.name}`;
-
-        uploadedFiles.push({
-          fileName: file.name,
-          fileUrl: mockUrl,
-          fileSize: file.size,
-        });
+        validFiles.push(file);
+        formData.append('files', file);
       }
 
+      if (validFiles.length === 0) {
+        setUploading(false);
+        return;
+      }
+
+      // Add questionId (using timestamp as placeholder if not available)
+      formData.append('questionId', 'question-' + Date.now());
+
+      // Upload files to backend
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}/api/upload`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Upload failed');
+      }
+
+      const result = await response.json();
+      const uploadedFiles = result.data.files;
+
       onChange([...(value || []), ...uploadedFiles]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading files:', error);
-      alert('Failed to upload files. Please try again.');
+      alert('Failed to upload files: ' + (error.message || 'Unknown error'));
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
