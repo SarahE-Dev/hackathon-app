@@ -319,30 +319,109 @@ Output: [0,1]
   }, [copyPasteAttempts, tabSwitches]);
 
   // Team collaboration socket connection
-  // TODO: Implement WebSocket backend for real-time collaboration
   useEffect(() => {
-    // Collaboration features disabled until backend WebSocket support is added
-    // const token = localStorage.getItem('accessToken');
-    // if (!token || !teamId) return;
-    //
-    // const socket = io(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/collaboration`, {
-    //   auth: { token },
-    // });
-    //
-    // socket.on('connect', () => {
-    //   setIsConnected(true);
-    //   socket.emit('join-team', teamId);
-    // });
-    //
-    // socket.on('disconnect', () => {
-    //   setIsConnected(false);
-    // });
-    //
-    // setCollaborationSocket(socket);
-    //
-    // return () => {
-    //   socket.disconnect();
-    // };
+    const token = localStorage.getItem('accessToken');
+    if (!token || !teamId) return;
+
+    const socket = io(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}`, {
+      auth: { token },
+      path: '/collaboration',
+    });
+
+    socket.on('connect', () => {
+      console.log('Connected to collaboration server');
+      setIsConnected(true);
+      socket.emit('join-team', teamId);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Disconnected from collaboration server');
+      setIsConnected(false);
+    });
+
+    socket.on('team-joined', (data: {
+      teamId: string;
+      presence: TeamPresence[];
+      chatHistory: ChatMessage[];
+      currentCode: string;
+    }) => {
+      console.log('Joined team:', data.teamId);
+      setTeamPresence(data.presence);
+      setChatMessages(data.chatHistory);
+      if (data.currentCode && data.currentCode !== currentProblem.starterCode) {
+        setCode(data.currentCode);
+      }
+    });
+
+    socket.on('user-joined', (data: { userId: string; presence: TeamPresence }) => {
+      console.log('User joined:', data.userId);
+      setTeamPresence(prev => {
+        const filtered = prev.filter(p => p.userId !== data.userId);
+        return [...filtered, data.presence];
+      });
+      // Add system message
+      setChatMessages(prev => [...prev, {
+        id: `system-${Date.now()}`,
+        userId: 'system',
+        username: 'System',
+        message: `${data.presence.username} joined the session`,
+        timestamp: new Date(),
+        type: 'system',
+      }]);
+    });
+
+    socket.on('user-left', (data: { userId: string }) => {
+      console.log('User left:', data.userId);
+      setTeamPresence(prev => prev.map(p =>
+        p.userId === data.userId ? { ...p, isOnline: false } : p
+      ));
+    });
+
+    socket.on('code-updated', (data: {
+      userId: string;
+      code: string;
+      cursorPosition?: { line: number; column: number };
+      timestamp: Date;
+    }) => {
+      // Only update if it's not from the current user
+      setCode(data.code);
+      if (data.cursorPosition) {
+        updateCursorDecoration(data.userId, data.cursorPosition);
+      }
+    });
+
+    socket.on('chat-message', (message: ChatMessage) => {
+      setChatMessages(prev => [...prev, message]);
+    });
+
+    socket.on('cursor-moved', (data: {
+      userId: string;
+      position: { line: number; column: number };
+    }) => {
+      updateCursorDecoration(data.userId, data.position);
+    });
+
+    socket.on('team-execution', (data: {
+      userId: string;
+      result: any;
+      problemId: string;
+      timestamp: Date;
+    }) => {
+      // Show notification that a teammate ran code
+      console.log('Teammate executed code:', data);
+    });
+
+    socket.on('error', (error: { message: string }) => {
+      console.error('Collaboration error:', error.message);
+      alert('Collaboration error: ' + error.message);
+    });
+
+    setCollaborationSocket(socket);
+
+    return () => {
+      socket.emit('leave-team');
+      socket.disconnect();
+    };
   }, [teamId]);
 
   const updateCursorDecoration = (userId: string, position: { line: number; column: number }) => {

@@ -19,21 +19,23 @@ export const executeCode = async (
       throw new ApiError(400, 'Test cases are required and must be an array');
     }
 
-    // Currently only support Python
-    if (language !== 'python') {
-      throw new ApiError(400, 'Only Python language is currently supported');
+    // Supported languages
+    const supportedLanguages = ['python', 'javascript', 'js'];
+    if (!supportedLanguages.includes(language.toLowerCase())) {
+      throw new ApiError(400, `Language '${language}' is not supported. Supported languages: ${supportedLanguages.join(', ')}`);
     }
 
     // Validate test cases structure
     for (const tc of testCases) {
-      if (!tc.id || !tc.input || !tc.expectedOutput) {
+      if (!tc.id || tc.input === undefined || tc.expectedOutput === undefined) {
         throw new ApiError(400, 'Each test case must have id, input, and expectedOutput');
       }
     }
 
-    // Execute code with test cases
-    const results: TestCaseResult[] = await CodeExecutionService.executePythonCode(
+    // Execute code with test cases using the new unified method
+    const results: TestCaseResult[] = await CodeExecutionService.executeCode(
       code,
+      language,
       testCases,
       timeLimit,
       memoryLimit

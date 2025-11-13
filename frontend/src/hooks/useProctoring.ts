@@ -9,6 +9,8 @@ interface ProctorConfig {
   enableFullscreen?: boolean;
   enableWebcam?: boolean;
   enableScreenRecording?: boolean;
+  blockMobileDevices?: boolean;
+  requireWebcam?: boolean;
 }
 
 interface ProctorAlert {
@@ -21,6 +23,10 @@ export const useProctoring = (config: ProctorConfig) => {
   const [isConnected, setIsConnected] = useState(false);
   const [alerts, setAlerts] = useState<ProctorAlert[]>([]);
   const [forceSubmit, setForceSubmit] = useState<{ reason: string } | null>(null);
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
+  const [webcamEnabled, setWebcamEnabled] = useState(false);
+  const [webcamError, setWebcamError] = useState<string | null>(null);
+  const webcamStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     // Get access token from localStorage
@@ -220,6 +226,117 @@ export const useProctoring = (config: ProctorConfig) => {
     }
   }, []);
 
+  // Mobile device detection
+  useEffect(() => {
+    const checkMobileDevice = () => {
+      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+
+      // Check for mobile patterns
+      const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i;
+      const isMobile = mobileRegex.test(userAgent) ||
+                      ('ontouchstart' in window) ||
+                      (navigator.maxTouchPoints > 0);
+
+      setIsMobileDevice(isMobile);
+
+      if (isMobile) {
+        socketRef.current?.emit('mobile-device-detected', {
+          userAgent,
+          touchPoints: navigator.maxTouchPoints,
+        });
+
+        // If mobile devices are blocked, show error and prevent access
+        if (config.blockMobileDevices) {
+          setForceSubmit({
+            reason: 'Mobile devices are not allowed for this proctored session. Please use a desktop or laptop computer.'
+          });
+        }
+      }
+    };
+
+    checkMobileDevice();
+  }, [config.blockMobileDevices]);
+
+  // Webcam requirement enforcement
+  useEffect(() => {
+    if (!config.requireWebcam && !config.enableWebcam) return;
+
+    const enableWebcam = async () => {
+      try {
+        // Request webcam access
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: 'user'
+          },
+          audio: false
+        });
+
+        webcamStreamRef.current = stream;
+        setWebcamEnabled(true);
+        setWebcamError(null);
+
+        socketRef.current?.emit('webcam-enabled', {
+          timestamp: new Date(),
+        });
+
+        // Monitor if webcam is still active
+        const track = stream.getVideoTracks()[0];
+        track.onended = () => {
+          setWebcamEnabled(false);
+          socketRef.current?.emit('webcam-disabled', {
+            reason: 'Webcam was disabled by user',
+            timestamp: new Date(),
+          });
+
+          if (config.requireWebcam) {
+            setAlerts(prev => [...prev, {
+              message: 'Webcam was disabled. Please re-enable to continue.',
+              timestamp: new Date(),
+            }]);
+          }
+        };
+
+      } catch (error: any) {
+        console.error('Webcam error:', error);
+        setWebcamEnabled(false);
+
+        let errorMessage = 'Failed to access webcam';
+        if (error.name === 'NotAllowedError') {
+          errorMessage = 'Webcam access was denied. Please allow webcam access to continue.';
+        } else if (error.name === 'NotFoundError') {
+          errorMessage = 'No webcam found. Please connect a webcam to continue.';
+        } else if (error.name === 'NotReadableError') {
+          errorMessage = 'Webcam is already in use by another application.';
+        }
+
+        setWebcamError(errorMessage);
+
+        socketRef.current?.emit('webcam-error', {
+          error: errorMessage,
+          timestamp: new Date(),
+        });
+
+        if (config.requireWebcam) {
+          setForceSubmit({
+            reason: errorMessage + ' This is required for proctored sessions.'
+          });
+        }
+      }
+    };
+
+    enableWebcam();
+
+    // Cleanup: stop webcam stream when component unmounts
+    return () => {
+      if (webcamStreamRef.current) {
+        webcamStreamRef.current.getTracks().forEach(track => track.stop());
+        webcamStreamRef.current = null;
+      }
+    };
+  }, [config.requireWebcam, config.enableWebcam]);
+
   // Clear specific alert
   const clearAlert = (index: number) => {
     setAlerts((prev) => prev.filter((_, i) => i !== index));
@@ -236,5 +353,9 @@ export const useProctoring = (config: ProctorConfig) => {
     forceSubmit,
     clearAlert,
     clearAllAlerts,
+    isMobileDevice,
+    webcamEnabled,
+    webcamError,
+    webcamStream: webcamStreamRef.current,
   };
 };

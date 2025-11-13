@@ -55,13 +55,72 @@ export default function CodingQuestion({
     setOutput('Running code...');
 
     try {
-      // TODO: Integrate with code execution service (Judge0)
-      setTimeout(() => {
-        setOutput('Code execution feature coming soon!\nIntegrate with Judge0 CE API.');
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        setOutput('Error: Not authenticated');
         setRunning(false);
-      }, 1000);
-    } catch (error) {
-      setOutput('Error running code: ' + error);
+        return;
+      }
+
+      // Prepare test cases for execution
+      const testCases = (question.content.testCases || []).map((tc, idx) => ({
+        id: `test-${idx}`,
+        input: tc.input,
+        expectedOutput: tc.expectedOutput,
+      }));
+
+      if (testCases.length === 0) {
+        setOutput('No test cases available to run');
+        setRunning(false);
+        return;
+      }
+
+      // Call backend code execution API
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}/api/code/execute`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            code,
+            language: language === 'javascript' ? 'python' : language, // Map to supported languages
+            testCases,
+            timeLimit: 5000,
+            memoryLimit: 256,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Code execution failed');
+      }
+
+      // Format output
+      const { results, summary } = result.data;
+      let outputText = `=== Test Results ===\n`;
+      outputText += `Score: ${summary.score}\n`;
+      outputText += `Passed: ${summary.passedTests}/${summary.totalTests}\n\n`;
+
+      results.forEach((testResult: any, idx: number) => {
+        outputText += `Test Case ${idx + 1}: ${testResult.passed ? '✓ PASSED' : '✗ FAILED'}\n`;
+        outputText += `Input: ${testResult.input}\n`;
+        outputText += `Expected: ${testResult.expectedOutput}\n`;
+        outputText += `Actual: ${testResult.actualOutput}\n`;
+        if (testResult.error) {
+          outputText += `Error: ${testResult.error}\n`;
+        }
+        outputText += `Execution Time: ${testResult.executionTime}ms\n\n`;
+      });
+
+      setOutput(outputText);
+      setRunning(false);
+    } catch (error: any) {
+      setOutput('Error running code: ' + (error.message || error));
       setRunning(false);
     }
   };
