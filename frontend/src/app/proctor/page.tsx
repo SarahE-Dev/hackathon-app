@@ -242,6 +242,26 @@ function ProctorDashboardContent() {
           <h2 className="text-xl font-bold text-white mb-4">Quick Actions</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <Link
+              href="/proctor/assessments"
+              className="p-6 bg-gradient-to-br from-neon-green/20 to-neon-blue/20 hover:from-neon-green/30 hover:to-neon-blue/30 rounded-lg border border-neon-green/40 hover:border-neon-green transition-all group"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <svg className="w-6 h-6 text-neon-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                <div>
+                  <div className="font-semibold text-white">Monitor Assessments</div>
+                  <div className="text-sm text-gray-400">Track student exams</div>
+                </div>
+              </div>
+            </Link>
+
+            <Link
               href="/proctor/monitor"
               className="p-6 bg-gradient-to-br from-neon-blue/20 to-neon-purple/20 hover:from-neon-blue/30 hover:to-neon-purple/30 rounded-lg border border-neon-blue/40 hover:border-neon-blue transition-all group"
             >
@@ -262,7 +282,7 @@ function ProctorDashboardContent() {
                 </svg>
                 <div>
                   <div className="font-semibold text-white">Monitor Teams</div>
-                  <div className="text-sm text-gray-400">Real-time oversight</div>
+                  <div className="text-sm text-gray-400">Hackathon oversight</div>
                 </div>
               </div>
             </Link>
