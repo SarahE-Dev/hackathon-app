@@ -6,7 +6,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "seed": "tsx src/utils/seed.ts",
+    "seed": "tsx src/seeds/index.ts",
+    "seed:questions": "tsx src/seeds/questions.seed.ts",
     "lint": "eslint src --ext .ts",
     "test": "jest"
   },
