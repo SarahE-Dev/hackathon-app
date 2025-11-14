@@ -42,9 +42,14 @@ export class ProctorService {
           return next(new Error('Authentication token required'));
         }
 
+        if (!process.env.JWT_SECRET) {
+          logger.error('JWT_SECRET environment variable is not set');
+          return next(new Error('Server configuration error'));
+        }
+
         const decoded = jwt.verify(
           token,
-          process.env.JWT_SECRET || 'your-secret-key'
+          process.env.JWT_SECRET
         ) as any;
 
         socket.userId = decoded.userId;

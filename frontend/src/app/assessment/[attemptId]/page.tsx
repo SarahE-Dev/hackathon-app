@@ -134,8 +134,20 @@ export default function TakeAssessmentPage() {
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // Track time spent per question
+  const [questionStartTimes, setQuestionStartTimes] = useState<Record<string, number>>({});
+  const [questionTimeSpent, setQuestionTimeSpent] = useState<Record<string, number>>({});
+
   // Use debounced autosave hook
   const { debouncedSave, forceSave } = useDebouncedAutosave(2000);
+
+  // Calculate time spent on current question
+  const calculateTimeSpent = useCallback((questionId: string): number => {
+    const startTime = questionStartTimes[questionId] || Date.now();
+    const currentTimeSpent = questionTimeSpent[questionId] || 0;
+    const additionalTime = Math.floor((Date.now() - startTime) / 1000); // in seconds
+    return currentTimeSpent + additionalTime;
+  }, [questionStartTimes, questionTimeSpent]);
 
   // Save answer function (used by debounced autosave) - declared early
   const saveAnswer = useCallback(
@@ -143,12 +155,14 @@ export default function TakeAssessmentPage() {
       try {
         setSaving(true);
         const token = localStorage.getItem('accessToken');
+        const timeSpent = calculateTimeSpent(questionId);
+
         await axios.put(
           `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}/api/attempts/${attemptId}/answer`,
           {
             questionId,
             answer,
-            timeSpent: 0, // TODO: Track actual time spent per question
+            timeSpent,
           },
           {
             headers: { Authorization: `Bearer ${token}` },
@@ -161,7 +175,7 @@ export default function TakeAssessmentPage() {
         throw error; // Re-throw so debounced save can handle it
       }
     },
-    [attemptId]
+    [attemptId, calculateTimeSpent]
   );
 
   // Cleanup: save any pending changes when component unmounts
@@ -241,6 +255,40 @@ export default function TakeAssessmentPage() {
     return () => clearInterval(interval);
   }, [timeRemaining]);
 
+  // Track time spent when question changes
+  useEffect(() => {
+    if (!attempt) return;
+
+    const currentQuestion = attempt.assessmentSnapshot.questions[currentQuestionIndex];
+    if (!currentQuestion) return;
+
+    const questionId = currentQuestion._id;
+
+    // Initialize start time for this question if not already set
+    if (!questionStartTimes[questionId]) {
+      setQuestionStartTimes(prev => ({
+        ...prev,
+        [questionId]: Date.now()
+      }));
+    }
+
+    // Return cleanup function to record time spent when leaving this question
+    return () => {
+      if (questionStartTimes[questionId]) {
+        const timeSpent = calculateTimeSpent(questionId);
+        setQuestionTimeSpent(prev => ({
+          ...prev,
+          [questionId]: timeSpent
+        }));
+        // Reset start time so it can be set again if user returns
+        setQuestionStartTimes(prev => {
+          const newTimes = { ...prev };
+          delete newTimes[questionId];
+          return newTimes;
+        });
+      }
+    };
+  }, [currentQuestionIndex, attempt, questionStartTimes, calculateTimeSpent]);
 
   // Handle answer change with debounced autosave
   const handleAnswerChange = (questionId: string, answer: any) => {
@@ -436,6 +484,7 @@ export default function TakeAssessmentPage() {
                   currentAnswer={answers[currentQuestion._id]}
                   onChange={(answer) => handleAnswerChange(currentQuestion._id, answer)}
                   readOnly={submitting}
+                  attemptId={attemptId}
                 />
               </div>
             </div>
