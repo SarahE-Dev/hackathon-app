@@ -27,6 +27,7 @@ interface QuestionRendererProps {
   currentAnswer?: any;
   onChange: (answer: any) => void;
   readOnly?: boolean;
+  attemptId?: string;
 }
 
 export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
@@ -34,6 +35,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
   currentAnswer,
   onChange,
   readOnly = false,
+  attemptId,
 }) => {
   switch (question.type) {
     case 'MCQ':
@@ -105,6 +107,8 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
           value={currentAnswer}
           onChange={onChange}
           disabled={readOnly}
+          questionId={question.id}
+          attemptId={attemptId}
         />
       );
 

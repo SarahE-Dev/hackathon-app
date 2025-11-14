@@ -17,6 +17,8 @@ interface FileUploadQuestionProps {
   }> | null;
   onChange: (files: Array<{ fileName: string; fileUrl: string; fileSize: number }>) => void;
   disabled?: boolean;
+  questionId?: string;
+  attemptId?: string;
 }
 
 export default function FileUploadQuestion({
@@ -24,6 +26,8 @@ export default function FileUploadQuestion({
   value = [],
   onChange,
   disabled = false,
+  questionId,
+  attemptId,
 }: FileUploadQuestionProps) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -89,8 +93,17 @@ export default function FileUploadQuestion({
         return;
       }
 
-      // Add questionId (using timestamp as placeholder if not available)
-      formData.append('questionId', 'question-' + Date.now());
+      // Add questionId and attemptId
+      if (questionId) {
+        formData.append('questionId', questionId);
+      } else {
+        // Fallback to timestamp if questionId not provided (shouldn't happen in production)
+        formData.append('questionId', 'question-' + Date.now());
+      }
+
+      if (attemptId) {
+        formData.append('attemptId', attemptId);
+      }
 
       // Upload files to backend
       const response = await fetch(
