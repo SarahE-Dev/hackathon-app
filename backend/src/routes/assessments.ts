@@ -6,6 +6,7 @@ import {
   updateAssessment,
   publishAssessment,
   deleteAssessment,
+  getAssessmentLeaderboard,
 } from '../controllers/assessmentController';
 import {
   getAllQuestions,
@@ -28,6 +29,7 @@ router.use(authenticate);
 // Assessment routes
 router.get('/', getAllAssessments);
 router.get('/:id', getAssessmentById);
+router.get('/:id/leaderboard', getAssessmentLeaderboard);
 router.post(
   '/',
   requireRole(UserRole.ADMIN, UserRole.PROCTOR),
