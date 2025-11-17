@@ -63,7 +63,7 @@ export default function UserManagementPage() {
 
   // Check admin access
   useEffect(() => {
-    if (!user || user.role !== 'admin') {
+    if (!user || !user.roles?.some((r: any) => r.role === 'admin')) {
       router.push('/dashboard');
     }
   }, [user, router]);

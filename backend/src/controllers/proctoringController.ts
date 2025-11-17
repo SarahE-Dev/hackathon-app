@@ -182,8 +182,8 @@ export const forceSubmitAttempt = async (
       type: 'force-submitted',
       timestamp: new Date(),
       metadata: {
-        proctorId: req.user.id,
-        proctorName: req.user.name,
+        proctorId: req.user.userId,
+        proctorName: req.user.userId,
         reason: reason.trim(),
       },
     });
@@ -195,7 +195,7 @@ export const forceSubmitAttempt = async (
     await attempt.save();
 
     logger.info(
-      `Attempt ${attemptId} force submitted by proctor ${req.user.id} (${req.user.name}). Reason: ${reason}`
+      `Attempt ${attemptId} force submitted by proctor ${req.user.userId} (${req.user.userId}). Reason: ${reason}`
     );
 
     res.json({
@@ -249,15 +249,15 @@ export const addIncidentReport = async (
         incidentType,
         severity,
         description,
-        proctorId: req.user.id,
-        proctorName: req.user.name,
+        proctorId: req.user.userId,
+        proctorName: req.user.userId,
       },
     });
 
     await attempt.save();
 
     logger.warn(
-      `Incident reported for attempt ${attemptId} by proctor ${req.user.id}: ${incidentType} (${severity})`
+      `Incident reported for attempt ${attemptId} by proctor ${req.user.userId}: ${incidentType} (${severity})`
     );
 
     res.json({
@@ -414,8 +414,8 @@ export const sendStudentAlert = async (
       metadata: {
         message: message.trim(),
         severity,
-        proctorId: req.user.id,
-        proctorName: req.user.name,
+        proctorId: req.user.userId,
+        proctorName: req.user.userId,
       },
     });
 
@@ -425,7 +425,7 @@ export const sendStudentAlert = async (
     // io.to(`attempt:${attemptId}`).emit('proctor-alert', { message, severity });
 
     logger.info(
-      `Alert sent to attempt ${attemptId} by proctor ${req.user.id}: ${message}`
+      `Alert sent to attempt ${attemptId} by proctor ${req.user.userId}: ${message}`
     );
 
     res.json({

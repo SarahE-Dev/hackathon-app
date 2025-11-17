@@ -23,7 +23,7 @@ router.use(authenticate);
  */
 router.get(
   '/ungraded',
-  requireRole([UserRole.JUDGE, UserRole.ADMIN, UserRole.PROCTOR]),
+  requireRole(UserRole.JUDGE, UserRole.ADMIN, UserRole.PROCTOR),
   getUngradedAttempts
 );
 
@@ -33,7 +33,7 @@ router.get(
  */
 router.get(
   '/attempt/:attemptId',
-  requireRole([UserRole.JUDGE, UserRole.ADMIN, UserRole.PROCTOR]),
+  requireRole(UserRole.JUDGE, UserRole.ADMIN, UserRole.PROCTOR),
   getAttemptForGrading
 );
 
@@ -43,7 +43,7 @@ router.get(
  */
 router.post(
   '/',
-  requireRole([UserRole.JUDGE, UserRole.ADMIN]),
+  requireRole(UserRole.JUDGE, UserRole.ADMIN),
   submitGrade
 );
 
@@ -60,7 +60,7 @@ router.get('/by-attempt/:attemptId', getGradeByAttemptId);
  */
 router.put(
   '/:gradeId/release',
-  requireRole([UserRole.JUDGE, UserRole.ADMIN]),
+  requireRole(UserRole.JUDGE, UserRole.ADMIN),
   releaseGrade
 );
 
@@ -70,7 +70,7 @@ router.put(
  */
 router.get(
   '/by-judge/:judgeId',
-  requireRole([UserRole.JUDGE, UserRole.ADMIN]),
+  requireRole(UserRole.JUDGE, UserRole.ADMIN),
   getGradesByJudge
 );
 
@@ -80,7 +80,7 @@ router.get(
  */
 router.delete(
   '/:gradeId',
-  requireRole([UserRole.ADMIN]),
+  requireRole(UserRole.ADMIN),
   deleteGrade
 );
 
@@ -90,7 +90,7 @@ router.delete(
  */
 router.get(
   '/statistics',
-  requireRole([UserRole.JUDGE, UserRole.ADMIN, UserRole.PROCTOR]),
+  requireRole(UserRole.JUDGE, UserRole.ADMIN, UserRole.PROCTOR),
   getGradingStatistics
 );
 

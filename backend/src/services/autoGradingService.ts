@@ -115,15 +115,15 @@ export class AutoGradingService {
     const questionType = question.type as QuestionType;
 
     switch (questionType) {
-      case QuestionType.MULTIPLE_CHOICE:
-      case QuestionType.TRUE_FALSE:
+      case QuestionType.MCQ_SINGLE:
+      case QuestionType.MCQ_SINGLE:
         return this.gradeMultipleChoice(question, answer);
 
       case QuestionType.CODING:
         return this.gradeCoding(question, answer);
 
-      case QuestionType.SHORT_ANSWER:
-      case QuestionType.ESSAY:
+      case QuestionType.FREEFORM:
+      case QuestionType.LONG_FORM:
       case QuestionType.FILE_UPLOAD:
         // These require manual grading
         return {
@@ -254,8 +254,8 @@ export class AutoGradingService {
    */
   static canAutoGrade(questionType: QuestionType): boolean {
     return [
-      QuestionType.MULTIPLE_CHOICE,
-      QuestionType.TRUE_FALSE,
+      QuestionType.MCQ_SINGLE,
+      QuestionType.MCQ_SINGLE,
       QuestionType.CODING,
     ].includes(questionType);
   }
@@ -320,14 +320,14 @@ export class AutoGradingService {
       }
 
       // Create grade in DRAFT status (needs manual review for non-auto-graded questions)
-      const hasManualQuestions = questions.some((q) => !this.canAutoGrade(q.type));
+      const hasManualQuestions = questions.some((q: any) => !this.canAutoGrade(q.type));
 
       await Grade.create({
         attemptId: attempt._id,
         graderId: null,
         questionScores,
         overallScore: totalAutoGradedScore,
-        maxScore: questions.reduce((sum, q) => sum + (q.points || 0), 0),
+        maxScore: questions.reduce((sum: any, q: any) => sum + (q.points || 0), 0),
         status: hasManualQuestions ? GradeStatus.DRAFT : GradeStatus.SUBMITTED,
         gradedAt: hasManualQuestions ? undefined : new Date(),
       });

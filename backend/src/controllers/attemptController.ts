@@ -288,7 +288,7 @@ export const submitAttempt = async (
     logger.info(`Attempt submitted: ${attempt._id} by user ${userId}`);
 
     // Trigger auto-grading asynchronously (don't wait for it to complete)
-    AutoGradingService.gradeAttemptPartial(attempt._id.toString())
+    AutoGradingService.gradeAttemptPartial((attempt._id as any).toString())
       .then(() => {
         logger.info(`Auto-grading completed for attempt ${attempt._id}`);
       })

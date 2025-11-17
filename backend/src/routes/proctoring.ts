@@ -15,7 +15,7 @@ const router = Router();
 
 // All routes require authentication and proctor/admin role
 router.use(authenticate);
-router.use(requireRole([UserRole.PROCTOR, UserRole.ADMIN]));
+router.use(requireRole(UserRole.PROCTOR, UserRole.ADMIN));
 
 /**
  * GET /api/proctoring/assessments

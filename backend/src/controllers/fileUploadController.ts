@@ -43,7 +43,7 @@ export const uploadFiles = async (
         buffer: file.buffer,
         originalName: file.originalname,
       })),
-      req.user.id,
+      req.user.userId,
       questionId,
       attemptId
     );
@@ -84,7 +84,7 @@ export const uploadSingleFile = async (
     const uploadedFile = await FileUploadService.uploadFile(
       file.buffer,
       file.originalname,
-      req.user.id,
+      req.user.userId,
       questionId,
       attemptId
     );
@@ -116,8 +116,8 @@ export const downloadFile = async (
     // Verify user has access to this file
     const hasAccess = await FileUploadService.verifyFileAccess(
       filename,
-      req.user.id,
-      req.user.role
+      req.user.userId,
+      req.user.roles[0]?.role || 'applicant'
     );
 
     if (!hasAccess) {
@@ -162,15 +162,15 @@ export const deleteFile = async (
     // Verify user owns this file (or is admin)
     const hasAccess = await FileUploadService.verifyFileAccess(
       filename,
-      req.user.id,
-      req.user.role
+      req.user.userId,
+      req.user.roles[0]?.role || 'applicant'
     );
 
     if (!hasAccess) {
       throw new ApiError(403, 'Access denied to delete this file');
     }
 
-    await FileUploadService.deleteFile(filename, req.user.id);
+    await FileUploadService.deleteFile(filename, req.user.userId);
 
     res.json({
       success: true,
