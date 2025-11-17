@@ -1,6 +1,9 @@
 import { Response, NextFunction } from 'express';
 import Assessment from '../models/Assessment';
 import Question from '../models/Question';
+import Attempt from '../models/Attempt';
+import Grade from '../models/Grade';
+import User from '../models/User';
 import { ApiError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
 import { AssessmentStatus } from '../../../shared/src/types/common';
@@ -238,6 +241,104 @@ export const deleteAssessment = async (
       success: true,
       data: {
         message: 'Assessment deleted successfully',
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAssessmentLeaderboard = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const { limit = 100 } = req.query;
+
+    const assessment = await Assessment.findById(id);
+
+    if (!assessment) {
+      throw new ApiError(404, 'Assessment not found');
+    }
+
+    // Get all submitted attempts for this assessment
+    const attempts = await Attempt.find({
+      assessmentId: id,
+      status: { $in: ['submitted', 'graded'] },
+    })
+      .populate('userId', 'firstName lastName email')
+      .sort({ submittedAt: -1 });
+
+    // Get grades for these attempts
+    const attemptIds = attempts.map((a) => a._id);
+    const grades = await Grade.find({
+      attemptId: { $in: attemptIds },
+    });
+
+    // Build leaderboard entries
+    const leaderboardMap = new Map();
+
+    for (const attempt of attempts) {
+      const userId = (attempt.userId as any)._id.toString();
+
+      // Skip if we already have a better attempt for this user
+      if (leaderboardMap.has(userId)) {
+        const existing = leaderboardMap.get(userId);
+        const grade = grades.find((g) => g.attemptId.toString() === attempt._id.toString());
+        const currentScore = grade?.totalScore || 0;
+
+        if (currentScore <= existing.score) {
+          continue;
+        }
+      }
+
+      const grade = grades.find((g) => g.attemptId.toString() === attempt._id.toString());
+      const totalScore = grade?.totalScore || 0;
+      const maxScore = grade?.maxScore || assessment.totalPoints || 0;
+      const percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
+
+      leaderboardMap.set(userId, {
+        userId,
+        firstName: (attempt.userId as any).firstName,
+        lastName: (attempt.userId as any).lastName,
+        email: (attempt.userId as any).email,
+        score: totalScore,
+        maxScore,
+        percentage: Math.round(percentage * 100) / 100,
+        attemptId: attempt._id,
+        submittedAt: attempt.submittedAt,
+        timeTaken: attempt.submittedAt && attempt.startedAt
+          ? Math.round((new Date(attempt.submittedAt).getTime() - new Date(attempt.startedAt).getTime()) / 1000)
+          : null,
+      });
+    }
+
+    // Convert to array and sort by score (descending), then by time taken (ascending)
+    const leaderboard = Array.from(leaderboardMap.values())
+      .sort((a, b) => {
+        if (b.score !== a.score) {
+          return b.score - a.score;
+        }
+        // If scores are equal, sort by time taken (faster is better)
+        if (a.timeTaken !== null && b.timeTaken !== null) {
+          return a.timeTaken - b.timeTaken;
+        }
+        return 0;
+      })
+      .slice(0, Number(limit))
+      .map((entry, index) => ({
+        ...entry,
+        rank: index + 1,
+      }));
+
+    res.json({
+      success: true,
+      data: {
+        leaderboard,
+        assessmentTitle: assessment.title,
+        totalParticipants: leaderboardMap.size,
       },
     });
   } catch (error) {

@@ -7,6 +7,7 @@ import { ApiError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
 import { logger } from '../utils/logger';
 import { AttemptStatus } from '../../../shared/src/types/common';
+import AutoGradingService from '../services/autoGradingService';
 
 export const startAttempt = async (
   req: AuthRequest,
@@ -286,9 +287,18 @@ export const submitAttempt = async (
 
     logger.info(`Attempt submitted: ${attempt._id} by user ${userId}`);
 
+    // Trigger auto-grading asynchronously (don't wait for it to complete)
+    AutoGradingService.gradeAttemptPartial(attempt._id.toString())
+      .then(() => {
+        logger.info(`Auto-grading completed for attempt ${attempt._id}`);
+      })
+      .catch((error) => {
+        logger.error(`Auto-grading failed for attempt ${attempt._id}:`, error);
+      });
+
     res.json({
       success: true,
-      data: { attempt, message: 'Attempt submitted successfully' },
+      data: { attempt, message: 'Attempt submitted successfully. Auto-grading in progress.' },
     });
   } catch (error) {
     next(error);

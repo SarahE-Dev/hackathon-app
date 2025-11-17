@@ -83,9 +83,9 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
         <CodingQuestion
           question={{
             content: {
-              language: 'javascript',
-              starterCode: '',
-              testCases: [],
+              language: (question as any).content?.language || (question as any).language || 'python',
+              starterCode: (question as any).content?.codeTemplate || (question as any).codeTemplate || '',
+              testCases: (question as any).content?.testCases || (question as any).testCases || [],
             },
           }}
           value={currentAnswer}
