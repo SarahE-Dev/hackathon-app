@@ -2,8 +2,8 @@ FROM node:18-alpine AS base
 
 WORKDIR /app
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+# Install dumb-init and curl for proper signal handling and health checks
+RUN apk add --no-cache dumb-init curl
 
 # Build stage
 FROM base AS builder
