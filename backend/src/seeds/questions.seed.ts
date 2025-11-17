@@ -316,7 +316,7 @@ print(json.dumps(result))`,
 
       // ===== MULTIPLE CHOICE QUESTIONS =====
       {
-        type: QuestionType.MULTIPLE_CHOICE,
+        type: QuestionType.MCQ_SINGLE,
         title: 'What is the time complexity of binary search?',
         content: {
           prompt: `# Time Complexity Analysis
@@ -338,7 +338,7 @@ What is the time complexity of the binary search algorithm when searching for an
         status: AssessmentStatus.PUBLISHED,
       },
       {
-        type: QuestionType.MULTIPLE_CHOICE,
+        type: QuestionType.MCQ_SINGLE,
         title: 'Which data structure uses LIFO?',
         content: {
           prompt: `# Data Structures
@@ -360,7 +360,7 @@ Which of the following data structures follows the Last In First Out (LIFO) prin
         status: AssessmentStatus.PUBLISHED,
       },
       {
-        type: QuestionType.MULTIPLE_CHOICE,
+        type: QuestionType.MCQ_SINGLE,
         title: 'REST API Methods',
         content: {
           prompt: `# RESTful APIs
@@ -384,7 +384,7 @@ Which HTTP method is typically used to update an existing resource in a RESTful 
 
       // ===== TRUE/FALSE QUESTIONS =====
       {
-        type: QuestionType.TRUE_FALSE,
+        type: QuestionType.MCQ_SINGLE,
         title: 'Python is a compiled language',
         content: {
           prompt: `# Programming Languages
@@ -406,7 +406,7 @@ Is this statement true or false?`,
         status: AssessmentStatus.PUBLISHED,
       },
       {
-        type: QuestionType.TRUE_FALSE,
+        type: QuestionType.MCQ_SINGLE,
         title: 'Arrays have constant time access',
         content: {
           prompt: `# Data Structures
@@ -430,7 +430,7 @@ Is this statement true or false?`,
 
       // ===== SHORT ANSWER QUESTIONS =====
       {
-        type: QuestionType.SHORT_ANSWER,
+        type: QuestionType.FREEFORM,
         title: 'What is a hash collision?',
         content: {
           prompt: `# Hash Tables
@@ -447,7 +447,7 @@ Explain what a hash collision is and name one method to handle hash collisions.
         status: AssessmentStatus.PUBLISHED,
       },
       {
-        type: QuestionType.SHORT_ANSWER,
+        type: QuestionType.FREEFORM,
         title: 'Difference between let and var in JavaScript',
         content: {
           prompt: `# JavaScript Fundamentals
@@ -466,7 +466,7 @@ Explain the key differences between \`let\` and \`var\` in JavaScript.
 
       // ===== ESSAY QUESTIONS =====
       {
-        type: QuestionType.ESSAY,
+        type: QuestionType.LONG_FORM,
         title: 'Database Normalization',
         content: {
           prompt: `# Database Design
@@ -489,7 +489,7 @@ For each normal form:
         status: AssessmentStatus.PUBLISHED,
       },
       {
-        type: QuestionType.ESSAY,
+        type: QuestionType.LONG_FORM,
         title: 'Microservices Architecture',
         content: {
           prompt: `# System Design

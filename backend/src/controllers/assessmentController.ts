@@ -286,16 +286,16 @@ export const getAssessmentLeaderboard = async (
       // Skip if we already have a better attempt for this user
       if (leaderboardMap.has(userId)) {
         const existing = leaderboardMap.get(userId);
-        const grade = grades.find((g) => g.attemptId.toString() === attempt._id.toString());
-        const currentScore = grade?.totalScore || 0;
+        const grade = grades.find((g) => g.attemptId.toString() === (attempt._id as any).toString());
+        const currentScore = grade?.overallScore || 0;
 
         if (currentScore <= existing.score) {
           continue;
         }
       }
 
-      const grade = grades.find((g) => g.attemptId.toString() === attempt._id.toString());
-      const totalScore = grade?.totalScore || 0;
+      const grade = grades.find((g) => g.attemptId.toString() === (attempt._id as any).toString());
+      const totalScore = grade?.overallScore || 0;
       const maxScore = grade?.maxScore || assessment.totalPoints || 0;
       const percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
 

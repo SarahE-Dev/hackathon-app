@@ -1,4 +1,5 @@
 import { Response, NextFunction } from 'express';
+import mongoose from 'mongoose';
 import { AuthRequest } from '../middleware/auth';
 import { ApiError } from '../middleware/errorHandler';
 import Grade from '../models/Grade';
@@ -180,7 +181,7 @@ export const submitGrade = async (
       existingGrade.maxScore = maxScore;
       existingGrade.feedback = feedback;
       existingGrade.status = status;
-      existingGrade.graderId = req.user.id;
+      existingGrade.graderId = new mongoose.Types.ObjectId(req.user.userId) as any;
 
       if (status === GradeStatus.SUBMITTED) {
         existingGrade.gradedAt = new Date();
@@ -191,7 +192,7 @@ export const submitGrade = async (
       // Create new grade
       grade = new Grade({
         attemptId,
-        graderId: req.user.id,
+        graderId: req.user.userId,
         questionScores,
         overallScore,
         maxScore,
@@ -211,7 +212,7 @@ export const submitGrade = async (
     }
 
     logger.info(
-      `Grade ${existingGrade ? 'updated' : 'created'} for attempt ${attemptId} by judge ${req.user.id}`
+      `Grade ${existingGrade ? 'updated' : 'created'} for attempt ${attemptId} by judge ${req.user.userId}`
     );
 
     res.json({
@@ -259,8 +260,9 @@ export const getGradeByAttemptId = async (
       throw new ApiError(404, 'Attempt not found');
     }
 
-    const isStudent = attempt.userId.toString() === req.user.id;
-    const isJudgeOrAdmin = ['judge', 'admin', 'proctor'].includes(req.user.role);
+    const isStudent = attempt.userId.toString() === req.user.userId;
+    const userRoles = req.user.roles.map((r: any) => r.role);
+    const isJudgeOrAdmin = userRoles.some((role: string) => ['judge', 'admin', 'proctor'].includes(role));
 
     if (isStudent && grade.status !== GradeStatus.RELEASED) {
       throw new ApiError(403, 'Grade has not been released yet');
@@ -308,7 +310,7 @@ export const releaseGrade = async (
     grade.releasedAt = new Date();
     await grade.save();
 
-    logger.info(`Grade ${gradeId} released by ${req.user.id}`);
+    logger.info(`Grade ${gradeId} released by ${req.user.userId}`);
 
     res.json({
       success: true,
@@ -337,7 +339,8 @@ export const getGradesByJudge = async (
     const { page = 1, limit = 20, status } = req.query;
 
     // Check access: judges can see their own, admins can see all
-    if (req.user.role !== 'admin' && req.user.id !== judgeId) {
+    const isAdmin = req.user.roles.some((r: any) => r.role === 'admin');
+    if (!isAdmin && req.user.userId !== judgeId) {
       throw new ApiError(403, 'Access denied');
     }
 
@@ -398,7 +401,7 @@ export const deleteGrade = async (
       throw new ApiError(404, 'Grade not found');
     }
 
-    logger.info(`Grade ${gradeId} deleted by admin ${req.user.id}`);
+    logger.info(`Grade ${gradeId} deleted by admin ${req.user.userId}`);
 
     res.json({
       success: true,
