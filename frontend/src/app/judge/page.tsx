@@ -363,6 +363,18 @@ function JudgeDashboardContent() {
               </button>
             </div>
 
+            {/* Detailed Rubric Info */}
+            <div className="mb-6 p-4 bg-neon-blue/10 rounded-lg border border-neon-blue/30">
+              <h3 className="font-semibold mb-2 text-neon-blue">Scoring Guidelines:</h3>
+              <ul className="text-sm text-gray-300 space-y-1">
+                <li><strong>Impact & Usefulness (0-10):</strong> Addresses a real problem; practical value</li>
+                <li><strong>Technical Depth (0-10):</strong> Code quality; architecture; complexity handled</li>
+                <li><strong>Execution Quality (0-10):</strong> Polish; completeness; bug-free experience</li>
+                <li><strong>User Experience (0-10):</strong> Intuitive; accessible; pleasant to use</li>
+                <li><strong>Innovation (0-10):</strong> Novel approach; creativity; unique solution</li>
+              </ul>
+            </div>
+
             {/* Scoring Criteria */}
             <div className="space-y-6 mb-6">
               {Object.entries({
@@ -379,15 +391,23 @@ function JudgeDashboardContent() {
                       type="range"
                       min="0"
                       max="10"
+                      step="0.5"
                       value={scores[key as keyof typeof scores]}
                       onChange={(e) =>
-                        setScores({ ...scores, [key]: parseInt(e.target.value) })
+                        setScores({ ...scores, [key]: parseFloat(e.target.value) })
                       }
-                      className="flex-1"
+                      className="flex-1 h-2 bg-dark-600 rounded-lg appearance-none cursor-pointer slider"
                     />
-                    <span className="text-xl font-bold text-neon-purple w-12 text-right">
-                      {scores[key as keyof typeof scores]}
+                    <span className="text-xl font-bold text-neon-purple w-16 text-right">
+                      {scores[key as keyof typeof scores]}/10
                     </span>
+                  </div>
+                  {/* Score Range Labels */}
+                  <div className="flex justify-between text-xs text-gray-500 mt-1 px-1">
+                    <span>Poor</span>
+                    <span>Fair</span>
+                    <span>Good</span>
+                    <span>Excellent</span>
                   </div>
                 </div>
               ))}
@@ -401,6 +421,29 @@ function JudgeDashboardContent() {
                 </p>
               </div>
             </div>
+
+            <style jsx>{`
+              .slider::-webkit-slider-thumb {
+                appearance: none;
+                width: 20px;
+                height: 20px;
+                background: #a855f7;
+                cursor: pointer;
+                border-radius: 50%;
+                border: 2px solid #0ff;
+                box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+              }
+
+              .slider::-moz-range-thumb {
+                width: 20px;
+                height: 20px;
+                background: #a855f7;
+                cursor: pointer;
+                border-radius: 50%;
+                border: 2px solid #0ff;
+                box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+              }
+            `}</style>
 
             {/* Notes */}
             <div className="mb-6">

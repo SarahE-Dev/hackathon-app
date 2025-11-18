@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { seedQuestions } from './questions.seed';
+import { seedComprehensive } from './comprehensive.seed';
 import { config } from 'dotenv';
 
 config();
@@ -12,11 +12,10 @@ async function runSeeds() {
     await mongoose.connect(mongoUri);
     console.log('✅ Connected to MongoDB\n');
 
-    console.log('Starting database seeding...\n');
+    console.log('Starting comprehensive database seeding...\n');
 
-    // Run all seed functions
-    console.log('📝 Seeding questions...');
-    await seedQuestions();
+    // Run comprehensive seed
+    await seedComprehensive();
 
     console.log('\n✅ All seeds completed successfully!');
 

@@ -53,8 +53,8 @@ export class PlagiarismDetectionService {
 
         if (answer && answer.answer?.code) {
           submissions.push({
-            attemptId: attempt._id.toString(),
-            userId: attempt.userId._id.toString(),
+            attemptId: String(attempt._id),
+            userId: String(attempt.userId._id),
             questionId,
             code: answer.answer.code,
             language: answer.answer.language || 'javascript',
@@ -254,12 +254,12 @@ export class PlagiarismDetectionService {
    * Check if two code samples have identical comments
    */
   private hasIdenticalComments(code1: string, code2: string): boolean {
-    const comments1 = code1.match(/\/\/.*$|\/\*[\s\S]*?\*\//gm) || [];
-    const comments2 = code2.match(/\/\/.*$|\/\*[\s\S]*?\*\//gm) || [];
+    const comments1: string[] = code1.match(/\/\/.*$|\/\*[\s\S]*?\*\//gm) || [];
+    const comments2: string[] = code2.match(/\/\/.*$|\/\*[\s\S]*?\*\//gm) || [];
 
     if (comments1.length === 0 || comments2.length === 0) return false;
 
-    const matching = comments1.filter((c) => comments2.includes(c));
+    const matching: string[] = comments1.filter((c) => comments2.includes(c));
     return matching.length / Math.min(comments1.length, comments2.length) > 0.5;
   }
 
@@ -267,12 +267,12 @@ export class PlagiarismDetectionService {
    * Check for identical error handling
    */
   private hasIdenticalErrorHandling(code1: string, code2: string): boolean {
-    const errorPattern1 = code1.match(/catch\s*\([^)]*\)\s*{[^}]*}/g) || [];
-    const errorPattern2 = code2.match(/catch\s*\([^)]*\)\s*{[^}]*}/g) || [];
+    const errorPattern1: string[] = code1.match(/catch\s*\([^)]*\)\s*{[^}]*}/g) || [];
+    const errorPattern2: string[] = code2.match(/catch\s*\([^)]*\)\s*{[^}]*}/g) || [];
 
     if (errorPattern1.length === 0 || errorPattern2.length === 0) return false;
 
-    return errorPattern1.some((p1) => errorPattern2.includes(p1));
+    return errorPattern1.some((p1: string) => errorPattern2.includes(p1));
   }
 
   /**

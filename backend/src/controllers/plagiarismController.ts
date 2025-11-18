@@ -137,7 +137,7 @@ export const getIntegrityReport = async (req: Request, res: Response) => {
     // Run timing anomaly detection for each attempt
     const anomalyReports = await Promise.all(
       attempts.map((attempt) =>
-        plagiarismDetectionService.detectTimingAnomalies(attempt._id.toString())
+        plagiarismDetectionService.detectTimingAnomalies(String(attempt._id))
       )
     );
 

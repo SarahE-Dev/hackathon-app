@@ -151,7 +151,7 @@ export class AuditTrailService {
 
       // Detect suspicious patterns
       const suspiciousPatterns = this.detectSuspiciousPatterns({
-        typingSpeed,
+        avgTypingSpeed: typingSpeed,
         pausePatterns,
         deleteRatio,
         pasteCount,

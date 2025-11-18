@@ -1,574 +1,341 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuthStore } from '@/store/authStore';
-import { useRouter } from 'next/navigation';
-import axios from 'axios';
-import { Plus, Edit2, Trash2, UserPlus, Shield, X, Search } from 'lucide-react';
+import Link from 'next/link';
+import { RoleGuard } from '@/components/guards/RoleGuard';
+import { usersAPI } from '@/lib/api';
 
 interface User {
   _id: string;
-  email: string;
   firstName: string;
   lastName: string;
+  email: string;
   roles: Array<{
     role: string;
-    organizationId: string;
-    cohortId?: string;
+    organizationId?: string;
   }>;
   isActive: boolean;
   emailVerified: boolean;
   createdAt: string;
 }
 
-interface CreateUserForm {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-}
-
-export default function UserManagementPage() {
-  const { user } = useAuthStore();
-  const router = useRouter();
+function UsersManagementContent() {
   const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-
-  // Modals
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [roleFilter, setRoleFilter] = useState('all');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [showRoleModal, setShowRoleModal] = useState(false);
 
-  // Forms
-  const [createForm, setCreateForm] = useState<CreateUserForm>({
-    email: '',
-    password: '',
-    firstName: '',
-    lastName: '',
-    role: 'applicant',
-  });
-  const [editForm, setEditForm] = useState({
-    firstName: '',
-    lastName: '',
-    isActive: true,
-    emailVerified: false,
-  });
+  const roleOptions = ['admin', 'judge', 'proctor', 'grader', 'applicant'];
 
-  // Check admin access
   useEffect(() => {
-    if (!user || !user.roles?.some((r: any) => r.role === 'admin')) {
-      router.push('/dashboard');
-    }
-  }, [user, router]);
+    loadUsers();
+  }, []);
 
-  // Fetch users
   useEffect(() => {
-    fetchUsers();
-  }, [currentPage, roleFilter]);
+    filterUsers();
+  }, [users, searchTerm, roleFilter]);
 
-  const fetchUsers = async () => {
+  const loadUsers = async () => {
     try {
-      setLoading(true);
-      const token = localStorage.getItem('accessToken');
-      const params: any = {
-        page: currentPage,
-        limit: 20,
-      };
-
-      if (roleFilter) {
-        params.role = roleFilter;
-      }
-
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}/api/users`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          params,
-        }
-      );
-
-      setUsers(response.data.data.users);
-      setTotalPages(response.data.data.pagination.totalPages);
-      setLoading(false);
+      const response = await usersAPI.getAllUsers();
+      const userData = Array.isArray(response) ? response : [];
+      setUsers(userData);
+      setFilteredUsers(userData);
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error('Error loading users:', error);
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleCreateUser = async () => {
-    try {
-      const token = localStorage.getItem('accessToken');
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}/api/users`,
-        createForm,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+  const filterUsers = () => {
+    let filtered = [...users];
 
-      setShowCreateModal(false);
-      setCreateForm({
-        email: '',
-        password: '',
-        firstName: '',
-        lastName: '',
-        role: 'applicant',
-      });
-      fetchUsers();
-      alert('User created successfully!');
-    } catch (error: any) {
-      console.error('Error creating user:', error);
-      alert(error.response?.data?.message || 'Failed to create user');
+    // Search filter
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (u) =>
+          u.firstName.toLowerCase().includes(search) ||
+          u.lastName.toLowerCase().includes(search) ||
+          u.email.toLowerCase().includes(search)
+      );
     }
+
+    // Role filter
+    if (roleFilter !== 'all') {
+      filtered = filtered.filter((u) =>
+        u.roles.some((r) => r.role === roleFilter)
+      );
+    }
+
+    setFilteredUsers(filtered);
   };
 
-  const handleUpdateUser = async () => {
+  const handleAddRole = async (role: string) => {
     if (!selectedUser) return;
 
     try {
-      const token = localStorage.getItem('accessToken');
-      await axios.put(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}/api/users/${selectedUser._id}`,
-        editForm,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      setShowEditModal(false);
+      await usersAPI.addUserRole(selectedUser._id, { role });
+      await loadUsers();
+      setShowRoleModal(false);
       setSelectedUser(null);
-      fetchUsers();
-      alert('User updated successfully!');
-    } catch (error: any) {
-      console.error('Error updating user:', error);
-      alert(error.response?.data?.message || 'Failed to update user');
+    } catch (error) {
+      console.error('Error adding role:', error);
+      alert('Failed to add role');
     }
   };
 
-  const handleDeleteUser = async () => {
-    if (!selectedUser) return;
+  const handleRemoveRole = async (userId: string, role: string) => {
+    if (!confirm(`Remove ${role} role from this user?`)) return;
 
     try {
-      const token = localStorage.getItem('accessToken');
-      await axios.delete(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}/api/users/${selectedUser._id}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      setShowDeleteModal(false);
-      setSelectedUser(null);
-      fetchUsers();
-      alert('User deleted successfully!');
-    } catch (error: any) {
-      console.error('Error deleting user:', error);
-      alert(error.response?.data?.message || 'Failed to delete user');
+      await usersAPI.removeUserRole(userId, { role });
+      await loadUsers();
+    } catch (error) {
+      console.error('Error removing role:', error);
+      alert('Failed to remove role');
     }
   };
 
-  const openEditModal = (user: User) => {
-    setSelectedUser(user);
-    setEditForm({
-      firstName: user.firstName,
-      lastName: user.lastName,
-      isActive: user.isActive,
-      emailVerified: user.emailVerified,
-    });
-    setShowEditModal(true);
+  const getRoleBadgeColor = (role: string) => {
+    const colors: Record<string, string> = {
+      admin: 'bg-red-500/20 text-red-400 border-red-500/50',
+      judge: 'bg-purple-500/20 text-purple-400 border-purple-500/50',
+      proctor: 'bg-orange-500/20 text-orange-400 border-orange-500/50',
+      grader: 'bg-blue-500/20 text-blue-400 border-blue-500/50',
+      applicant: 'bg-green-500/20 text-green-400 border-green-500/50',
+    };
+    return colors[role] || 'bg-gray-500/20 text-gray-400 border-gray-500/50';
   };
 
-  const openDeleteModal = (user: User) => {
-    setSelectedUser(user);
-    setShowDeleteModal(true);
+  const getRoleStats = () => {
+    return {
+      total: users.length,
+      admin: users.filter((u) => u.roles.some((r) => r.role === 'admin')).length,
+      judge: users.filter((u) => u.roles.some((r) => r.role === 'judge')).length,
+      proctor: users.filter((u) => u.roles.some((r) => r.role === 'proctor')).length,
+      grader: users.filter((u) => u.roles.some((r) => r.role === 'grader')).length,
+      applicant: users.filter((u) => u.roles.some((r) => r.role === 'applicant')).length,
+    };
   };
-
-  const filteredUsers = users.filter((u) =>
-    `${u.firstName} ${u.lastName} ${u.email}`.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-dark-900 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-dark-900">
         <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-neon-blue"></div>
       </div>
     );
   }
 
+  const stats = getRoleStats();
+
   return (
-    <div className="min-h-screen bg-dark-900 text-white p-8">
+    <div className="min-h-screen bg-dark-900 text-white">
       {/* Header */}
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-4xl font-bold text-gradient">User Management</h1>
-            <p className="text-gray-400 mt-2">Manage users, roles, and permissions</p>
+      <header className="glass border-b border-gray-800 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gradient">User Management</h1>
+              <p className="text-gray-400 mt-1">Manage users and their roles</p>
+            </div>
+            <Link
+              href="/admin"
+              className="px-4 py-2 bg-dark-700 hover:bg-dark-600 border border-gray-600 rounded-lg transition-all"
+            >
+              ← Back to Admin
+            </Link>
           </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-neon-blue to-neon-purple text-white font-semibold rounded-lg hover:opacity-90 transition-all glow-blue"
-          >
-            <Plus className="w-5 h-5" />
-            Create User
-          </button>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* Statistics */}
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
+          <div className="glass rounded-xl p-4 border border-gray-700">
+            <div className="text-gray-400 text-sm mb-1">Total Users</div>
+            <div className="text-2xl font-bold">{stats.total}</div>
+          </div>
+          <div className="glass rounded-xl p-4 border border-red-500/30">
+            <div className="text-gray-400 text-sm mb-1">Admins</div>
+            <div className="text-2xl font-bold text-red-400">{stats.admin}</div>
+          </div>
+          <div className="glass rounded-xl p-4 border border-purple-500/30">
+            <div className="text-gray-400 text-sm mb-1">Judges</div>
+            <div className="text-2xl font-bold text-purple-400">{stats.judge}</div>
+          </div>
+          <div className="glass rounded-xl p-4 border border-orange-500/30">
+            <div className="text-gray-400 text-sm mb-1">Proctors</div>
+            <div className="text-2xl font-bold text-orange-400">{stats.proctor}</div>
+          </div>
+          <div className="glass rounded-xl p-4 border border-blue-500/30">
+            <div className="text-gray-400 text-sm mb-1">Graders</div>
+            <div className="text-2xl font-bold text-blue-400">{stats.grader}</div>
+          </div>
+          <div className="glass rounded-xl p-4 border border-green-500/30">
+            <div className="text-gray-400 text-sm mb-1">Applicants</div>
+            <div className="text-2xl font-bold text-green-400">{stats.applicant}</div>
+          </div>
         </div>
 
         {/* Filters */}
-        <div className="glass rounded-2xl p-6 mb-6 border border-gray-800">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
+        <div className="glass rounded-xl p-6 border border-gray-800 mb-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
               <input
                 type="text"
-                placeholder="Search users..."
+                placeholder="Search by name or email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white focus:border-neon-blue transition-all"
+                className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg focus:border-neon-blue focus:outline-none"
               />
             </div>
-
-            {/* Role Filter */}
-            <select
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white focus:border-neon-blue transition-all"
-            >
-              <option value="">All Roles</option>
-              <option value="admin">Admin</option>
-              <option value="proctor">Proctor</option>
-              <option value="judge">Judge</option>
-              <option value="applicant">Applicant/Fellow</option>
-            </select>
-
-            {/* Stats */}
-            <div className="flex items-center gap-2 text-gray-400">
-              <span className="font-semibold text-neon-blue">{users.length}</span>
-              <span>users found</span>
+            <div className="md:w-48">
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg focus:border-neon-blue focus:outline-none"
+              >
+                <option value="all">All Roles</option>
+                {roleOptions.map((role) => (
+                  <option key={role} value={role}>
+                    {role.charAt(0).toUpperCase() + role.slice(1)}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
 
-        {/* Users Table */}
-        <div className="glass rounded-2xl border border-gray-800 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-dark-800">
-                <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-400">User</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-400">Email</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-400">Roles</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-400">Status</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-400">Joined</th>
-                  <th className="px-6 py-4 text-right text-sm font-semibold text-gray-400">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-800">
-                {filteredUsers.map((user) => (
-                  <tr key={user._id} className="hover:bg-dark-700 transition-colors">
-                    <td className="px-6 py-4">
-                      <div>
-                        <div className="font-medium text-white">
-                          {user.firstName} {user.lastName}
-                        </div>
-                        <div className="text-sm text-gray-400">ID: {user._id.slice(-8)}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-gray-300">{user.email}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-2">
-                        {user.roles.map((role, idx) => (
-                          <span
-                            key={idx}
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              role.role === 'admin'
-                                ? 'bg-red-500/20 text-red-400'
-                                : role.role === 'proctor'
-                                ? 'bg-yellow-500/20 text-yellow-400'
-                                : role.role === 'judge'
-                                ? 'bg-purple-500/20 text-purple-400'
-                                : 'bg-blue-500/20 text-blue-400'
-                            }`}
-                          >
-                            {role.role}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium inline-block w-fit ${
-                            user.isActive
-                              ? 'bg-green-500/20 text-green-400'
-                              : 'bg-red-500/20 text-red-400'
-                          }`}
-                        >
-                          {user.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                        {user.emailVerified && (
-                          <span className="text-xs text-green-400">✓ Verified</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-gray-400 text-sm">
-                      {new Date(user.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => openEditModal(user)}
-                          className="p-2 hover:bg-dark-600 rounded-lg transition-colors"
-                          title="Edit User"
-                        >
-                          <Edit2 className="w-4 h-4 text-neon-blue" />
-                        </button>
-                        <button
-                          onClick={() => openDeleteModal(user)}
-                          className="p-2 hover:bg-dark-600 rounded-lg transition-colors"
-                          title="Delete User"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-400" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="px-6 py-4 border-t border-gray-800 flex items-center justify-between">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-dark-600 transition-all"
-              >
-                Previous
-              </button>
-              <span className="text-gray-400">
-                Page {currentPage} of {totalPages}
-              </span>
-              <button
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-dark-600 transition-all"
-              >
-                Next
-              </button>
+        {/* Users List */}
+        <div className="space-y-4">
+          {filteredUsers.length === 0 ? (
+            <div className="glass rounded-xl p-12 text-center border border-gray-800">
+              <p className="text-gray-400 text-lg">No users found</p>
             </div>
+          ) : (
+            filteredUsers.map((user) => (
+              <div
+                key={user._id}
+                className="glass rounded-xl p-6 border border-gray-800 hover:border-neon-blue/40 transition-all"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-xl font-bold">
+                        {user.firstName} {user.lastName}
+                      </h3>
+                      {!user.isActive && (
+                        <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs rounded-full border border-red-500/50">
+                          Inactive
+                        </span>
+                      )}
+                      {!user.emailVerified && (
+                        <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-full border border-yellow-500/50">
+                          Unverified
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-gray-400 mb-4">{user.email}</p>
+
+                    {/* Roles */}
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {user.roles.map((roleObj, idx) => (
+                        <div
+                          key={idx}
+                          className={`px-3 py-1 text-sm rounded-full border flex items-center gap-2 ${getRoleBadgeColor(
+                            roleObj.role
+                          )}`}
+                        >
+                          <span>{roleObj.role}</span>
+                          <button
+                            onClick={() => handleRemoveRole(user._id, roleObj.role)}
+                            className="hover:text-white transition-colors"
+                            title="Remove role"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <p className="text-xs text-gray-500">
+                      Joined {new Date(user.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setSelectedUser(user);
+                      setShowRoleModal(true);
+                    }}
+                    className="px-4 py-2 bg-neon-blue/20 text-neon-blue hover:bg-neon-blue/30 rounded-lg transition-all"
+                  >
+                    + Add Role
+                  </button>
+                </div>
+              </div>
+            ))
           )}
         </div>
-      </div>
+      </main>
 
-      {/* Create User Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="glass rounded-2xl p-8 max-w-md w-full border border-gray-800">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white">Create New User</h2>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
+      {/* Add Role Modal */}
+      {showRoleModal && selectedUser && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="glass rounded-2xl p-8 max-w-md w-full border border-gray-700">
+            <h2 className="text-2xl font-bold mb-4">
+              Add Role to {selectedUser.firstName} {selectedUser.lastName}
+            </h2>
+            <p className="text-gray-400 mb-6">{selectedUser.email}</p>
+
+            <div className="space-y-2 mb-6">
+              {roleOptions.map((role) => {
+                const hasRole = selectedUser.roles.some((r) => r.role === role);
+                return (
+                  <button
+                    key={role}
+                    onClick={() => handleAddRole(role)}
+                    disabled={hasRole}
+                    className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+                      hasRole
+                        ? 'bg-gray-700 border-gray-600 text-gray-500 cursor-not-allowed'
+                        : 'bg-dark-700 border-gray-600 hover:border-neon-blue hover:bg-dark-600'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium capitalize">{role}</span>
+                      {hasRole && <span className="text-xs text-gray-500">Already assigned</span>}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Email</label>
-                <input
-                  type="email"
-                  value={createForm.email}
-                  onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
-                  className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white focus:border-neon-blue transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Password</label>
-                <input
-                  type="password"
-                  value={createForm.password}
-                  onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                  className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white focus:border-neon-blue transition-all"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-2">First Name</label>
-                  <input
-                    type="text"
-                    value={createForm.firstName}
-                    onChange={(e) => setCreateForm({ ...createForm, firstName: e.target.value })}
-                    className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white focus:border-neon-blue transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-2">Last Name</label>
-                  <input
-                    type="text"
-                    value={createForm.lastName}
-                    onChange={(e) => setCreateForm({ ...createForm, lastName: e.target.value })}
-                    className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white focus:border-neon-blue transition-all"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Initial Role</label>
-                <select
-                  value={createForm.role}
-                  onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}
-                  className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white focus:border-neon-blue transition-all"
-                >
-                  <option value="applicant">Applicant/Fellow</option>
-                  <option value="proctor">Proctor</option>
-                  <option value="judge">Judge</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="flex-1 px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg hover:bg-dark-600 transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateUser}
-                className="flex-1 px-4 py-2 bg-gradient-to-r from-neon-blue to-neon-purple text-white font-semibold rounded-lg hover:opacity-90 transition-all"
-              >
-                Create User
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit User Modal */}
-      {showEditModal && selectedUser && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="glass rounded-2xl p-8 max-w-md w-full border border-gray-800">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white">Edit User</h2>
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-2">First Name</label>
-                  <input
-                    type="text"
-                    value={editForm.firstName}
-                    onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })}
-                    className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white focus:border-neon-blue transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-2">Last Name</label>
-                  <input
-                    type="text"
-                    value={editForm.lastName}
-                    onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })}
-                    className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white focus:border-neon-blue transition-all"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editForm.isActive}
-                    onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm text-gray-400">Active</span>
-                </label>
-
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editForm.emailVerified}
-                    onChange={(e) => setEditForm({ ...editForm, emailVerified: e.target.checked })}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm text-gray-400">Email Verified</span>
-                </label>
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="flex-1 px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg hover:bg-dark-600 transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleUpdateUser}
-                className="flex-1 px-4 py-2 bg-gradient-to-r from-neon-blue to-neon-purple text-white font-semibold rounded-lg hover:opacity-90 transition-all"
-              >
-                Update User
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete User Modal */}
-      {showDeleteModal && selectedUser && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="glass rounded-2xl p-8 max-w-md w-full border border-gray-800">
-            <h2 className="text-2xl font-bold text-white mb-4">Delete User</h2>
-            <p className="text-gray-300 mb-6">
-              Are you sure you want to delete{' '}
-              <span className="font-semibold text-white">
-                {selectedUser.firstName} {selectedUser.lastName}
-              </span>
-              ? This action cannot be undone.
-            </p>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="flex-1 px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg hover:bg-dark-600 transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteUser}
-                className="flex-1 px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-all"
-              >
-                Delete User
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                setShowRoleModal(false);
+                setSelectedUser(null);
+              }}
+              className="w-full py-3 bg-dark-700 hover:bg-dark-600 border border-gray-600 rounded-lg transition-all"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+export default function UsersManagement() {
+  return (
+    <RoleGuard allowedRoles={['admin']}>
+      <UsersManagementContent />
+    </RoleGuard>
   );
 }

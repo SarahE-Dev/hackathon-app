@@ -1,12 +1,15 @@
 import express from 'express';
 import * as plagiarismController from '../controllers/plagiarismController';
-import { authenticateJWT, requireRole } from '../middleware/auth';
+import { authenticate, requireRole } from '../middleware/auth';
+import { UserRole } from '../../../shared/src/types/common';
 
 const router = express.Router();
 
 // All routes require authentication and admin/proctor role
-router.use(authenticateJWT);
-router.use(requireRole(['admin', 'proctor', 'grader']));
+router.use(authenticate);
+router.use(requireRole(UserRole.ADMIN));
+router.use(requireRole(UserRole.PROCTOR));
+router.use(requireRole(UserRole.GRADER));
 
 // Detect similarity between submissions
 router.post('/similarity', plagiarismController.detectSimilarity);
