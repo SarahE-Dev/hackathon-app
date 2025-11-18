@@ -33,7 +33,7 @@ export default function CodingQuestion({
     value?.code || question.content.starterCode || ''
   );
   const [language, setLanguage] = useState(
-    value?.language || question.content.language || 'javascript'
+    value?.language || question.content.language || 'python'
   );
   const [output, setOutput] = useState('');
   const [running, setRunning] = useState(false);
@@ -86,7 +86,7 @@ export default function CodingQuestion({
           },
           body: JSON.stringify({
             code,
-            language: language === 'javascript' ? 'python' : language, // Map to supported languages
+            language: 'python', // Always use Python
             testCases,
             timeLimit: 5000,
             memoryLimit: 256,
@@ -126,33 +126,17 @@ export default function CodingQuestion({
   };
 
   const supportedLanguages = [
-    { id: 'javascript', name: 'JavaScript' },
     { id: 'python', name: 'Python' },
-    { id: 'java', name: 'Java' },
-    { id: 'cpp', name: 'C++' },
-    { id: 'c', name: 'C' },
-    { id: 'go', name: 'Go' },
-    { id: 'rust', name: 'Rust' },
-    { id: 'typescript', name: 'TypeScript' },
   ];
 
   return (
     <div className="space-y-4">
-      {/* Language selector */}
+      {/* Language selector - Python only */}
       <div className="flex items-center gap-4">
         <label className="text-sm text-gray-400">Language:</label>
-        <select
-          value={language}
-          onChange={(e) => handleLanguageChange(e.target.value)}
-          disabled={disabled}
-          className="px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white focus:border-neon-blue transition-all"
-        >
-          {supportedLanguages.map((lang) => (
-            <option key={lang.id} value={lang.id}>
-              {lang.name}
-            </option>
-          ))}
-        </select>
+        <div className="px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white">
+          Python
+        </div>
       </div>
 
       {/* Code editor */}

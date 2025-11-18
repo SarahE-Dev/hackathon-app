@@ -492,16 +492,9 @@ export default function HackathonSessionPage() {
         <div className="flex-1 flex flex-col">
           {/* Editor Controls */}
           <div className="bg-gray-800 border-b border-gray-700 p-3 flex justify-between items-center">
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="px-3 py-1 bg-gray-700 text-white rounded border border-gray-600"
-            >
-              <option value="python">Python</option>
-              <option value="javascript">JavaScript</option>
-              <option value="java">Java</option>
-              <option value="cpp">C++</option>
-            </select>
+            <div className="px-3 py-1 bg-gray-700 text-white rounded border border-gray-600">
+              Language: Python
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={handleRunCode}

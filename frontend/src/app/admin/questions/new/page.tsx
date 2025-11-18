@@ -44,7 +44,7 @@ function NewQuestionContent() {
   // Coding
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [codeTemplate, setCodeTemplate] = useState('');
-  const [language, setLanguage] = useState('python');
+  const [language, setLanguage] = useState('python'); // Default to Python
 
   // File Upload
   const [allowedFileTypes, setAllowedFileTypes] = useState('.zip,.tar.gz');
@@ -357,16 +357,9 @@ def example():
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-2">Language</label>
-                      <select
-                        value={language}
-                        onChange={(e) => setLanguage(e.target.value)}
-                        className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-neon-blue"
-                      >
-                        <option value="python">Python</option>
-                        <option value="javascript">JavaScript</option>
-                        <option value="java">Java</option>
-                        <option value="cpp">C++</option>
-                      </select>
+                      <div className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white">
+                        Python (Only Python is supported)
+                      </div>
                     </div>
 
                     <div>
