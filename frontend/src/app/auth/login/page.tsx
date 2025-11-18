@@ -23,8 +23,25 @@ export default function LoginPage() {
       await login(email, password);
       console.log('Login successful');
 
-      // Redirect to dashboard
-      router.push('/dashboard');
+      // Role-based redirect
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        const roles = user.roles || [];
+        
+        // Check roles in priority order: admin > proctor > judge > applicant
+        if (roles.some((r: any) => r.role === 'admin')) {
+          router.push('/admin');
+        } else if (roles.some((r: any) => r.role === 'proctor')) {
+          router.push('/proctor');
+        } else if (roles.some((r: any) => r.role === 'judge')) {
+          router.push('/judge');
+        } else {
+          router.push('/dashboard');
+        }
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err: any) {
       console.error('Login error:', err);
       setError(err.response?.data?.error?.message || err.response?.data?.message || 'Login failed. Please try again.');

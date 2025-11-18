@@ -29,8 +29,12 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD wget -O- http://localhost:3001/health || exit 1
 
+# Copy seed script
+COPY backend/seed-on-start.sh /app/backend/seed-on-start.sh
+RUN chmod +x /app/backend/seed-on-start.sh
+
 # Use dumb-init to handle signals
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start application in development mode (uses tsx to run TypeScript directly)
-CMD ["npm", "run", "dev", "--workspace=backend"]
+# Start application with seed check
+CMD ["/app/backend/seed-on-start.sh"]
