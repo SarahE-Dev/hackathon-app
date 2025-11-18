@@ -137,51 +137,59 @@ function AdminDashboardContent() {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Total Teams */}
-          <div className="glass rounded-2xl p-6 border-2 border-neon-blue/20 hover:border-neon-blue/40 transition-all">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-gray-400 text-sm font-medium">Total Teams</h3>
-              <svg className="w-8 h-8 text-neon-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
+          <Link href="/hackathon/teams">
+            <div className="glass rounded-2xl p-6 border-2 border-neon-blue/20 hover:border-neon-blue/40 transition-all cursor-pointer hover:scale-105">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-gray-400 text-sm font-medium">Total Teams</h3>
+                <svg className="w-8 h-8 text-neon-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <p className="text-4xl font-bold">{stats.totalTeams}</p>
             </div>
-            <p className="text-4xl font-bold">{stats.totalTeams}</p>
-          </div>
+          </Link>
 
           {/* Total Participants */}
-          <div className="glass rounded-2xl p-6 border-2 border-neon-purple/20 hover:border-neon-purple/40 transition-all">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-gray-400 text-sm font-medium">Participants</h3>
-              <svg className="w-8 h-8 text-neon-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
+          <Link href="/admin/users">
+            <div className="glass rounded-2xl p-6 border-2 border-neon-purple/20 hover:border-neon-purple/40 transition-all cursor-pointer hover:scale-105">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-gray-400 text-sm font-medium">Participants</h3>
+                <svg className="w-8 h-8 text-neon-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              </div>
+              <p className="text-4xl font-bold">{stats.totalParticipants}</p>
             </div>
-            <p className="text-4xl font-bold">{stats.totalParticipants}</p>
-          </div>
+          </Link>
 
           {/* Total Judges */}
-          <div className="glass rounded-2xl p-6 border-2 border-neon-pink/20 hover:border-neon-pink/40 transition-all">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-gray-400 text-sm font-medium">Judges</h3>
-              <svg className="w-8 h-8 text-neon-pink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-              </svg>
+          <Link href="/admin/users">
+            <div className="glass rounded-2xl p-6 border-2 border-neon-pink/20 hover:border-neon-pink/40 transition-all cursor-pointer hover:scale-105">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-gray-400 text-sm font-medium">Judges</h3>
+                <svg className="w-8 h-8 text-neon-pink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                </svg>
+              </div>
+              <p className="text-4xl font-bold">{stats.totalJudges}</p>
             </div>
-            <p className="text-4xl font-bold">{stats.totalJudges}</p>
-          </div>
+          </Link>
 
           {/* Submitted Projects */}
-          <div className="glass rounded-2xl p-6 border-2 border-neon-green/20 hover:border-neon-green/40 transition-all">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-gray-400 text-sm font-medium">Submitted</h3>
-              <svg className="w-8 h-8 text-neon-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+          <Link href="/judge">
+            <div className="glass rounded-2xl p-6 border-2 border-neon-green/20 hover:border-neon-green/40 transition-all cursor-pointer hover:scale-105">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-gray-400 text-sm font-medium">Submitted</h3>
+                <svg className="w-8 h-8 text-neon-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <p className="text-4xl font-bold">{stats.submittedProjects}</p>
+              <p className="text-sm text-gray-400 mt-1">
+                {stats.totalTeams > 0 ? Math.round((stats.submittedProjects / stats.totalTeams) * 100) : 0}% complete
+              </p>
             </div>
-            <p className="text-4xl font-bold">{stats.submittedProjects}</p>
-            <p className="text-sm text-gray-400 mt-1">
-              {stats.totalTeams > 0 ? Math.round((stats.submittedProjects / stats.totalTeams) * 100) : 0}% complete
-            </p>
-          </div>
+          </Link>
         </div>
 
         {/* Role-Based Admin Content */}
@@ -254,6 +262,20 @@ function AdminDashboardContent() {
                 </div>
               </Link>
 
+              <Link href="/admin/users">
+                <div className="glass rounded-lg p-4 border border-neon-purple/30 hover:border-neon-purple/60 transition-all cursor-pointer group">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-neon-purple/20 rounded-lg flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+                      👥
+                    </div>
+                    <div>
+                      <div className="font-semibold text-neon-purple">Manage Users</div>
+                      <div className="text-xs text-gray-400">User roles & permissions</div>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+
               <Link href="/admin/sessions">
                 <div className="glass rounded-lg p-4 border border-neon-blue/30 hover:border-neon-blue/60 transition-all cursor-pointer group">
                   <div className="flex items-center gap-3">
@@ -270,7 +292,8 @@ function AdminDashboardContent() {
 
               <Link href="/proctor/monitor">
                 <div className="glass rounded-lg p-4 border border-orange-500/30 hover:border-orange-500/60 transition-all cursor-pointer group">
-                  <div className="w-8 h-8 bg-orange-500/20 rounded-lg flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-orange-500/20 rounded-lg flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
                       👁️
                     </div>
                     <div>
@@ -278,7 +301,8 @@ function AdminDashboardContent() {
                       <div className="text-xs text-gray-400">Real-time oversight</div>
                     </div>
                   </div>
-                </Link>
+                </div>
+              </Link>
             </div>
           </div>
         </div>

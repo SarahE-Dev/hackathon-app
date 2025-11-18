@@ -8,6 +8,12 @@ import {
   addProctorEvent,
   uploadFile,
 } from '../controllers/attemptController';
+import {
+  batchLogEvents,
+  getBehavioralMetrics,
+  getNavigationPatterns,
+  getAuditTrail,
+} from '../controllers/auditTrailController';
 import { authenticate } from '../middleware/auth';
 
 const router = Router();
@@ -35,5 +41,11 @@ router.post('/:id/event', addProctorEvent);
 
 // Upload file for file-upload questions
 router.post('/:id/upload', uploadFile);
+
+// Audit trail endpoints
+router.post('/:attemptId/audit-events', batchLogEvents);
+router.get('/:attemptId/behavioral-metrics', getBehavioralMetrics);
+router.get('/:attemptId/navigation-patterns', getNavigationPatterns);
+router.get('/:attemptId/audit-trail', getAuditTrail);
 
 export default router;
