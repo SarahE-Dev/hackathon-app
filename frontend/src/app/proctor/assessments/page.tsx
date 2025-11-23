@@ -345,7 +345,7 @@ function AssessmentProctoringContent() {
 
 export default function AssessmentProctoring() {
   return (
-    <RoleGuard allowedRoles={['proctor', 'admin']}>
+    <RoleGuard allowedRoles={['proctor', 'admin', 'judge']}>
       <AssessmentProctoringContent />
     </RoleGuard>
   );

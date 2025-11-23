@@ -316,7 +316,7 @@ function GradingOverviewContent() {
 
 export default function GradingOverviewPage() {
   return (
-    <RoleGuard allowedRoles={['admin', 'proctor']}>
+    <RoleGuard allowedRoles={['admin', 'proctor', 'judge']}>
       <GradingOverviewContent />
     </RoleGuard>
   );

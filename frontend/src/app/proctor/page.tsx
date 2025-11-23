@@ -335,7 +335,7 @@ function ProctorDashboardContent() {
 
 export default function ProctorDashboard() {
   return (
-    <RoleGuard allowedRoles={['admin', 'proctor']}>
+    <RoleGuard allowedRoles={['admin', 'proctor', 'judge']}>
       <ProctorDashboardContent />
     </RoleGuard>
   );
