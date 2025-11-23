@@ -177,45 +177,61 @@ export class CodeExecutionService {
    * Create a Python wrapper script that captures output
    */
   private static createPythonWrapper(userCode: string, inputData: string): string {
+    // Escape the user code and input data for safe embedding
+    const escapedCode = userCode.replace(/\\/g, '\\\\').replace(/"""/g, '\\"\\"\\"');
+    const escapedInput = inputData.replace(/\\/g, '\\\\').replace(/"""/g, '\\"\\"\\"');
+
     return `
 import sys
 from io import StringIO
 
+# Setup input mock FIRST before executing user code
+input_data = """${escapedInput}"""
+input_values = [line for line in input_data.split('\\n') if line.strip()]
+input_index = [0]  # Use list to allow modification in nested function
+
+original_input = input
+
+def mock_input(prompt=""):
+    if input_index[0] < len(input_values):
+        result = input_values[input_index[0]]
+        input_index[0] += 1
+        return result
+    return ""
+
+# Replace built-in input
+import builtins
+builtins.input = mock_input
+
 # Capture stdout
 old_stdout = sys.stdout
+old_stderr = sys.stderr
 sys.stdout = captured_output = StringIO()
+sys.stderr = captured_error = StringIO()
+
+user_code = """${escapedCode}"""
 
 try:
-    # User code
-    ${userCode}
-
-    # Simulate input if needed
-    input_data = """${inputData}"""
-    if input_data.strip():
-        # Mock input function for simple cases
-        input_values = [line.strip() for line in input_data.split('\\n') if line.strip()]
-        input_index = 0
-
-        def mock_input(prompt=""):
-            global input_index
-            if input_index < len(input_values):
-                result = input_values[input_index]
-                input_index += 1
-                return result
-            return ""
-
-        # Replace built-in input
-        builtins = sys.modules['builtins']
-        builtins.input = mock_input
-
+    # Execute user code in its own namespace
+    exec_globals = {
+        '__builtins__': builtins,
+        '__name__': '__main__',
+    }
+    exec(user_code, exec_globals)
 except Exception as e:
-    print(f"Error: {str(e)}", file=sys.stderr)
+    print(f"Error: {type(e).__name__}: {str(e)}", file=sys.stderr)
 finally:
-    # Restore stdout and print captured output
+    # Restore stdout/stderr and print captured output
     sys.stdout = old_stdout
-    captured = captured_output.getvalue()
-    if captured:
-        print(captured, end='')
+    sys.stderr = old_stderr
+
+    output = captured_output.getvalue()
+    error = captured_error.getvalue()
+
+    if output:
+        print(output, end='')
+    if error:
+        print(error, file=sys.stderr, end='')
 `;
   }
 

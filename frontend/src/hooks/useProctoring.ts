@@ -277,7 +277,7 @@ export const useProctoring = (config: ProctorConfig) => {
         setWebcamEnabled(true);
         setWebcamError(null);
 
-        socketRef.current?.emit('webcam-enabled', {
+        socketRef.current?.emit('webcam-started', {
           timestamp: new Date(),
         });
 
@@ -285,7 +285,7 @@ export const useProctoring = (config: ProctorConfig) => {
         const track = stream.getVideoTracks()[0];
         track.onended = () => {
           setWebcamEnabled(false);
-          socketRef.current?.emit('webcam-disabled', {
+          socketRef.current?.emit('webcam-stopped', {
             reason: 'Webcam was disabled by user',
             timestamp: new Date(),
           });
