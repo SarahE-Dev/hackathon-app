@@ -251,37 +251,37 @@ Output: [0,1]
     };
   }, []);
 
-  // Monitor copy/paste attempts
+  // Monitor copy/paste attempts (log but allow within editor)
   useEffect(() => {
     const handleCopy = (e: ClipboardEvent) => {
-      e.preventDefault();
+      // Log the copy event but don't prevent it - allow copy within the editor
       setCopyPasteAttempts((prev) => prev + 1);
       const event: ProctorEvent = {
         type: 'copy-paste',
         timestamp: new Date(),
-        details: 'Copy attempt detected',
+        details: 'Copy detected (logged)',
       };
       setProctorEvents((prev) => [...prev, event]);
     };
 
     const handlePaste = (e: ClipboardEvent) => {
-      e.preventDefault();
+      // Log the paste event but don't prevent it - allow paste within the editor
       setCopyPasteAttempts((prev) => prev + 1);
       const event: ProctorEvent = {
         type: 'copy-paste',
         timestamp: new Date(),
-        details: 'Paste attempt detected',
+        details: 'Paste detected (logged)',
       };
       setProctorEvents((prev) => [...prev, event]);
     };
 
     const handleCut = (e: ClipboardEvent) => {
-      e.preventDefault();
+      // Log the cut event but don't prevent it - allow cut within the editor
       setCopyPasteAttempts((prev) => prev + 1);
       const event: ProctorEvent = {
         type: 'copy-paste',
         timestamp: new Date(),
-        details: 'Cut attempt detected',
+        details: 'Cut detected (logged)',
       };
       setProctorEvents((prev) => [...prev, event]);
     };
