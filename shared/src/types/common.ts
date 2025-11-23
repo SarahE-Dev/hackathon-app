@@ -1,7 +1,19 @@
+/**
+ * User Roles in the System
+ *
+ * ADMIN - Full system access: manage users, assessments, sessions, and all settings
+ * PROCTOR - Monitor live sessions, pause/resume teams, handle incidents
+ * JUDGE - Score hackathon projects, grade assessments, release grades
+ * GRADER - (Reserved for future use) Limited grading permissions for TAs/assistants
+ *          Currently, JUDGE handles all grading. GRADER can be implemented for:
+ *          - Grading specific question types only
+ *          - TA roles with limited permissions
+ * APPLICANT - Students/participants: take assessments, join hackathons, view results
+ */
 export enum UserRole {
   ADMIN = 'admin',
   PROCTOR = 'proctor',
-  GRADER = 'grader',
+  GRADER = 'grader', // Reserved - not currently used in routes
   JUDGE = 'judge',
   APPLICANT = 'applicant',
 }

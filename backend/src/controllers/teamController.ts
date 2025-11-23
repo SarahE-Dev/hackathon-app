@@ -131,7 +131,10 @@ export const updateTeam = async (
 ) => {
   try {
     const { id } = req.params;
-    const { name, projectTitle, description, track, repoUrl, demoUrl, videoUrl } = req.body;
+    const {
+      name, projectTitle, description, track, repoUrl, demoUrl, videoUrl,
+      projectExplanation, technicalApproach, challengesOvercome, codeSnippets
+    } = req.body;
 
     const team = await Team.findByIdAndUpdate(
       id,
@@ -143,6 +146,10 @@ export const updateTeam = async (
         ...(repoUrl && { repoUrl }),
         ...(demoUrl && { demoUrl }),
         ...(videoUrl && { videoUrl }),
+        ...(projectExplanation !== undefined && { projectExplanation }),
+        ...(technicalApproach !== undefined && { technicalApproach }),
+        ...(challengesOvercome !== undefined && { challengesOvercome }),
+        ...(codeSnippets !== undefined && { codeSnippets }),
       },
       { new: true }
     ).populate('memberIds', 'email firstName lastName');
@@ -262,7 +269,10 @@ export const submitTeamProject = async (
 ) => {
   try {
     const { id } = req.params;
-    const { repoUrl, demoUrl, videoUrl, track } = req.body;
+    const {
+      repoUrl, demoUrl, videoUrl, track,
+      projectExplanation, technicalApproach, challengesOvercome, codeSnippets
+    } = req.body;
 
     const team = await Team.findByIdAndUpdate(
       id,
@@ -271,6 +281,10 @@ export const submitTeamProject = async (
         demoUrl,
         videoUrl,
         track,
+        projectExplanation,
+        technicalApproach,
+        challengesOvercome,
+        codeSnippets,
         submittedAt: new Date(),
       },
       { new: true }

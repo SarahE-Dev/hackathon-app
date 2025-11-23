@@ -180,11 +180,19 @@ export const teamsAPI = {
   },
 
   submitProject: async (teamId: string, data: {
-    projectTitle: string;
-    description: string;
     repoUrl?: string;
     demoUrl?: string;
     videoUrl?: string;
+    track?: string;
+    projectExplanation?: string;
+    technicalApproach?: string;
+    challengesOvercome?: string;
+    codeSnippets?: Array<{
+      filename: string;
+      language: string;
+      code: string;
+      explanation?: string;
+    }>;
   }) => {
     const response = await api.post(`/teams/${teamId}/submit`, data);
     return response.data;
@@ -496,7 +504,7 @@ export const hackathonSessionsAPI = {
   updateProblemProgress: async (
     sessionId: string,
     teamId: string,
-    data: { problemId: string; code: string; language: string }
+    data: { problemId: string; code: string; language: string; explanation?: string }
   ) => {
     const response = await api.put(
       `/hackathon-sessions/${sessionId}/team/${teamId}/problem`,

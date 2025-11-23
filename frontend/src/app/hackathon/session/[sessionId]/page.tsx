@@ -15,6 +15,7 @@ interface Problem {
   status: string;
   code: string;
   language: string;
+  explanation?: string;
   testResults: any[];
   passedTests: number;
   totalTests: number;
@@ -53,6 +54,7 @@ export default function HackathonSessionPage() {
   const [currentProblemIndex, setCurrentProblemIndex] = useState(0);
   const [code, setCode] = useState('');
   const [language, setLanguage] = useState('python');
+  const [explanation, setExplanation] = useState('');
   const [executing, setExecuting] = useState(false);
   const [testResults, setTestResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,12 +87,17 @@ export default function HackathonSessionPage() {
       const problem = teamSession.problemProgress[currentProblemIndex];
       setCode(problem.code || '');
       setLanguage(problem.language || 'python');
+      setExplanation(problem.explanation || '');
     }
   }, [currentProblemIndex, teamSession]);
 
-  // Auto-save code
+  // Auto-save code and explanation
   useEffect(() => {
-    if (teamSession && code !== teamSession.problemProgress[currentProblemIndex]?.code) {
+    const currentProgress = teamSession?.problemProgress[currentProblemIndex];
+    if (teamSession && (
+      code !== currentProgress?.code ||
+      explanation !== (currentProgress?.explanation || '')
+    )) {
       if (autoSaveTimerRef.current) {
         clearTimeout(autoSaveTimerRef.current);
       }
@@ -98,7 +105,7 @@ export default function HackathonSessionPage() {
         saveProgress();
       }, 2000);
     }
-  }, [code, language]);
+  }, [code, language, explanation]);
 
   const loadSession = async () => {
     try {
@@ -261,6 +268,7 @@ export default function HackathonSessionPage() {
         problemId: problem.problemId._id,
         code,
         language,
+        explanation,
       });
     } catch (err: any) {
       console.error('Failed to save progress:', err);
@@ -516,7 +524,7 @@ export default function HackathonSessionPage() {
           {/* Monaco Editor */}
           <div className="flex-1">
             <Editor
-              height="60%"
+              height="50%"
               language={language}
               value={code}
               onChange={(value) => setCode(value || '')}
@@ -531,8 +539,26 @@ export default function HackathonSessionPage() {
             />
           </div>
 
+          {/* Solution Explanation */}
+          <div className="border-t border-gray-700 bg-gray-800 p-4">
+            <h3 className="text-lg font-semibold mb-2 text-indigo-400">
+              Solution Explanation
+              <span className="text-gray-400 font-normal text-sm ml-2">(Markdown supported)</span>
+            </h3>
+            <p className="text-xs text-gray-400 mb-2">
+              Explain your approach, algorithm choice, and any trade-offs you made.
+            </p>
+            <textarea
+              value={explanation}
+              onChange={(e) => setExplanation(e.target.value)}
+              rows={3}
+              placeholder="## My Approach&#10;I used a hash map to achieve O(n) time complexity...&#10;&#10;## Time Complexity: O(n)&#10;## Space Complexity: O(n)"
+              className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-white placeholder-gray-500 focus:border-indigo-500 outline-none font-mono text-sm"
+            />
+          </div>
+
           {/* Test Results */}
-          <div className="h-[40%] border-t border-gray-700 overflow-y-auto bg-gray-800 p-4">
+          <div className="h-[30%] border-t border-gray-700 overflow-y-auto bg-gray-800 p-4">
             <h3 className="text-lg font-semibold mb-2">Test Results</h3>
             {testResults.length === 0 ? (
               <p className="text-gray-400">Run your code to see test results</p>
