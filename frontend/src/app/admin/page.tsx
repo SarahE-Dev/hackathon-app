@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { RoleGuard } from '@/components/guards/RoleGuard';
 import { useAuthStore } from '@/store/authStore';
-import { teamsAPI, usersAPI, assessmentsAPI, hackathonSessionsAPI } from '@/lib/api';
+import { teamsAPI, usersAPI, assessmentsAPI, hackathonSessionsAPI, attemptsAPI } from '@/lib/api';
 
 interface DashboardStats {
   totalTeams: number;
@@ -24,6 +25,25 @@ interface Team {
   track?: string;
 }
 
+interface Assessment {
+  id: string;
+  _id?: string;
+  title: string;
+  description?: string;
+  totalPoints: number;
+  settings?: {
+    timeLimit?: number;
+  };
+}
+
+interface HackathonSession {
+  _id: string;
+  title: string;
+  status: string;
+  description?: string;
+  problems?: any[];
+}
+
 interface User {
   _id: string;
   firstName: string;
@@ -36,6 +56,7 @@ interface User {
 }
 
 function AdminDashboardContent() {
+  const router = useRouter();
   const { user } = useAuthStore();
   const [stats, setStats] = useState<DashboardStats>({
     totalTeams: 0,
@@ -46,8 +67,11 @@ function AdminDashboardContent() {
     activeSessions: 0,
   });
   const [teams, setTeams] = useState<Team[]>([]);
+  const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [sessions, setSessions] = useState<HackathonSession[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'create' | 'manage'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'create' | 'manage' | 'test'>('overview');
+  const [startingTest, setStartingTest] = useState<string | null>(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -67,20 +91,24 @@ function AdminDashboardContent() {
 
       // Fetch assessments
       let assessmentsCount = 0;
+      let assessmentsList: Assessment[] = [];
       try {
         const assessmentsResponse = await assessmentsAPI.getAll();
-        const assessmentsList = assessmentsResponse.data?.assessments || [];
+        assessmentsList = assessmentsResponse.data?.assessments || [];
         assessmentsCount = Array.isArray(assessmentsList) ? assessmentsList.length : 0;
+        setAssessments(Array.isArray(assessmentsList) ? assessmentsList : []);
       } catch (e) {
         console.warn('Could not load assessments count');
       }
 
       // Fetch sessions
       let activeSessionsCount = 0;
+      let sessionsList: HackathonSession[] = [];
       try {
         const sessionsResponse = await hackathonSessionsAPI.getAll();
-        const sessions = sessionsResponse.data?.sessions || [];
-        activeSessionsCount = sessions.filter((s: any) => s.status === 'active' || s.status === 'paused').length;
+        sessionsList = sessionsResponse.data?.sessions || [];
+        activeSessionsCount = sessionsList.filter((s: any) => s.status === 'active' || s.status === 'paused').length;
+        setSessions(sessionsList);
       } catch (e) {
         console.warn('Could not load sessions count');
       }
@@ -105,6 +133,25 @@ function AdminDashboardContent() {
       console.error('Error loading dashboard data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Function to start testing an assessment
+  const handleTestAssessment = async (assessmentId: string) => {
+    try {
+      setStartingTest(assessmentId);
+      const response = await attemptsAPI.start(assessmentId);
+      const attemptId = response.data?.id || response.data?.attempt?._id;
+      if (attemptId) {
+        router.push(`/assessment/${attemptId}`);
+      } else {
+        throw new Error('No attempt ID returned');
+      }
+    } catch (err: any) {
+      console.error('Error starting test:', err);
+      alert(err.response?.data?.error?.message || 'Failed to start assessment test');
+    } finally {
+      setStartingTest(null);
     }
   };
 
@@ -154,6 +201,7 @@ function AdminDashboardContent() {
               { id: 'overview', label: 'Overview', icon: '📊' },
               { id: 'create', label: 'Create New', icon: '➕' },
               { id: 'manage', label: 'Manage', icon: '⚙️' },
+              { id: 'test', label: 'Test Mode', icon: '🧪' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -579,6 +627,229 @@ function AdminDashboardContent() {
                       <p className="text-xs text-gray-400">Review & grade submissions</p>
                     </div>
                   </div>
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'test' && (
+          <div className="space-y-8">
+            {/* Test Mode Header */}
+            <div className="glass rounded-xl p-6 border border-yellow-500/30 bg-yellow-500/5">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-3xl">🧪</span>
+                <div>
+                  <h2 className="text-xl font-bold text-yellow-400">Admin Test Mode</h2>
+                  <p className="text-sm text-gray-400">Test assessments and hackathon setups as if you were a student</p>
+                </div>
+              </div>
+              <p className="text-sm text-gray-300">
+                Use this section to verify that assessments and hackathon sessions are set up correctly before students access them.
+                Your test attempts will be recorded but clearly marked as admin tests.
+              </p>
+            </div>
+
+            {/* Test Assessments */}
+            <div className="glass rounded-xl p-6 border border-gray-700">
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <span className="text-neon-blue">📝</span> Test Assessments
+              </h3>
+              <p className="text-sm text-gray-400 mb-4">
+                Take any assessment to verify questions, time limits, and scoring work correctly.
+              </p>
+
+              {assessments.length === 0 ? (
+                <div className="p-8 text-center text-gray-400 bg-dark-800 rounded-lg">
+                  <div className="text-4xl mb-3">📋</div>
+                  <p>No assessments created yet</p>
+                  <Link href="/admin/assessments/new" className="text-neon-blue hover:underline text-sm mt-2 inline-block">
+                    Create your first assessment →
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {assessments.map((assessment) => (
+                    <div
+                      key={assessment.id || assessment._id}
+                      className="p-4 bg-dark-700 rounded-lg border border-gray-600 hover:border-neon-blue/50 transition-all"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-white">{assessment.title}</h4>
+                          <div className="flex items-center gap-4 mt-1 text-xs text-gray-400">
+                            {assessment.settings?.timeLimit && (
+                              <span>⏱️ {assessment.settings.timeLimit} min</span>
+                            )}
+                            <span>📊 {assessment.totalPoints} pts</span>
+                          </div>
+                          {assessment.description && (
+                            <p className="text-sm text-gray-400 mt-2 line-clamp-1">{assessment.description}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/admin/assessments/${assessment.id || assessment._id}/builder`}
+                            className="px-3 py-2 bg-dark-600 hover:bg-dark-500 text-gray-300 rounded text-sm transition-all"
+                          >
+                            Edit
+                          </Link>
+                          <button
+                            onClick={() => handleTestAssessment(assessment.id || assessment._id || '')}
+                            disabled={startingTest === (assessment.id || assessment._id)}
+                            className="px-4 py-2 bg-neon-blue hover:bg-neon-blue/80 text-white rounded text-sm font-medium transition-all disabled:opacity-50"
+                          >
+                            {startingTest === (assessment.id || assessment._id) ? 'Starting...' : 'Take Test'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Test Hackathon Sessions */}
+            <div className="glass rounded-xl p-6 border border-gray-700">
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <span className="text-neon-purple">🎯</span> Test Hackathon Sessions
+              </h3>
+              <p className="text-sm text-gray-400 mb-4">
+                Join hackathon sessions to verify problems, team setup, and live coding features work correctly.
+              </p>
+
+              {sessions.length === 0 ? (
+                <div className="p-8 text-center text-gray-400 bg-dark-800 rounded-lg">
+                  <div className="text-4xl mb-3">🎯</div>
+                  <p>No hackathon sessions created yet</p>
+                  <Link href="/admin/sessions" className="text-neon-purple hover:underline text-sm mt-2 inline-block">
+                    Create a hackathon session →
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {sessions.map((session) => (
+                    <div
+                      key={session._id}
+                      className="p-4 bg-dark-700 rounded-lg border border-gray-600 hover:border-neon-purple/50 transition-all"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-semibold text-white">{session.title}</h4>
+                            <span className={`px-2 py-0.5 text-xs rounded-full ${
+                              session.status === 'active'
+                                ? 'bg-green-500/20 text-green-400'
+                                : session.status === 'paused'
+                                ? 'bg-yellow-500/20 text-yellow-400'
+                                : 'bg-gray-500/20 text-gray-400'
+                            }`}>
+                              {session.status}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4 mt-1 text-xs text-gray-400">
+                            <span>💡 {session.problems?.length || 0} problems</span>
+                          </div>
+                          {session.description && (
+                            <p className="text-sm text-gray-400 mt-2 line-clamp-1">{session.description}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/admin/sessions`}
+                            className="px-3 py-2 bg-dark-600 hover:bg-dark-500 text-gray-300 rounded text-sm transition-all"
+                          >
+                            Manage
+                          </Link>
+                          <Link
+                            href={`/hackathon/session/${session._id}`}
+                            className="px-4 py-2 bg-neon-purple hover:bg-neon-purple/80 text-white rounded text-sm font-medium transition-all"
+                          >
+                            Join Session
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Test Teams */}
+            <div className="glass rounded-xl p-6 border border-gray-700">
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <span className="text-neon-green">👥</span> Test Team Setups
+              </h3>
+              <p className="text-sm text-gray-400 mb-4">
+                Review team configurations to ensure members are assigned correctly.
+              </p>
+
+              {teams.length === 0 ? (
+                <div className="p-8 text-center text-gray-400 bg-dark-800 rounded-lg">
+                  <div className="text-4xl mb-3">👥</div>
+                  <p>No teams created yet</p>
+                  <Link href="/hackathon/teams" className="text-neon-green hover:underline text-sm mt-2 inline-block">
+                    Create a team →
+                  </Link>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {teams.slice(0, 6).map((team) => (
+                    <div
+                      key={team._id}
+                      className="p-4 bg-dark-700 rounded-lg border border-gray-600 hover:border-neon-green/50 transition-all"
+                    >
+                      <h4 className="font-semibold text-white mb-2">{team.name}</h4>
+                      {team.track && (
+                        <span className="inline-block px-2 py-0.5 bg-neon-blue/20 text-neon-blue text-xs rounded-full mb-2">
+                          {team.track}
+                        </span>
+                      )}
+                      <p className="text-xs text-gray-400 mb-3">{team.memberIds?.length || 0} members</p>
+                      <Link
+                        href={`/hackathon/teams/${team._id}`}
+                        className="text-sm text-neon-green hover:underline"
+                      >
+                        View Team Details →
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {teams.length > 6 && (
+                <div className="mt-4 text-center">
+                  <Link href="/hackathon/teams" className="text-neon-green hover:underline text-sm">
+                    View all {teams.length} teams →
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Test Links */}
+            <div className="glass rounded-xl p-6 border border-gray-700">
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <span className="text-neon-pink">⚡</span> Quick Test Links
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Link href="/assessments" className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all text-center">
+                  <div className="text-2xl mb-2">📋</div>
+                  <p className="font-medium">Student Assessment View</p>
+                  <p className="text-xs text-gray-400 mt-1">See what students see</p>
+                </Link>
+                <Link href="/hackathon/sessions" className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all text-center">
+                  <div className="text-2xl mb-2">🎯</div>
+                  <p className="font-medium">Session List View</p>
+                  <p className="text-xs text-gray-400 mt-1">Browse all sessions</p>
+                </Link>
+                <Link href="/hackathon/teams" className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all text-center">
+                  <div className="text-2xl mb-2">👥</div>
+                  <p className="font-medium">Team List View</p>
+                  <p className="text-xs text-gray-400 mt-1">Browse all teams</p>
+                </Link>
+                <Link href="/proctor/monitor" className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all text-center">
+                  <div className="text-2xl mb-2">👁️</div>
+                  <p className="font-medium">Proctor View</p>
+                  <p className="text-xs text-gray-400 mt-1">Monitor live sessions</p>
                 </Link>
               </div>
             </div>

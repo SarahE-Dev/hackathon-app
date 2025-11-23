@@ -212,16 +212,23 @@ function JudgeDashboardContent() {
                 <span className="text-3xl">⚖️</span>
                 <div>
                   <h1 className="text-3xl font-bold text-gradient">Judge Dashboard</h1>
-                  <p className="text-gray-400 text-sm">Evaluate & Monitor Submissions</p>
+                  <p className="text-gray-400 text-sm">Welcome, {user?.firstName} - Evaluate & Monitor Submissions</p>
                 </div>
               </div>
             </div>
-            <Link
-              href="/dashboard"
-              className="px-4 py-2 bg-dark-700 hover:bg-dark-600 border border-gray-600 rounded-lg transition-all text-sm"
-            >
-              ← Main Dashboard
-            </Link>
+            <div className="flex items-center gap-3">
+              {/* Progress indicator */}
+              <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-dark-700 rounded-lg border border-gray-600">
+                <span className="text-sm text-gray-400">Progress:</span>
+                <span className="text-sm font-bold text-neon-purple">{myScores.size}/{teams.length}</span>
+                <div className="w-20 h-2 bg-dark-600 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-neon-purple transition-all"
+                    style={{ width: `${teams.length > 0 ? (myScores.size / teams.length) * 100 : 0}%` }}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </header>
@@ -255,6 +262,28 @@ function JudgeDashboardContent() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {activeTab === 'overview' && (
           <>
+            {/* Welcome Banner */}
+            <div className="glass rounded-xl p-6 border border-neon-purple/30 bg-neon-purple/5 mb-8">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-xl font-bold mb-2">Your Judging Summary</h2>
+                  <p className="text-gray-400 text-sm">
+                    {teams.length - myScores.size === 0
+                      ? "You've scored all submitted projects! Check back for new submissions."
+                      : `You have ${teams.length - myScores.size} project${teams.length - myScores.size !== 1 ? 's' : ''} left to review.`}
+                  </p>
+                </div>
+                {teams.length > 0 && teams.length - myScores.size > 0 && (
+                  <button
+                    onClick={() => setActiveTab('grading')}
+                    className="px-4 py-2 bg-neon-purple hover:bg-neon-purple/80 text-white rounded-lg font-medium transition-all"
+                  >
+                    Start Grading
+                  </button>
+                )}
+              </div>
+            </div>
+
             {/* Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               <div className="glass rounded-xl p-5 border border-neon-purple/20">
@@ -262,18 +291,23 @@ function JudgeDashboardContent() {
                 <p className="text-3xl font-bold text-neon-purple">{teams.length}</p>
                 <p className="text-sm text-gray-400">Submitted Projects</p>
               </div>
-              <div className="glass rounded-xl p-5 border border-neon-blue/20">
-                <div className="text-2xl mb-2">✅</div>
-                <p className="text-3xl font-bold text-neon-blue">{myScores.size}</p>
-                <p className="text-sm text-gray-400">Your Scores</p>
-              </div>
               <div className="glass rounded-xl p-5 border border-neon-green/20">
+                <div className="text-2xl mb-2">✅</div>
+                <p className="text-3xl font-bold text-neon-green">{myScores.size}</p>
+                <p className="text-sm text-gray-400">Scored by You</p>
+              </div>
+              <div className="glass rounded-xl p-5 border border-yellow-500/20">
                 <div className="text-2xl mb-2">⏳</div>
-                <p className="text-3xl font-bold text-neon-green">{teams.length - myScores.size}</p>
-                <p className="text-sm text-gray-400">Remaining</p>
+                <p className="text-3xl font-bold text-yellow-400">{teams.length - myScores.size}</p>
+                <p className="text-sm text-gray-400">Awaiting Review</p>
               </div>
               <div className="glass rounded-xl p-5 border border-orange-500/20">
-                <div className="text-2xl mb-2">🔴</div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-2xl">🔴</span>
+                  {sessionStats.activeSessions > 0 && (
+                    <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                  )}
+                </div>
                 <p className="text-3xl font-bold text-orange-400">{sessionStats.activeSessions}</p>
                 <p className="text-sm text-gray-400">Live Sessions</p>
               </div>
