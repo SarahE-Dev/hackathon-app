@@ -145,7 +145,7 @@ export default function ProctorMonitorPage() {
   }
 
   return (
-    <RoleGuard allowedRoles={['admin', 'proctor']}>
+    <RoleGuard allowedRoles={['admin', 'proctor', 'judge']}>
       <div className="min-h-screen bg-dark-900 text-white p-6">
         <div className="max-w-7xl mx-auto">
           <div className="mb-6">

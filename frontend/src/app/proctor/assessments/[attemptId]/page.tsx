@@ -250,7 +250,7 @@ function AttemptMonitoringContent() {
   const totalViolations = violations.tabSwitch + violations.copyPaste + violations.fullscreenExit + violations.webcamIssues;
 
   return (
-    <RoleGuard allowedRoles={['proctor', 'admin']}>
+    <RoleGuard allowedRoles={['proctor', 'admin', 'judge']}>
       <div className="min-h-screen bg-dark-900 text-white">
         {/* Header */}
         <div className="bg-dark-800 border-b border-gray-700">

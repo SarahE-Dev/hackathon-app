@@ -365,7 +365,7 @@ function LeaderboardContent() {
 
 export default function AssessmentLeaderboardPage() {
   return (
-    <RoleGuard allowedRoles={['admin', 'proctor']}>
+    <RoleGuard allowedRoles={['admin', 'proctor', 'judge']}>
       <LeaderboardContent />
     </RoleGuard>
   );
