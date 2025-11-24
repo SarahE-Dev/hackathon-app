@@ -577,4 +577,157 @@ export const hackathonSessionsAPI = {
   },
 };
 
+// Hackathon Roster API
+export const hackathonRosterAPI = {
+  // Get roster for a hackathon session
+  getRoster: async (sessionId: string, params?: { role?: string; status?: string }) => {
+    const response = await api.get(`/hackathon-roster/${sessionId}`, { params });
+    return response.data;
+  },
+
+  // Add single entry to roster
+  addToRoster: async (sessionId: string, data: {
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    role: 'judge' | 'fellow';
+    notes?: string;
+    organizationId?: string;
+  }) => {
+    const response = await api.post(`/hackathon-roster/${sessionId}`, data);
+    return response.data;
+  },
+
+  // Bulk add entries to roster
+  bulkAddToRoster: async (sessionId: string, data: {
+    entries: Array<{ email: string; firstName?: string; lastName?: string }>;
+    role: 'judge' | 'fellow';
+    organizationId?: string;
+  }) => {
+    const response = await api.post(`/hackathon-roster/${sessionId}/bulk`, data);
+    return response.data;
+  },
+
+  // Update roster entry
+  updateEntry: async (id: string, data: {
+    firstName?: string;
+    lastName?: string;
+    notes?: string;
+    teamId?: string | null;
+    status?: string;
+  }) => {
+    const response = await api.put(`/hackathon-roster/entry/${id}`, data);
+    return response.data;
+  },
+
+  // Remove from roster
+  removeFromRoster: async (id: string) => {
+    const response = await api.delete(`/hackathon-roster/entry/${id}`);
+    return response.data;
+  },
+
+  // Assign fellow to team
+  assignToTeam: async (id: string, teamId: string | null) => {
+    const response = await api.post(`/hackathon-roster/entry/${id}/assign-team`, { teamId });
+    return response.data;
+  },
+
+  // Bulk assign to teams
+  bulkAssignToTeams: async (sessionId: string, assignments: Array<{ rosterId: string; teamId: string | null }>) => {
+    const response = await api.post(`/hackathon-roster/${sessionId}/bulk-assign`, { assignments });
+    return response.data;
+  },
+
+  // Auto-create teams from roster
+  createTeamsFromRoster: async (sessionId: string, data?: {
+    teamSize?: number;
+    teamNamePrefix?: string;
+    organizationId?: string;
+  }) => {
+    const response = await api.post(`/hackathon-roster/${sessionId}/create-teams`, data || {});
+    return response.data;
+  },
+
+  // Check if email is on roster
+  checkEmail: async (email: string) => {
+    const response = await api.get(`/hackathon-roster/check/${email}`);
+    return response.data;
+  },
+};
+
+// Judge Documentation API
+export const judgeDocumentationAPI = {
+  // Get documentation (for judges - active only)
+  getDocumentation: async (params?: {
+    organizationId?: string;
+    hackathonSessionId?: string;
+    type?: string;
+    includeDefaults?: boolean;
+  }) => {
+    const response = await api.get('/judge-documentation', { params });
+    return response.data;
+  },
+
+  // Get all documentation (admin - includes inactive)
+  getAllDocumentation: async (params?: {
+    organizationId?: string;
+    hackathonSessionId?: string;
+    type?: string;
+  }) => {
+    const response = await api.get('/judge-documentation/all', { params });
+    return response.data;
+  },
+
+  // Get documentation by ID
+  getById: async (id: string) => {
+    const response = await api.get(`/judge-documentation/${id}`);
+    return response.data;
+  },
+
+  // Create documentation
+  create: async (data: {
+    hackathonSessionId?: string;
+    organizationId: string;
+    title: string;
+    type: 'rubric' | 'faq' | 'guide' | 'general';
+    rubricCriteria?: Array<{
+      name: string;
+      description: string;
+      maxPoints: number;
+      scoringGuide: Array<{ points: number; description: string }>;
+    }>;
+    faqs?: Array<{ question: string; answer: string; order: number }>;
+    content?: string;
+    isActive?: boolean;
+    isDefault?: boolean;
+  }) => {
+    const response = await api.post('/judge-documentation', data);
+    return response.data;
+  },
+
+  // Update documentation
+  update: async (id: string, data: any) => {
+    const response = await api.put(`/judge-documentation/${id}`, data);
+    return response.data;
+  },
+
+  // Delete documentation
+  delete: async (id: string) => {
+    const response = await api.delete(`/judge-documentation/${id}`);
+    return response.data;
+  },
+
+  // Toggle active status
+  toggle: async (id: string) => {
+    const response = await api.patch(`/judge-documentation/${id}/toggle`);
+    return response.data;
+  },
+
+  // Duplicate documentation
+  duplicate: async (id: string, data?: { hackathonSessionId?: string; title?: string }) => {
+    const response = await api.post(`/judge-documentation/${id}/duplicate`, data);
+    return response.data;
+  },
+};
+
 export default api;

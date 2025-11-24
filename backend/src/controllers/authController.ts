@@ -1,9 +1,54 @@
 import { Request, Response, NextFunction } from 'express';
 import User from '../models/User';
+import HackathonRoster from '../models/HackathonRoster';
+import Team from '../models/Team';
 import { hashPassword, comparePassword, validatePassword } from '../utils/password';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt';
 import { ApiError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
+
+// Helper function to process roster entries for a user
+async function processRosterEntriesForUser(user: any) {
+  const rosterEntries = await HackathonRoster.find({
+    email: user.email.toLowerCase(),
+    status: 'pending',
+  });
+
+  const rolesAdded: string[] = [];
+
+  for (const entry of rosterEntries) {
+    // Update roster entry status
+    entry.status = 'registered';
+    entry.userId = user._id;
+    entry.registeredAt = new Date();
+    await entry.save();
+
+    // Add role if not already present
+    const roleToAdd = entry.role === 'judge' ? 'judge' : 'fellow';
+    const hasRole = user.roles?.some((r: any) => r.role === roleToAdd);
+    if (!hasRole) {
+      user.roles = user.roles || [];
+      user.roles.push({ role: roleToAdd });
+      rolesAdded.push(roleToAdd);
+    }
+
+    // If fellow is assigned to a team, add them to the team
+    if (entry.role === 'fellow' && entry.teamId) {
+      const team = await Team.findById(entry.teamId);
+      if (team && !team.memberIds.includes(user._id)) {
+        team.memberIds.push(user._id);
+        await team.save();
+      }
+    }
+  }
+
+  if (rolesAdded.length > 0) {
+    await user.save();
+    logger.info(`Auto-assigned roles to ${user.email}: ${rolesAdded.join(', ')}`);
+  }
+
+  return rosterEntries.length;
+}
 
 export const register = async (
   req: Request,
@@ -36,20 +81,60 @@ export const register = async (
     // Assign user to organization (either provided or default demo organization)
     const assignedOrgId = organizationId || '68f630a085934e56f1df9b86'; // Default to demo organization
 
+    // Check if email is on any roster to determine initial roles
+    const rosterEntries = await HackathonRoster.find({
+      email: email.toLowerCase(),
+      status: 'pending',
+    });
+
+    // Build initial roles based on roster entries
+    const initialRoles: Array<{ role: string; organizationId?: string }> = [];
+    const roleTypes = new Set<string>();
+
+    for (const entry of rosterEntries) {
+      const roleType = entry.role === 'judge' ? 'judge' : 'fellow';
+      if (!roleTypes.has(roleType)) {
+        roleTypes.add(roleType);
+        initialRoles.push({ role: roleType, organizationId: assignedOrgId });
+      }
+    }
+
+    // If no roster entries, default to fellow
+    if (initialRoles.length === 0) {
+      initialRoles.push({ role: 'fellow', organizationId: assignedOrgId });
+    }
+
     // Create user
     const user = new User({
       email: email.toLowerCase(),
       firstName,
       lastName,
       passwordHash,
-      roles: [{ role: 'fellow', organizationId: assignedOrgId }],
+      roles: initialRoles,
       isActive: true,
       emailVerified: false,
     });
 
     await user.save();
 
-    logger.info(`New user registered: ${user.email}`);
+    // Process roster entries - update status and team assignments
+    for (const entry of rosterEntries) {
+      entry.status = 'registered';
+      entry.userId = user._id as any;
+      entry.registeredAt = new Date();
+      await entry.save();
+
+      // If fellow is assigned to a team, add them to the team
+      if (entry.role === 'fellow' && entry.teamId) {
+        const team = await Team.findById(entry.teamId);
+        if (team && !team.memberIds.includes(user._id as any)) {
+          team.memberIds.push(user._id as any);
+          await team.save();
+        }
+      }
+    }
+
+    logger.info(`New user registered: ${user.email}${rosterEntries.length > 0 ? ` (matched ${rosterEntries.length} roster entries)` : ''}`);
 
     // Generate tokens
     const accessToken = generateAccessToken(user);
@@ -110,7 +195,10 @@ export const login = async (
     user.lastLogin = new Date();
     await user.save();
 
-    logger.info(`User logged in: ${user.email}`);
+    // Check for any new roster entries added since last login
+    const newRosterMatches = await processRosterEntriesForUser(user);
+
+    logger.info(`User logged in: ${user.email}${newRosterMatches > 0 ? ` (matched ${newRosterMatches} new roster entries)` : ''}`);
 
     // Generate tokens
     const accessToken = generateAccessToken(user);

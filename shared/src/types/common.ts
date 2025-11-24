@@ -105,3 +105,55 @@ export interface ApiResponse<T = any> {
     code?: string;
   };
 }
+
+// Judge Documentation Types
+export enum JudgeDocumentationType {
+  RUBRIC = 'rubric',
+  FAQ = 'faq',
+  GUIDE = 'guide',
+  GENERAL = 'general',
+}
+
+export interface RubricScoringGuide {
+  points: number;
+  description: string;
+}
+
+export interface RubricCriterion {
+  name: string;
+  description: string;
+  maxPoints: number;
+  scoringGuide: RubricScoringGuide[];
+}
+
+export interface FAQ {
+  question: string;
+  answer: string;
+  order: number;
+}
+
+export interface JudgeDocumentation {
+  _id: string;
+  hackathonSessionId?: string;
+  organizationId: string;
+  title: string;
+  type: JudgeDocumentationType;
+  rubricCriteria?: RubricCriterion[];
+  totalPoints?: number;
+  faqs?: FAQ[];
+  content?: string;
+  isActive: boolean;
+  isDefault: boolean;
+  createdBy: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+  };
+  lastUpdatedBy: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
