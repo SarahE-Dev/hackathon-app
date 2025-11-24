@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { hackathonSessionsAPI, codeExecutionAPI, teamsAPI } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
+import { useMediaRecorder } from '@/hooks/useMediaRecorder';
+import { RecordingConsentModal, RecordingIndicator } from '@/components/recording';
 
 // Dynamically import Monaco Editor to avoid SSR issues
 const Editor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
@@ -41,6 +43,10 @@ interface ProctoringSettings {
   detectCopyPaste: boolean;
   detectIdle: boolean;
   idleTimeoutMinutes: number;
+  recordScreen: boolean;
+  recordWebcam: boolean;
+  takeSnapshots: boolean;
+  snapshotIntervalMinutes: number;
 }
 
 export default function HackathonSessionPage() {
@@ -64,6 +70,10 @@ export default function HackathonSessionPage() {
   const [newTeamName, setNewTeamName] = useState('');
   const [savingTeamName, setSavingTeamName] = useState(false);
 
+  // Recording state
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [recordingConsented, setRecordingConsented] = useState(false);
+
   const lastActivityRef = useRef(Date.now());
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -71,6 +81,72 @@ export default function HackathonSessionPage() {
 
   // Get team ID from user's fellow role (in a real app, this should be more sophisticated)
   const teamId = user?.roles.find((r: any) => r.role === 'fellow')?.cohortId || '';
+
+  // Check if recording is enabled
+  const recordingEnabled = proctoring?.recordWebcam || proctoring?.recordScreen || proctoring?.takeSnapshots;
+
+  // Initialize webcam recording
+  const webcamRecorder = useMediaRecorder({
+    sourceType: 'hackathon',
+    sourceId: sessionId,
+    type: 'webcam',
+    teamId: teamId,
+    onError: (error) => {
+      showWarning(`Recording error: ${error}`);
+    },
+  });
+
+  // Initialize screen recording
+  const screenRecorder = useMediaRecorder({
+    sourceType: 'hackathon',
+    sourceId: sessionId,
+    type: 'screen',
+    teamId: teamId,
+    onError: (error) => {
+      showWarning(`Recording error: ${error}`);
+    },
+  });
+
+  // Show consent modal when recording is needed
+  useEffect(() => {
+    if (proctoring && recordingEnabled && !recordingConsented && !loading) {
+      setShowConsentModal(true);
+    }
+  }, [proctoring, recordingEnabled, recordingConsented, loading]);
+
+  // Start recordings after consent
+  useEffect(() => {
+    if (!recordingConsented || !proctoring) return;
+
+    if (proctoring.recordWebcam && webcamRecorder.status === 'idle') {
+      webcamRecorder.startRecording(true);
+    }
+
+    if (proctoring.recordScreen && screenRecorder.status === 'idle') {
+      screenRecorder.startRecording(true);
+    }
+  }, [recordingConsented, proctoring]);
+
+  // Handle recording consent
+  const handleRecordingConsent = () => {
+    setRecordingConsented(true);
+    setShowConsentModal(false);
+  };
+
+  // Handle recording decline
+  const handleRecordingDecline = () => {
+    router.push('/dashboard');
+  };
+
+  // Stop recordings
+  const stopRecordings = useCallback(async () => {
+    if (webcamRecorder.isRecording) {
+      await webcamRecorder.stopRecording();
+    }
+    if (screenRecorder.isRecording) {
+      await screenRecorder.stopRecording();
+    }
+  }, [webcamRecorder, screenRecorder]);
 
   useEffect(() => {
     if (isAuthenticated && teamId) {
@@ -331,6 +407,8 @@ export default function HackathonSessionPage() {
     if (confirm('Submit your final session? You will not be able to make further changes.')) {
       try {
         await hackathonSessionsAPI.submitSession(sessionId, teamId);
+        // Stop recordings before redirecting
+        await stopRecordings();
         alert('Session submitted successfully!');
         router.push('/dashboard');
       } catch (err: any) {
@@ -420,6 +498,21 @@ export default function HackathonSessionPage() {
 
   return (
     <div className="min-h-screen bg-dark-900 text-white">
+      {/* Recording Consent Modal */}
+      {proctoring && (
+        <RecordingConsentModal
+          isOpen={showConsentModal}
+          onConsent={handleRecordingConsent}
+          onDecline={handleRecordingDecline}
+          recordingTypes={{
+            webcam: proctoring.recordWebcam || false,
+            screen: proctoring.recordScreen || false,
+            snapshots: proctoring.takeSnapshots || false,
+          }}
+          sessionType="hackathon"
+        />
+      )}
+
       {/* Warning Banner */}
       {warningMessage && (
         <div className="fixed top-0 left-0 right-0 bg-red-600 text-white py-3 px-6 text-center z-50 animate-pulse">
@@ -477,6 +570,21 @@ export default function HackathonSessionPage() {
             </div>
           </div>
           <div className="flex items-center gap-6">
+            {/* Recording indicator */}
+            {(webcamRecorder.isRecording || screenRecorder.isRecording) && (
+              <RecordingIndicator
+                isRecording={true}
+                recordingType={
+                  webcamRecorder.isRecording && screenRecorder.isRecording
+                    ? 'both'
+                    : webcamRecorder.isRecording
+                    ? 'webcam'
+                    : 'screen'
+                }
+                duration={Math.max(webcamRecorder.duration, screenRecorder.duration)}
+                minimal={true}
+              />
+            )}
             <div className="text-right">
               <div className="text-sm text-gray-400">Score</div>
               <div className="text-2xl font-bold text-neon-blue">

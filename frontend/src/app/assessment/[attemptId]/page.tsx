@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useProctoring } from '@/hooks/useProctoring';
+import { useMediaRecorder } from '@/hooks/useMediaRecorder';
 import { QuestionRenderer, IQuestion } from '@/components/questions/QuestionRenderer';
 import { Timer } from '@/components/assessment/Timer';
+import { RecordingConsentModal, RecordingIndicator } from '@/components/recording';
 import { useNotifications } from '@/contexts/NotificationContext';
 import axios from 'axios';
 
@@ -112,6 +114,10 @@ interface Attempt {
         requireWebcam: boolean;
         detectTabSwitch: boolean;
         preventCopyPaste: boolean;
+        recordWebcam: boolean;
+        recordScreen: boolean;
+        takeSnapshots: boolean;
+        snapshotIntervalMinutes: number;
       };
     };
   };
@@ -133,6 +139,10 @@ export default function TakeAssessmentPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Recording state
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [recordingConsented, setRecordingConsented] = useState(false);
 
   // Track time spent per question
   const [questionStartTimes, setQuestionStartTimes] = useState<Record<string, number>>({});
@@ -237,6 +247,82 @@ export default function TakeAssessmentPage() {
     enableFullscreen: false,
   });
 
+  // Check if recording is enabled
+  const recordingEnabled = attempt?.assessmentSnapshot.settings.proctoring.recordWebcam ||
+    attempt?.assessmentSnapshot.settings.proctoring.recordScreen ||
+    attempt?.assessmentSnapshot.settings.proctoring.takeSnapshots;
+
+  // Initialize webcam recording
+  const webcamRecorder = useMediaRecorder({
+    sourceType: 'assessment',
+    sourceId: attemptId,
+    type: 'webcam',
+    onError: (error) => {
+      addNotification({
+        type: 'error',
+        title: 'Recording Error',
+        message: error,
+      });
+    },
+  });
+
+  // Initialize screen recording
+  const screenRecorder = useMediaRecorder({
+    sourceType: 'assessment',
+    sourceId: attemptId,
+    type: 'screen',
+    onError: (error) => {
+      addNotification({
+        type: 'error',
+        title: 'Recording Error',
+        message: error,
+      });
+    },
+  });
+
+  // Show consent modal when recording is needed and not yet consented
+  useEffect(() => {
+    if (attempt && recordingEnabled && !recordingConsented && !loading) {
+      setShowConsentModal(true);
+    }
+  }, [attempt, recordingEnabled, recordingConsented, loading]);
+
+  // Start recordings after consent
+  useEffect(() => {
+    if (!recordingConsented || !attempt) return;
+
+    const proctoring = attempt.assessmentSnapshot.settings.proctoring;
+
+    if (proctoring.recordWebcam && webcamRecorder.status === 'idle') {
+      webcamRecorder.startRecording(true);
+    }
+
+    if (proctoring.recordScreen && screenRecorder.status === 'idle') {
+      screenRecorder.startRecording(true);
+    }
+  }, [recordingConsented, attempt]);
+
+  // Handle consent
+  const handleRecordingConsent = () => {
+    setRecordingConsented(true);
+    setShowConsentModal(false);
+  };
+
+  // Handle decline - redirect away
+  const handleRecordingDecline = () => {
+    router.push('/dashboard');
+  };
+
+  // Stop recordings on submit
+  const stopRecordings = useCallback(async () => {
+    if (webcamRecorder.isRecording) {
+      await webcamRecorder.stopRecording();
+    }
+    if (screenRecorder.isRecording) {
+      await screenRecorder.stopRecording();
+    }
+  }, [webcamRecorder, screenRecorder]);
+
   // Timer countdown
   useEffect(() => {
     if (timeRemaining === null) return;
@@ -321,6 +407,9 @@ export default function TakeAssessmentPage() {
         }
       );
 
+      // Stop recordings before redirecting
+      await stopRecordings();
+
       // Show success notification
       addNotification({
         type: 'success',
@@ -370,6 +459,19 @@ export default function TakeAssessmentPage() {
 
   return (
     <div className="min-h-screen bg-dark-900 text-white">
+      {/* Recording Consent Modal */}
+      <RecordingConsentModal
+        isOpen={showConsentModal}
+        onConsent={handleRecordingConsent}
+        onDecline={handleRecordingDecline}
+        recordingTypes={{
+          webcam: attempt.assessmentSnapshot.settings.proctoring.recordWebcam || false,
+          screen: attempt.assessmentSnapshot.settings.proctoring.recordScreen || false,
+          snapshots: attempt.assessmentSnapshot.settings.proctoring.takeSnapshots || false,
+        }}
+        sessionType="assessment"
+      />
+
       {/* Header */}
       <header className="glass border-b border-gray-800 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -405,6 +507,22 @@ export default function TakeAssessmentPage() {
                     <span className="text-sm font-medium">{isConnected ? 'Active' : 'Disconnected'}</span>
                   </div>
                 </div>
+              )}
+
+              {/* Recording indicator */}
+              {(webcamRecorder.isRecording || screenRecorder.isRecording) && (
+                <RecordingIndicator
+                  isRecording={true}
+                  recordingType={
+                    webcamRecorder.isRecording && screenRecorder.isRecording
+                      ? 'both'
+                      : webcamRecorder.isRecording
+                      ? 'webcam'
+                      : 'screen'
+                  }
+                  duration={Math.max(webcamRecorder.duration, screenRecorder.duration)}
+                  minimal={true}
+                />
               )}
 
               {/* Save status */}
