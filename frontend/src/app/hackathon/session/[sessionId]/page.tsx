@@ -66,8 +66,8 @@ export default function HackathonSessionPage() {
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const fullscreenCheckRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Get team ID from user's first team (in a real app, this should be more sophisticated)
-  const teamId = user?.roles.find((r: any) => r.role === 'Applicant')?.cohortId || '';
+  // Get team ID from user's fellow role (in a real app, this should be more sophisticated)
+  const teamId = user?.roles.find((r: any) => r.role === 'fellow')?.cohortId || '';
 
   useEffect(() => {
     if (isAuthenticated && teamId) {

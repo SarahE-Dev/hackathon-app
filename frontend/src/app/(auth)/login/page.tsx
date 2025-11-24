@@ -29,7 +29,7 @@ export default function LoginPage() {
       const user = response.data.user;
       const roles = user.roles || [];
       
-      // Check roles in priority order: admin > proctor > judge > applicant
+      // Check roles in priority order: admin > proctor > judge > fellow
       if (roles.some((r: any) => r.role === 'admin')) {
         router.push('/admin');
       } else if (roles.some((r: any) => r.role === 'proctor')) {
@@ -47,11 +47,12 @@ export default function LoginPage() {
     }
   };
 
-  const fillDemoAccount = (type: 'admin' | 'proctor' | 'student') => {
+  const fillDemoAccount = (type: 'admin' | 'proctor' | 'judge' | 'fellow') => {
     const accounts = {
-      admin: { email: 'admin@demo.edu', password: 'Admin123!' },
-      proctor: { email: 'proctor@demo.edu', password: 'Proctor123!' },
-      student: { email: 'student@demo.edu', password: 'Student123!' },
+      admin: { email: 'admin@example.com', password: 'Demo@123456' },
+      proctor: { email: 'proctor@example.com', password: 'Demo@123456' },
+      judge: { email: 'judge1@example.com', password: 'Demo@123456' },
+      fellow: { email: 'fellow1@example.com', password: 'Demo@123456' },
     };
     setEmail(accounts[type].email);
     setPassword(accounts[type].password);
@@ -70,9 +71,9 @@ export default function LoginPage() {
         {/* Logo/Title */}
         <div className="text-center mb-8">
           <h1 className="text-5xl font-bold mb-2 text-gradient">
-            HackProctor
+            CodeArena
           </h1>
-          <p className="text-gray-400">Next-gen hackathon assessment platform</p>
+          <p className="text-gray-400">Justice Through Code Challenge Platform</p>
         </div>
 
         {/* Login Card */}
@@ -141,24 +142,30 @@ export default function LoginPage() {
           {/* Demo accounts */}
           <div className="mt-6 pt-6 border-t border-gray-700">
             <p className="text-xs text-gray-400 mb-3 text-center">Quick demo accounts:</p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               <button
                 onClick={() => fillDemoAccount('admin')}
-                className="px-3 py-2 bg-dark-700 hover:bg-dark-600 border border-neon-blue/30 rounded text-xs text-gray-300 hover:text-neon-blue transition-all"
+                className="px-3 py-2 bg-dark-700 hover:bg-dark-600 border border-red-500/30 rounded text-xs text-gray-300 hover:text-red-400 transition-all"
               >
                 Admin
               </button>
               <button
                 onClick={() => fillDemoAccount('proctor')}
-                className="px-3 py-2 bg-dark-700 hover:bg-dark-600 border border-neon-purple/30 rounded text-xs text-gray-300 hover:text-neon-purple transition-all"
+                className="px-3 py-2 bg-dark-700 hover:bg-dark-600 border border-orange-500/30 rounded text-xs text-gray-300 hover:text-orange-400 transition-all"
               >
                 Proctor
               </button>
               <button
-                onClick={() => fillDemoAccount('student')}
-                className="px-3 py-2 bg-dark-700 hover:bg-dark-600 border border-neon-pink/30 rounded text-xs text-gray-300 hover:text-neon-pink transition-all"
+                onClick={() => fillDemoAccount('judge')}
+                className="px-3 py-2 bg-dark-700 hover:bg-dark-600 border border-neon-purple/30 rounded text-xs text-gray-300 hover:text-neon-purple transition-all"
               >
-                Student
+                Judge
+              </button>
+              <button
+                onClick={() => fillDemoAccount('fellow')}
+                className="px-3 py-2 bg-dark-700 hover:bg-dark-600 border border-neon-green/30 rounded text-xs text-gray-300 hover:text-neon-green transition-all"
+              >
+                Fellow
               </button>
             </div>
           </div>

@@ -42,7 +42,7 @@ export const register = async (
       firstName,
       lastName,
       passwordHash,
-      roles: [{ role: 'applicant', organizationId: assignedOrgId }],
+      roles: [{ role: 'fellow', organizationId: assignedOrgId }],
       isActive: true,
       emailVerified: false,
     });

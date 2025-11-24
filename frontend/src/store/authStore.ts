@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import { authAPI } from '@/lib/api';
 
 // Role type matching backend (lowercase)
-export type UserRole = 'admin' | 'proctor' | 'grader' | 'judge' | 'applicant';
+export type UserRole = 'admin' | 'proctor' | 'grader' | 'judge' | 'fellow';
 
 export interface User {
   id: string;
@@ -42,7 +42,7 @@ interface AuthState {
   isAdmin: () => boolean;
   isProctor: () => boolean;
   isJudge: () => boolean;
-  isApplicant: () => boolean;
+  isFellow: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -199,8 +199,8 @@ export const useAuthStore = create<AuthState>()(
         return get().hasRole('judge');
       },
 
-      isApplicant: () => {
-        return get().hasRole('applicant');
+      isFellow: () => {
+        return get().hasRole('fellow');
       },
     }),
     {

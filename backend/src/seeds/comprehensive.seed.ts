@@ -26,7 +26,7 @@ export async function seedComprehensive() {
       description: 'Empowering communities through technology education',
       settings: {
         allowSelfRegistration: true,
-        defaultRoles: ['applicant'],
+        defaultRoles: ['fellow'],
       },
     });
     logger.info(`Created organization: ${organization.name}`);
@@ -105,21 +105,21 @@ export async function seedComprehensive() {
         isActive: true,
         emailVerified: true,
       },
-      // Applicants (Participants)
+      // Fellows (JTC Participants)
       ...Array.from({ length: 20 }, (_, i) => ({
-        email: `student${i + 1}@example.com`,
+        email: `fellow${i + 1}@example.com`,
         password: hashedPassword,
         firstName: ['Alex', 'Jordan', 'Taylor', 'Morgan', 'Casey', 'Riley', 'Dakota', 'Avery'][i % 8],
         lastName: ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones'][i % 5],
         roles: [
-          { role: 'applicant', organizationId: organization._id },
+          { role: 'fellow', organizationId: organization._id },
         ],
         isActive: true,
         emailVerified: true,
       })),
     ]);
 
-    const [admin, proctor, judge1, judge2, judge3, grader, ...applicants] = users;
+    const [admin, proctor, judge1, judge2, judge3, grader, ...fellows] = users;
     logger.info(`Created ${users.length} users`);
 
     // Create Questions for Assessments
@@ -351,7 +351,7 @@ export async function seedComprehensive() {
     const teams = await Team.create([
       {
         name: 'Code Wizards',
-        memberIds: [applicants[0]._id, applicants[1]._id, applicants[2]._id, applicants[3]._id],
+        memberIds: [fellows[0]._id, fellows[1]._id, fellows[2]._id, fellows[3]._id],
         organizationId: organization._id,
         projectTitle: 'AI-Powered Study Assistant',
         description: 'A smart study assistant that uses AI to help students learn more effectively',
@@ -363,7 +363,7 @@ export async function seedComprehensive() {
       },
       {
         name: 'Data Ninjas',
-        memberIds: [applicants[4]._id, applicants[5]._id, applicants[6]._id],
+        memberIds: [fellows[4]._id, fellows[5]._id, fellows[6]._id],
         organizationId: organization._id,
         projectTitle: 'Community Health Tracker',
         description: 'Track and visualize community health metrics to improve public health outcomes',
@@ -375,7 +375,7 @@ export async function seedComprehensive() {
       },
       {
         name: 'Tech Titans',
-        memberIds: [applicants[7]._id, applicants[8]._id, applicants[9]._id, applicants[10]._id],
+        memberIds: [fellows[7]._id, fellows[8]._id, fellows[9]._id, fellows[10]._id],
         organizationId: organization._id,
         projectTitle: 'Green Energy Monitor',
         description: 'Monitor and optimize energy consumption in real-time',
@@ -387,7 +387,7 @@ export async function seedComprehensive() {
       },
       {
         name: 'Innovators',
-        memberIds: [applicants[11]._id, applicants[12]._id, applicants[13]._id],
+        memberIds: [fellows[11]._id, fellows[12]._id, fellows[13]._id],
         organizationId: organization._id,
         projectTitle: 'Local Business Connect',
         description: 'Platform connecting local businesses with community members',
@@ -398,7 +398,7 @@ export async function seedComprehensive() {
       },
       {
         name: 'Future Builders',
-        memberIds: [applicants[14]._id, applicants[15]._id, applicants[16]._id, applicants[17]._id],
+        memberIds: [fellows[14]._id, fellows[15]._id, fellows[16]._id, fellows[17]._id],
         organizationId: organization._id,
         projectTitle: 'Skills Marketplace',
         description: 'Connect people who want to learn skills with local mentors',
@@ -408,7 +408,7 @@ export async function seedComprehensive() {
       },
       {
         name: 'Debug Squad',
-        memberIds: [applicants[18]._id, applicants[19]._id],
+        memberIds: [fellows[18]._id, fellows[19]._id],
         organizationId: organization._id,
         projectTitle: 'Code Review Assistant',
         description: 'AI-powered code review tool to help developers write better code',
@@ -478,7 +478,7 @@ export async function seedComprehensive() {
     console.log(`     - Proctors: 1`);
     console.log(`     - Judges: 3`);
     console.log(`     - Graders: 1`);
-    console.log(`     - Applicants: 20`);
+    console.log(`     - Fellows: 20`);
     console.log(`   Questions: ${questions.length}`);
     console.log(`   Assessments: ${assessments.length}`);
     console.log(`   Teams: ${teams.length}`);
@@ -488,7 +488,7 @@ export async function seedComprehensive() {
     console.log('   Proctor:   proctor@example.com');
     console.log('   Judge:     judge1@example.com, judge2@example.com, judge3@example.com');
     console.log('   Grader:    grader@example.com');
-    console.log('   Students:  student1@example.com - student20@example.com');
+    console.log('   Fellows:   fellow1@example.com - fellow20@example.com');
     console.log('\n🎯 Ready to test!');
     console.log('='.repeat(50) + '\n');
 
