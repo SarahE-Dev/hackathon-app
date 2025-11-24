@@ -6,7 +6,7 @@ This document demonstrates the visual differences between what each role sees in
 
 ## Dashboard View Comparison
 
-### 🎓 STUDENT/APPLICANT View (`/dashboard`)
+### 🎓 STUDENT/FELLOW View (`/dashboard`)
 
 **What Students SEE:**
 ```
@@ -164,7 +164,7 @@ This document demonstrates the visual differences between what each role sees in
 
 ### Test Accounts to Verify Different Views:
 
-1. **Login as Student/Applicant:**
+1. **Login as Student/Fellow:**
    - Email: `student@example.com`
    - You should see: NO Quick Actions section
 
@@ -216,7 +216,7 @@ The conditional rendering that creates these differences:
 )}
 ```
 
-**If the user role is "Applicant" (student):**
+**If the user role is "Fellow" (student):**
 - `isAdmin()` returns `false`
 - `isProctor()` returns `false`
 - `isJudge()` returns `false`

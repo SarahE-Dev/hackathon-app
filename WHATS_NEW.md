@@ -163,9 +163,9 @@ docker-compose up --build
 ### 2. Login:
 
 ```
-Admin:   admin@example.com   / Demo@123456
-Judge:   judge1@example.com  / Demo@123456
-Student: student1@example.com / Demo@123456
+Admin:   admin@codearena.edu   / password123
+Judge:   judge1@codearena.edu  / password123
+Student: student1@codearena.edu / password123
 ```
 
 ### 3. Explore:

@@ -1,6 +1,6 @@
 # API Reference
 
-All endpoints are prefixed with `/api/v1` (or `/api` for current version).
+All endpoints are prefixed with `/api`.
 
 Base URL: `http://localhost:3001/api`
 
@@ -24,6 +24,16 @@ POST   /auth/login              Login and get tokens
 POST   /auth/refresh            Refresh access token
 POST   /auth/logout             Logout
 GET    /auth/me                 Get current user
+```
+
+### Users
+
+```
+GET    /users                   List all users (admin only)
+GET    /users/:id               Get user details
+PUT    /users/:id               Update user
+PUT    /users/:id/roles         Update user roles (admin only)
+DELETE /users/:id               Delete user (admin only)
 ```
 
 ### Assessments
@@ -70,19 +80,119 @@ POST   /attempts/:id/upload                  Upload file for question
 ### Grades
 
 ```
+GET    /grades/ungraded                      Get ungraded attempts
 GET    /grades/attempt/:attemptId            Get grades for attempt
+GET    /grades/by-attempt/:attemptId         Get grade by attempt
 GET    /grades/assessment/:assessmentId      Get all grades for assessment
 POST   /grades                               Create/update grade
 PUT    /grades/:id                           Update grade
+PUT    /grades/:id/release                   Release grade to student
 ```
 
-### Users
+### Sessions (Assessment Windows)
 
 ```
-GET    /users                 List all users (admin only)
-GET    /users/:id             Get user details
-PUT    /users/:id             Update user
-DELETE /users/:id             Delete user (admin only)
+GET    /sessions                             List sessions
+GET    /sessions/:id                         Get session details
+POST   /sessions                             Create session
+PUT    /sessions/:id                         Update session
+DELETE /sessions/:id                         Delete session
+```
+
+### Teams
+
+```
+GET    /teams                                List all teams
+GET    /teams/:id                            Get team details
+POST   /teams                                Create team
+PUT    /teams/:id                            Update team
+DELETE /teams/:id                            Delete team (admin only)
+```
+
+### Hackathon Sessions
+
+```
+GET    /hackathon-sessions                              List hackathon sessions
+GET    /hackathon-sessions/:id                          Get session details
+POST   /hackathon-sessions                              Create session (admin/proctor)
+PUT    /hackathon-sessions/:id                          Update session (admin/proctor)
+DELETE /hackathon-sessions/:id                          Delete session (admin only)
+POST   /hackathon-sessions/:id/start                    Start session (admin/proctor)
+POST   /hackathon-sessions/:id/pause                    Pause session (admin/proctor)
+POST   /hackathon-sessions/:id/resume                   Resume session (admin/proctor)
+POST   /hackathon-sessions/:id/complete                 Complete session (admin/proctor)
+GET    /hackathon-sessions/:id/leaderboard              Get session leaderboard
+GET    /hackathon-sessions/monitor/active               Get active sessions for monitoring
+```
+
+### Team Sessions (During Hackathon)
+
+```
+POST   /hackathon-sessions/team/join                                  Join session as team
+GET    /hackathon-sessions/:sessionId/team/:teamId                    Get team session
+PUT    /hackathon-sessions/:sessionId/team/:teamId/problem            Update problem progress
+POST   /hackathon-sessions/:sessionId/team/:teamId/problem/submit     Submit solution
+POST   /hackathon-sessions/:sessionId/team/:teamId/submit             Final team submission
+POST   /hackathon-sessions/:sessionId/team/:teamId/event              Log proctoring event
+POST   /hackathon-sessions/:sessionId/team/:teamId/pause              Pause team (proctor)
+POST   /hackathon-sessions/:sessionId/team/:teamId/resume             Resume team (proctor)
+```
+
+### Judge Scores
+
+```
+GET    /judge-scores                         List all scores
+GET    /judge-scores/team/:teamId            Get scores for team
+POST   /judge-scores                         Create/update score
+DELETE /judge-scores/:id                     Delete score
+```
+
+### Leaderboard
+
+```
+GET    /leaderboard/:sessionId               Get leaderboard for session
+PUT    /leaderboard/:sessionId               Update leaderboard standings
+```
+
+### Proctoring
+
+```
+GET    /proctoring/sessions/:id              Get proctoring data for session
+POST   /proctoring/:attemptId/flag           Flag an incident
+GET    /proctoring/:attemptId/incidents      Get incidents for attempt
+PUT    /proctoring/incidents/:id/resolve     Resolve incident
+```
+
+### Plagiarism Detection
+
+```
+POST   /plagiarism/similarity                Detect similarity between submissions
+GET    /plagiarism/anomalies/:attemptId      Get timing anomalies
+POST   /plagiarism/ai-detection              Check if code is AI-generated
+GET    /plagiarism/report/:assessmentId      Get integrity report
+```
+
+### Code Execution
+
+```
+POST   /code-execution/execute               Execute code against test cases
+```
+
+### File Upload
+
+```
+POST   /file-upload/upload                   Upload file
+GET    /file-upload/:id                      Get file
+DELETE /file-upload/:id                      Delete file
+```
+
+### Organizations
+
+```
+GET    /organizations                        List organizations
+GET    /organizations/:id                    Get organization details
+POST   /organizations                        Create organization (admin)
+PUT    /organizations/:id                    Update organization (admin)
 ```
 
 ## Request/Response Format
@@ -119,8 +229,7 @@ Authorization: Bearer {token}
   "success": true,
   "data": {
     "_id": "64a1b2c3d4e5f6g7h8i9j0k1",
-    "title": "JavaScript Fundamentals",
-    ...
+    "title": "JavaScript Fundamentals"
   }
 }
 ```
@@ -151,64 +260,20 @@ Authorization: Bearer {token}
 | 429 | Too Many Requests (rate limited) |
 | 500 | Server Error |
 
-## Rate Limiting
+## Role-Based Access
 
-Auth endpoints are rate limited:
-- **15 requests per 15 minutes** per IP address
-
-Response header when rate limited:
-```
-Retry-After: 300
-```
-
-## Example Requests
-
-### Create Assessment
-
-```bash
-curl -X POST http://localhost:3001/api/assessments \
-  -H "Authorization: Bearer {token}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Quiz",
-    "organizationId": "...",
-    "sections": [],
-    "settings": {
-      "passingScore": 70,
-      "attemptsAllowed": 1
-    }
-  }'
-```
-
-### Start Attempt
-
-```bash
-curl -X POST http://localhost:3001/api/attempts/start \
-  -H "Authorization: Bearer {token}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "assessmentId": "64a1b2c3d4e5f6g7h8i9j0k1"
-  }'
-```
-
-### Save Answer (Auto-save)
-
-```bash
-curl -X PUT http://localhost:3001/api/attempts/{attemptId}/answer \
-  -H "Authorization: Bearer {token}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "questionId": "q1",
-    "answer": "The answer to the question"
-  }'
-```
-
-### Submit Attempt
-
-```bash
-curl -X POST http://localhost:3001/api/attempts/{attemptId}/submit \
-  -H "Authorization: Bearer {token}"
-```
+| Endpoint Group | Admin | Proctor | Judge | Grader | Fellow |
+|----------------|-------|---------|-------|--------|--------|
+| Auth | All | All | All | All | All |
+| Users (read) | Yes | Yes | Yes | Yes | Own |
+| Users (write) | Yes | No | No | No | Own |
+| Assessments | All | Read | Read | Read | Read |
+| Attempts | All | All | Read | All | Own |
+| Grades | All | Read | Read | All | Own |
+| Teams | All | Read | Read | Read | Own Team |
+| Hackathon Sessions | All | Manage | Read | Read | Participate |
+| Judge Scores | Read | Read | All | Read | No |
+| Proctoring | All | All | No | No | No |
 
 ## WebSocket Events (Real-time)
 
@@ -217,17 +282,21 @@ Connected via Socket.io at `ws://localhost:3001`
 ### Events Emitted by Server
 
 ```
-proctor:incident      Student triggered a proctoring flag
-proctor:submit        Student submitted attempt
-attempt:update        Attempt status changed
-grade:released        Grades released to student
+proctor:incident          Student triggered a proctoring flag
+proctor:submit            Student submitted attempt
+attempt:update            Attempt status changed
+grade:released            Grades released to student
+session:update            Hackathon session status changed
+team:update               Team session updated
+leaderboard:update        Leaderboard standings changed
 ```
 
 ### Events Sent by Client
 
 ```
-attempt:answer        Answer saved (for real-time sync)
-proctor:event         User event (tab switch, copy, etc.)
+attempt:answer            Answer saved (for real-time sync)
+proctor:event             User event (tab switch, copy, etc.)
+team:code                 Code update in team session
 ```
 
 ## Rate Limits

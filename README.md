@@ -1,59 +1,94 @@
-# CodeArena 🚀
+# CodeArena
 
-**Production-ready assessment and hackathon platform** with proctoring, coding challenges, grading, and judging capabilities.
+**Justice Through Code Hackathon & Assessment Platform** - A production-ready platform with proctoring, live coding sessions, team collaboration, grading, and judging capabilities.
 
 Built with **Next.js 14**, **Express.js**, **MongoDB**, and **Redis**. Fully containerized with Docker.
 
 ## Quick Links
 
-- 📖 **[Documentation](./docs/INDEX.md)** - Complete documentation with guides
-- ⚡ **[Quick Start (2 min)](./docs/QUICKSTART.md)** - Get up and running fast
-- 🔐 **[Login & Accounts](./docs/LOGIN.md)** - Test credentials and account setup
-- 🏗️ **[Architecture](./docs/ARCHITECTURE.md)** - System design and tech stack
-- 🛠️ **[Development Setup](./docs/SETUP.md)** - Local development environment
-- 🐳 **[Docker Guide](./docs/DOCKER.md)** - Containerization and commands
-- 📡 **[API Reference](./docs/API.md)** - REST API endpoints
-- 🚀 **[Deployment](./docs/DEPLOYMENT.md)** - Production deployment guide
-- ✨ **[Features & Roadmap](./docs/FEATURES.md)** - Feature list and status
-- ❓ **[FAQ](./docs/FAQ.md)** - Troubleshooting and common questions
+- [Documentation](./docs/INDEX.md) - Complete documentation with guides
+- [Quick Start (2 min)](./docs/QUICKSTART.md) - Get up and running fast
+- [Login & Accounts](./docs/LOGIN.md) - Test credentials and account setup
+- [Architecture](./docs/ARCHITECTURE.md) - System design and tech stack
+- [Development Setup](./docs/SETUP.md) - Local development environment
+- [Docker Guide](./docs/DOCKER.md) - Containerization and commands
+- [API Reference](./docs/API.md) - REST API endpoints
+- [Deployment](./docs/DEPLOYMENT.md) - Production deployment guide
+- [Features & Roadmap](./docs/FEATURES.md) - Feature list and status
+- [FAQ](./docs/FAQ.md) - Troubleshooting and common questions
 
-## What's Included ✅
+## What's Included
 
-### Core Features
-✅ User authentication (JWT)
-✅ Assessment creation & publishing
-✅ 6 question types (MCQ, short/long answer, multi-select, coding, file upload)
-✅ Auto-save functionality
-✅ Dashboard with progress tracking
-✅ Role-based access control
+### Core Platform
+- User authentication (JWT with refresh tokens)
+- 5 user roles: Admin, Proctor, Judge, Grader, Fellow
+- Multi-organization support with cohorts
+- Role-based access control (RBAC)
+- Dashboard with progress tracking
+
+### Assessment System
+- 6 question types (MCQ single/multi, short/long answer, coding, file upload)
+- Assessment builder with sections and time limits
+- Draft → Review → Published workflow with versioning
+- Auto-save functionality (every 10 seconds)
+- Offline support with sync when reconnected
+
+### Hackathon Mode
+- Team management and registration
+- Live coding sessions with real-time collaboration
+- Project submissions (repo, demo, video links)
+- Judge scoring with configurable rubrics
+- Live leaderboard with tie-break rules
+- Proctoring during hackathon sessions
+
+### Proctoring & Integrity
+- Real-time monitoring dashboard
+- Tab switch & blur detection
+- Copy/paste/print detection
+- Fullscreen enforcement
+- Idle time monitoring
+- Device fingerprinting & IP logging
+- Incident flagging and resolution
+- Plagiarism detection (code similarity, timing anomalies, AI detection)
+
+### Grading System
+- Manual grading interface with rubrics
+- Advanced auto-grading for coding questions
+- Inline comments and feedback
+- Grade release workflow
+- Multi-dimensional scoring (correctness, quality, efficiency, style)
 
 ### Tech Stack
 - **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS, Zustand
 - **Backend**: Express.js, TypeScript, Mongoose, Socket.io
 - **Database**: MongoDB 7.0
-- **Cache**: Redis 7
+- **Cache/Queue**: Redis 7, BullMQ
 - **Infrastructure**: Docker Compose, multi-stage builds
 
 ## Getting Started
 
-### 1️⃣ Start Docker
+### 1. Start Docker
 ```bash
 docker-compose up
 ```
 
 Wait ~30 seconds for services to be ready.
 
-### 2️⃣ Open App
+### 2. Open App
 Visit: **http://localhost:3000/dashboard**
 
-### 3️⃣ Login
+### 3. Login
 ```
-Email:    demo@example.com
-Password: Demo@123456
+Admin:    admin@codearena.edu / password123
+Proctor:  proctor@codearena.edu / password123
+Judge:    judge@codearena.edu / password123
+Fellow:   student@codearena.edu / password123
 ```
 
-### 4️⃣ Test Assessment
-Click "Start" on the JavaScript Fundamentals Quiz and try it out!
+### 4. Explore
+- Take an assessment from the dashboard
+- View hackathon teams and sessions
+- (Admin) Manage users, sessions, and assessments
 
 ## Project Structure
 
@@ -77,31 +112,15 @@ Everything you need is in the **[docs folder](./docs/)**:
 - **Deploying?** Check [Deployment](./docs/DEPLOYMENT.md)
 - **Stuck?** See [FAQ](./docs/FAQ.md)
 
-## Key Features
+## User Roles
 
-### Assessment Platform
-- Create and publish assessments
-- Support for 6 question types
-- Auto-save user responses
-- Flexible grading settings
-- Detailed analytics
-
-### Proctoring (In Development)
-- Real-time monitoring dashboard
-- Incident detection & flagging
-- Proctoring event logging
-
-### Admin Controls (Planned)
-- User management
-- Question bank
-- Assessment scheduling
-- Access policies
-
-### Hackathon Mode (Planned)
-- Team management
-- Project submissions
-- Judge rubrics
-- Live leaderboards
+| Role | Description |
+|------|-------------|
+| **Admin** | Full platform control - manage users, assessments, sessions, settings |
+| **Proctor** | Monitor live sessions, pause/resume, handle incidents |
+| **Judge** | Score hackathon projects via rubrics, view submissions |
+| **Grader** | Grade assessment submissions (reserved for TAs) |
+| **Fellow** | Take assessments, join hackathon teams, view results |
 
 ## Commands
 
@@ -152,18 +171,25 @@ Production-ready with Docker. Deploy to:
 
 See [Deployment Guide](./docs/DEPLOYMENT.md) for step-by-step instructions.
 
-## Development Roadmap
+## Feature Status
 
-| Feature | Status | Version |
-|---------|--------|---------|
-| Assessment platform | ✅ | v1.0 |
-| Results & grading | 🔄 | v1.1 |
-| Proctoring dashboard | 🔄 | v1.1 |
-| Hackathon mode | ⏳ | v2.0 |
-| Admin controls | ⏳ | v2.0 |
-| Analytics | ⏳ | v2.0 |
+| Feature | Status |
+|---------|--------|
+| Assessment platform | Implemented |
+| 6 question types | Implemented |
+| Results & grading | Implemented |
+| Proctoring system | Implemented |
+| Hackathon mode | Implemented |
+| Team management | Implemented |
+| Judge scoring | Implemented |
+| Admin dashboard | Implemented |
+| Plagiarism detection | Implemented |
+| Offline support | Implemented |
+| Multi-language code execution | Planned |
+| SSO integration | Planned |
+| Advanced analytics | Planned |
 
-Full roadmap in [Features](./docs/FEATURES.md).
+Full details in [Features](./docs/FEATURES.md).
 
 ## Issues & Support
 

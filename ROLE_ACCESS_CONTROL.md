@@ -5,7 +5,7 @@ This document outlines what each role can see and access in the hackathon applic
 
 ---
 
-## 🎓 STUDENTS/APPLICANTS (Applicant Role)
+## 🎓 FELLOWS (Fellow Role)
 
 ### What They CAN See:
 - ✅ **Main Dashboard** (`/dashboard`)
@@ -60,7 +60,7 @@ This document outlines what each role can see and access in the hackathon applic
 ## 👨‍⚖️ JUDGES (Judge Role)
 
 ### What They CAN See:
-- ✅ All Student Access (above)
+- ✅ All Fellow Access (above)
 - ✅ **Judge Dashboard** (`/judge`)
   - List of all teams and submitted projects
   - Score projects using 5-criteria rubric:
@@ -86,7 +86,7 @@ This document outlines what each role can see and access in the hackathon applic
 ## 👁️ PROCTORS (Proctor Role)
 
 ### What They CAN See:
-- ✅ All Student Access (above)
+- ✅ All Fellow Access (above)
 - ✅ **Proctor Dashboard** (`/proctor`)
   - Real-time statistics:
     - Active sessions count
@@ -243,8 +243,8 @@ POST   /api/hackathon-sessions/:sessionId/team/:teamId/event     // Log proctori
 
 ## 📊 Summary Matrix
 
-| Feature | Student | Judge | Proctor | Admin |
-|---------|---------|-------|---------|-------|
+| Feature | Fellow | Judge | Proctor | Admin |
+|---------|--------|-------|---------|-------|
 | Dashboard | ✅ | ✅ | ✅ | ✅ |
 | Hackathon Sessions List | ✅ | ✅ | ✅ | ✅ |
 | Join/Code in Sessions | ✅ | ✅ | ✅ | ✅ |
@@ -282,7 +282,7 @@ POST   /api/hackathon-sessions/:sessionId/team/:teamId/event     // Log proctori
 
 ## 🎯 Conclusion
 
-**Students (Applicants) are properly isolated** and can only access:
+**Fellows are properly isolated** and can only access:
 1. Their own dashboard with hackathon and assessment features
 2. Hackathon sessions they can join (with team membership)
 3. Live coding interface with proctoring
