@@ -730,4 +730,81 @@ export const judgeDocumentationAPI = {
   },
 };
 
+// Recording API
+export const recordingAPI = {
+  // Start a new recording session
+  startRecording: async (data: {
+    sourceType: 'assessment' | 'hackathon';
+    sourceId: string;
+    type: 'webcam' | 'screen' | 'snapshot';
+    teamId?: string;
+    consent: { given: boolean };
+    metadata?: {
+      resolution?: string;
+      frameRate?: number;
+      audioEnabled?: boolean;
+      deviceInfo?: string;
+    };
+  }) => {
+    const response = await api.post('/recordings/start', data);
+    return response.data;
+  },
+
+  // Upload a recording chunk
+  uploadChunk: async (recordingId: string, formData: FormData) => {
+    const response = await api.post(`/recordings/${recordingId}/chunk`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // Upload a snapshot
+  uploadSnapshot: async (recordingId: string, formData: FormData) => {
+    const response = await api.post(`/recordings/${recordingId}/snapshot`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // Complete a recording
+  completeRecording: async (recordingId: string, data?: { totalSize?: number; duration?: number }) => {
+    const response = await api.post(`/recordings/${recordingId}/complete`, data || {});
+    return response.data;
+  },
+
+  // Mark recording as failed
+  failRecording: async (recordingId: string, errorMessage?: string) => {
+    const response = await api.post(`/recordings/${recordingId}/fail`, { errorMessage });
+    return response.data;
+  },
+
+  // Get recordings for an assessment attempt or hackathon session
+  getRecordings: async (sourceType: 'assessment' | 'hackathon', sourceId: string) => {
+    const response = await api.get(`/recordings/${sourceType}/${sourceId}`);
+    return response.data;
+  },
+
+  // Get a single recording
+  getRecording: async (recordingId: string) => {
+    const response = await api.get(`/recordings/detail/${recordingId}`);
+    return response.data;
+  },
+
+  // Delete a recording (admin only)
+  deleteRecording: async (recordingId: string) => {
+    const response = await api.delete(`/recordings/${recordingId}`);
+    return response.data;
+  },
+
+  // Get recording statistics (admin only)
+  getStats: async () => {
+    const response = await api.get('/recordings/stats');
+    return response.data;
+  },
+};
+
 export default api;
