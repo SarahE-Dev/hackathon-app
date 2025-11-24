@@ -577,6 +577,84 @@ export const hackathonSessionsAPI = {
   },
 };
 
+// Hackathon Roster API
+export const hackathonRosterAPI = {
+  // Get roster for a hackathon session
+  getRoster: async (sessionId: string, params?: { role?: string; status?: string }) => {
+    const response = await api.get(`/hackathon-roster/${sessionId}`, { params });
+    return response.data;
+  },
+
+  // Add single entry to roster
+  addToRoster: async (sessionId: string, data: {
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    role: 'judge' | 'fellow';
+    notes?: string;
+    organizationId?: string;
+  }) => {
+    const response = await api.post(`/hackathon-roster/${sessionId}`, data);
+    return response.data;
+  },
+
+  // Bulk add entries to roster
+  bulkAddToRoster: async (sessionId: string, data: {
+    entries: Array<{ email: string; firstName?: string; lastName?: string }>;
+    role: 'judge' | 'fellow';
+    organizationId?: string;
+  }) => {
+    const response = await api.post(`/hackathon-roster/${sessionId}/bulk`, data);
+    return response.data;
+  },
+
+  // Update roster entry
+  updateEntry: async (id: string, data: {
+    firstName?: string;
+    lastName?: string;
+    notes?: string;
+    teamId?: string | null;
+    status?: string;
+  }) => {
+    const response = await api.put(`/hackathon-roster/entry/${id}`, data);
+    return response.data;
+  },
+
+  // Remove from roster
+  removeFromRoster: async (id: string) => {
+    const response = await api.delete(`/hackathon-roster/entry/${id}`);
+    return response.data;
+  },
+
+  // Assign fellow to team
+  assignToTeam: async (id: string, teamId: string | null) => {
+    const response = await api.post(`/hackathon-roster/entry/${id}/assign-team`, { teamId });
+    return response.data;
+  },
+
+  // Bulk assign to teams
+  bulkAssignToTeams: async (sessionId: string, assignments: Array<{ rosterId: string; teamId: string | null }>) => {
+    const response = await api.post(`/hackathon-roster/${sessionId}/bulk-assign`, { assignments });
+    return response.data;
+  },
+
+  // Auto-create teams from roster
+  createTeamsFromRoster: async (sessionId: string, data?: {
+    teamSize?: number;
+    teamNamePrefix?: string;
+    organizationId?: string;
+  }) => {
+    const response = await api.post(`/hackathon-roster/${sessionId}/create-teams`, data || {});
+    return response.data;
+  },
+
+  // Check if email is on roster
+  checkEmail: async (email: string) => {
+    const response = await api.get(`/hackathon-roster/check/${email}`);
+    return response.data;
+  },
+};
+
 // Judge Documentation API
 export const judgeDocumentationAPI = {
   // Get documentation (for judges - active only)

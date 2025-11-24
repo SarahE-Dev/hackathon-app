@@ -317,6 +317,12 @@ export default function AdminSessionsPage() {
                         </button>
                       )}
                       <button
+                        onClick={() => router.push(`/admin/hackathons/${session._id}`)}
+                        className="px-4 py-2 bg-neon-green/20 hover:bg-neon-green/30 border border-neon-green/50 text-neon-green rounded text-sm transition-all"
+                      >
+                        Manage Roster
+                      </button>
+                      <button
                         onClick={() => router.push(`/admin/sessions/${session._id}/edit`)}
                         className="px-4 py-2 bg-dark-700 hover:bg-dark-600 border border-gray-600 text-white rounded text-sm transition-all"
                       >
