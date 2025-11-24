@@ -210,7 +210,7 @@ export default function DashboardPage() {
                 <span className="text-3xl">🎓</span>
                 <div>
                   <h1 className="text-3xl font-bold text-gradient">Fellow Dashboard</h1>
-                  <p className="text-gray-400 text-sm">Welcome back, {authUser?.firstName}!</p>
+                  <p className="text-gray-400 text-sm">Welcome back, {authUser?.firstName}! Ready to code?</p>
                 </div>
               </div>
             </div>
@@ -218,9 +218,9 @@ export default function DashboardPage() {
               <NotificationCenter />
               <button
                 onClick={handleLogout}
-                className="px-4 py-2 bg-dark-700 border border-red-500/50 text-red-400 rounded-lg hover:bg-red-500/10 transition-all text-sm"
+                className="px-4 py-2 bg-dark-700 border border-gray-600 text-gray-400 rounded-lg hover:bg-dark-600 hover:text-white transition-all text-sm"
               >
-                Logout
+                Sign Out
               </button>
             </div>
           </div>
@@ -236,25 +236,65 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* Welcome Banner - Action-oriented */}
+        {(inProgressCount > 0 || activeSessions.length > 0) && (
+          <div className="glass rounded-xl p-5 border border-neon-green/30 bg-neon-green/5 mb-6">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                {inProgressCount > 0 ? (
+                  <>
+                    <span className="text-2xl">⏳</span>
+                    <div>
+                      <p className="font-semibold text-neon-green">You have {inProgressCount} assessment{inProgressCount !== 1 ? 's' : ''} in progress</p>
+                      <p className="text-sm text-gray-400">Continue where you left off</p>
+                    </div>
+                  </>
+                ) : activeSessions.length > 0 ? (
+                  <>
+                    <span className="text-2xl animate-pulse">🔴</span>
+                    <div>
+                      <p className="font-semibold text-neon-green">{activeSessions.length} Live Session{activeSessions.length !== 1 ? 's' : ''} Available!</p>
+                      <p className="text-sm text-gray-400">Join now and start coding</p>
+                    </div>
+                  </>
+                ) : null}
+              </div>
+              {inProgressCount > 0 && (
+                <Link
+                  href="/assessments"
+                  className="px-4 py-2 bg-neon-green hover:bg-neon-green/80 text-white rounded-lg font-medium transition-all text-sm"
+                >
+                  Continue Assessment
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Progress Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="glass rounded-xl p-5 border border-neon-blue/20">
+          <div className="glass rounded-xl p-5 border border-neon-blue/20 hover:border-neon-blue/40 transition-all">
             <div className="text-2xl mb-2">📋</div>
             <p className="text-3xl font-bold text-neon-blue">{availableCount}</p>
-            <p className="text-sm text-gray-400">Available</p>
+            <p className="text-sm text-gray-400">Available Assessments</p>
           </div>
-          <div className="glass rounded-xl p-5 border border-neon-purple/20">
+          <div className="glass rounded-xl p-5 border border-neon-purple/20 hover:border-neon-purple/40 transition-all">
             <div className="text-2xl mb-2">⏳</div>
             <p className="text-3xl font-bold text-neon-purple">{inProgressCount}</p>
             <p className="text-sm text-gray-400">In Progress</p>
           </div>
-          <div className="glass rounded-xl p-5 border border-neon-green/20">
+          <div className="glass rounded-xl p-5 border border-neon-green/20 hover:border-neon-green/40 transition-all">
             <div className="text-2xl mb-2">✅</div>
             <p className="text-3xl font-bold text-neon-green">{completedCount}</p>
             <p className="text-sm text-gray-400">Completed</p>
           </div>
-          <div className="glass rounded-xl p-5 border border-orange-500/20">
-            <div className="text-2xl mb-2">🔴</div>
+          <div className="glass rounded-xl p-5 border border-orange-500/20 hover:border-orange-500/40 transition-all">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-2xl">🔴</span>
+              {activeSessions.length > 0 && (
+                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+              )}
+            </div>
             <p className="text-3xl font-bold text-orange-400">{activeSessions.length}</p>
             <p className="text-sm text-gray-400">Live Sessions</p>
           </div>
@@ -509,23 +549,36 @@ export default function DashboardPage() {
               </Link>
             </div>
 
-            {/* Help */}
+            {/* Tips & Info */}
             <div className="glass rounded-xl p-6 border border-gray-700">
-              <h2 className="text-xl font-bold mb-4">Need Help?</h2>
-              <div className="space-y-3 text-sm text-gray-400">
-                <p className="flex items-start gap-2">
-                  <span>❓</span>
-                  <span>Contact your instructor or admin if you have questions about assessments.</span>
-                </p>
-                <p className="flex items-start gap-2">
-                  <span>👥</span>
-                  <span>If you need to join a team, ask an admin to add you.</span>
-                </p>
-                <p className="flex items-start gap-2">
-                  <span>🐛</span>
-                  <span>Report any technical issues to the platform administrators.</span>
-                </p>
+              <h2 className="text-xl font-bold mb-4">Tips for Success</h2>
+              <div className="space-y-3 text-sm">
+                <div className="p-3 bg-neon-blue/10 rounded-lg border border-neon-blue/20">
+                  <p className="flex items-start gap-2">
+                    <span>💡</span>
+                    <span className="text-gray-300">Read each question carefully before coding. Plan your approach first!</span>
+                  </p>
+                </div>
+                <div className="p-3 bg-neon-purple/10 rounded-lg border border-neon-purple/20">
+                  <p className="flex items-start gap-2">
+                    <span>⏱️</span>
+                    <span className="text-gray-300">Watch your time. Move on if stuck and come back later.</span>
+                  </p>
+                </div>
+                <div className="p-3 bg-neon-green/10 rounded-lg border border-neon-green/20">
+                  <p className="flex items-start gap-2">
+                    <span>🧪</span>
+                    <span className="text-gray-300">Test your code with edge cases before submitting.</span>
+                  </p>
+                </div>
               </div>
+            </div>
+
+            {/* Contact Support */}
+            <div className="glass rounded-xl p-5 border border-gray-700 bg-dark-800/50">
+              <p className="text-sm text-gray-400 text-center">
+                Need help? Contact your instructor or program admin for assistance.
+              </p>
             </div>
           </div>
         </div>
