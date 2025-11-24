@@ -74,8 +74,11 @@ function ProctorDashboardContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-dark-900">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-neon-blue border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading proctor dashboard...</p>
+        </div>
       </div>
     );
   }

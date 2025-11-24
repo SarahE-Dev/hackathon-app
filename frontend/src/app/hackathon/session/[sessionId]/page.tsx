@@ -343,10 +343,10 @@ export default function HackathonSessionPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-dark-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600"></div>
-          <p className="mt-4 text-gray-400">Loading session...</p>
+          <div className="w-16 h-16 border-4 border-neon-blue border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading session...</p>
         </div>
       </div>
     );
@@ -354,12 +354,12 @@ export default function HackathonSessionPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-dark-900 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-400 mb-4">{error}</p>
+          <p className="text-neon-pink mb-4">{error}</p>
           <button
             onClick={() => router.push('/dashboard')}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            className="px-4 py-2 bg-gradient-to-r from-neon-blue to-neon-purple text-white rounded-lg hover:opacity-90"
           >
             Back to Dashboard
           </button>
@@ -374,11 +374,11 @@ export default function HackathonSessionPage() {
 
   if (teamSession.isPaused) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-center bg-yellow-900 border border-yellow-600 rounded-lg p-8 max-w-md">
+      <div className="min-h-screen bg-dark-900 flex items-center justify-center">
+        <div className="text-center glass border border-neon-yellow/50 rounded-xl p-8 max-w-md">
           <div className="text-6xl mb-4">⏸️</div>
-          <h2 className="text-2xl font-bold text-yellow-200 mb-2">Session Paused</h2>
-          <p className="text-yellow-300">{teamSession.pauseReason || 'Your session has been paused by a proctor.'}</p>
+          <h2 className="text-2xl font-bold text-neon-yellow mb-2">Session Paused</h2>
+          <p className="text-gray-300">{teamSession.pauseReason || 'Your session has been paused by a proctor.'}</p>
         </div>
       </div>
     );
@@ -387,7 +387,7 @@ export default function HackathonSessionPage() {
   const currentProblem = teamSession.problemProgress[currentProblemIndex];
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-dark-900 text-white">
       {/* Warning Banner */}
       {warningMessage && (
         <div className="fixed top-0 left-0 right-0 bg-red-600 text-white py-3 px-6 text-center z-50 animate-pulse">
@@ -396,22 +396,22 @@ export default function HackathonSessionPage() {
       )}
 
       {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700 p-4">
+      <div className="glass border-b border-gray-800 p-4">
         <div className="max-w-screen-2xl mx-auto flex justify-between items-center">
           <div>
-            <h1 className="text-xl font-bold">{teamSession.sessionId.title}</h1>
+            <h1 className="text-xl font-bold text-gradient">{teamSession.sessionId.title}</h1>
             <p className="text-sm text-gray-400">Team: {teamSession.teamId.name}</p>
           </div>
           <div className="flex items-center gap-6">
             <div className="text-right">
               <div className="text-sm text-gray-400">Score</div>
-              <div className="text-2xl font-bold text-indigo-400">
+              <div className="text-2xl font-bold text-neon-blue">
                 {teamSession.totalScore} / {teamSession.maxScore}
               </div>
             </div>
             <button
               onClick={handleSubmitSession}
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              className="px-4 py-2 bg-neon-green hover:bg-neon-green/80 text-dark-900 font-medium rounded-lg transition-all"
             >
               Submit Final
             </button>
@@ -423,15 +423,15 @@ export default function HackathonSessionPage() {
         {/* Problem Panel */}
         <div className="w-1/3 border-r border-gray-700 overflow-y-auto">
           {/* Problem Tabs */}
-          <div className="flex border-b border-gray-700 bg-gray-800">
+          <div className="flex border-b border-gray-700 bg-dark-800">
             {teamSession.problemProgress.map((problem, index) => (
               <button
                 key={problem._id}
                 onClick={() => setCurrentProblemIndex(index)}
-                className={`flex-1 px-4 py-3 text-sm font-medium border-r border-gray-700 ${
+                className={`flex-1 px-4 py-3 text-sm font-medium border-r border-gray-700 transition-all ${
                   currentProblemIndex === index
-                    ? 'bg-gray-900 text-indigo-400'
-                    : 'text-gray-400 hover:text-white'
+                    ? 'bg-dark-900 text-neon-blue border-b-2 border-b-neon-blue'
+                    : 'text-gray-400 hover:text-white hover:bg-dark-700'
                 }`}
               >
                 Problem {index + 1}
@@ -499,22 +499,22 @@ export default function HackathonSessionPage() {
         {/* Code Editor Panel */}
         <div className="flex-1 flex flex-col">
           {/* Editor Controls */}
-          <div className="bg-gray-800 border-b border-gray-700 p-3 flex justify-between items-center">
-            <div className="px-3 py-1 bg-gray-700 text-white rounded border border-gray-600">
+          <div className="bg-dark-800 border-b border-gray-700 p-3 flex justify-between items-center">
+            <div className="px-3 py-1 bg-dark-700 text-white rounded-lg border border-gray-600">
               Language: Python
             </div>
             <div className="flex gap-2">
               <button
                 onClick={handleRunCode}
                 disabled={executing}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                className="px-4 py-2 bg-neon-blue hover:bg-neon-blue/80 text-white rounded-lg disabled:opacity-50 transition-all"
               >
                 {executing ? 'Running...' : 'Run Code'}
               </button>
               <button
                 onClick={handleSubmitProblem}
                 disabled={testResults.length === 0}
-                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                className="px-4 py-2 bg-neon-green hover:bg-neon-green/80 text-dark-900 font-medium rounded-lg disabled:opacity-50 transition-all"
               >
                 Submit
               </button>
@@ -540,8 +540,8 @@ export default function HackathonSessionPage() {
           </div>
 
           {/* Solution Explanation */}
-          <div className="border-t border-gray-700 bg-gray-800 p-4">
-            <h3 className="text-lg font-semibold mb-2 text-indigo-400">
+          <div className="border-t border-gray-700 bg-dark-800 p-4">
+            <h3 className="text-lg font-semibold mb-2 text-neon-blue">
               Solution Explanation
               <span className="text-gray-400 font-normal text-sm ml-2">(Markdown supported)</span>
             </h3>
@@ -553,12 +553,12 @@ export default function HackathonSessionPage() {
               onChange={(e) => setExplanation(e.target.value)}
               rows={3}
               placeholder="## My Approach&#10;I used a hash map to achieve O(n) time complexity...&#10;&#10;## Time Complexity: O(n)&#10;## Space Complexity: O(n)"
-              className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-white placeholder-gray-500 focus:border-indigo-500 outline-none font-mono text-sm"
+              className="w-full px-3 py-2 bg-dark-900 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-neon-blue outline-none font-mono text-sm transition-all"
             />
           </div>
 
           {/* Test Results */}
-          <div className="h-[30%] border-t border-gray-700 overflow-y-auto bg-gray-800 p-4">
+          <div className="h-[30%] border-t border-gray-700 overflow-y-auto bg-dark-800 p-4">
             <h3 className="text-lg font-semibold mb-2">Test Results</h3>
             {testResults.length === 0 ? (
               <p className="text-gray-400">Run your code to see test results</p>

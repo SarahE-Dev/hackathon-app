@@ -346,9 +346,9 @@ export default function GradeAttemptPage() {
             </div>
             {/* Show solution explanation if provided */}
             {answer.answer?.explanation && (
-              <div className="bg-dark-700 border border-indigo-500/30 rounded-lg overflow-hidden">
-                <div className="bg-indigo-500/10 px-4 py-2 border-b border-indigo-500/30">
-                  <span className="text-indigo-400 text-sm font-medium">
+              <div className="bg-dark-700 border border-neon-purple/30 rounded-lg overflow-hidden">
+                <div className="bg-neon-purple/10 px-4 py-2 border-b border-neon-purple/30">
+                  <span className="text-neon-purple text-sm font-medium">
                     Solution Explanation (Markdown)
                   </span>
                 </div>
