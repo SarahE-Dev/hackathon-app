@@ -157,3 +157,73 @@ export interface JudgeDocumentation {
   createdAt: string;
   updatedAt: string;
 }
+
+// Recording Types
+export type RecordingSourceType = 'assessment' | 'hackathon';
+export type RecordingType = 'webcam' | 'screen' | 'snapshot';
+export type RecordingStatus = 'recording' | 'uploading' | 'processing' | 'complete' | 'failed';
+
+export interface RecordingConsent {
+  given: boolean;
+  timestamp: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+export interface RecordingChunk {
+  index: number;
+  storageKey: string;
+  size: number;
+  duration: number;
+  uploadedAt: string;
+}
+
+export interface RecordingVideoMetadata {
+  resolution?: string;
+  frameRate?: number;
+  audioEnabled?: boolean;
+  deviceInfo?: string;
+}
+
+export interface Recording {
+  _id: string;
+  sourceType: RecordingSourceType;
+  sourceId: string;
+  userId: string;
+  teamId?: string;
+  type: RecordingType;
+  status: RecordingStatus;
+  storageKey: string;
+  storageBucket?: string;
+  chunks: RecordingChunk[];
+  startTime: string;
+  endTime?: string;
+  duration?: number;
+  fileSize?: number;
+  mimeType: string;
+  consent: RecordingConsent;
+  errorMessage?: string;
+  retryCount: number;
+  metadata?: RecordingVideoMetadata;
+  downloadUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StartRecordingRequest {
+  sourceType: RecordingSourceType;
+  sourceId: string;
+  type: RecordingType;
+  teamId?: string;
+  consent: {
+    given: boolean;
+  };
+  metadata?: RecordingVideoMetadata;
+}
+
+export interface StartRecordingResponse {
+  recordingId: string;
+  storageKey: string;
+  uploadUrl?: string;
+  provider: 'local' | 's3';
+}

@@ -29,7 +29,9 @@ import fileUploadRoutes from './routes/fileUpload';
 import plagiarismRoutes from './routes/plagiarism';
 import judgeDocumentationRoutes from './routes/judgeDocumentation';
 import hackathonRosterRoutes from './routes/hackathonRoster';
+import recordingRoutes from './routes/recordings';
 import FileUploadService from './services/fileUploadService';
+import { StorageService } from './services/storageService';
 import { join } from 'path';
 
 dotenv.config();
@@ -76,6 +78,7 @@ app.use('/api/upload', fileUploadRoutes);
 app.use('/api/plagiarism', plagiarismRoutes);
 app.use('/api/judge-documentation', judgeDocumentationRoutes);
 app.use('/api/hackathon-roster', hackathonRosterRoutes);
+app.use('/api/recordings', recordingRoutes);
 
 // Error handling
 app.use(errorHandler);
@@ -92,6 +95,11 @@ const startServer = async () => {
     // Initialize file upload directory
     await FileUploadService.initializeUploadDirectory();
     logger.info('File upload directory initialized');
+
+    // Initialize recording storage
+    const storageService = StorageService.getInstance();
+    await storageService.initializeLocalStorage();
+    logger.info(`Recording storage initialized (provider: ${storageService.getProvider()})`);
 
     // Initialize WebSocket services after DB connection
     proctorService = new ProctorService(httpServer);
