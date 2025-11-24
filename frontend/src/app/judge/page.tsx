@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { RoleGuard } from '@/components/guards/RoleGuard';
 import { useAuthStore } from '@/store/authStore';
-import { teamsAPI, hackathonSessionsAPI } from '@/lib/api';
+import { teamsAPI, hackathonSessionsAPI, judgeDocumentationAPI } from '@/lib/api';
 import axios from 'axios';
 
 interface Team {
@@ -43,6 +43,34 @@ interface SessionStats {
   totalViolations: number;
 }
 
+interface RubricCriterion {
+  name: string;
+  description: string;
+  maxPoints: number;
+  scoringGuide: Array<{ points: number; description: string }>;
+}
+
+interface FAQ {
+  question: string;
+  answer: string;
+  order: number;
+}
+
+interface JudgeDoc {
+  _id: string;
+  hackathonSessionId?: { _id: string; title: string };
+  organizationId: { _id: string; name: string };
+  title: string;
+  type: 'rubric' | 'faq' | 'guide' | 'general';
+  rubricCriteria?: RubricCriterion[];
+  totalPoints?: number;
+  faqs?: FAQ[];
+  content?: string;
+  isActive: boolean;
+  isDefault: boolean;
+  updatedAt: string;
+}
+
 function JudgeDashboardContent() {
   const { user } = useAuthStore();
   const [teams, setTeams] = useState<Team[]>([]);
@@ -55,7 +83,9 @@ function JudgeDashboardContent() {
   const [loading, setLoading] = useState(true);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [scoring, setScoring] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'grading' | 'monitoring'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'grading' | 'monitoring' | 'docs'>('overview');
+  const [documentation, setDocumentation] = useState<JudgeDoc[]>([]);
+  const [expandedFaqs, setExpandedFaqs] = useState<Set<string>>(new Set());
 
   // Scoring state
   const [scores, setScores] = useState({
@@ -126,11 +156,34 @@ function JudgeDashboardContent() {
       } catch (e) {
         console.warn('Could not load session stats');
       }
+
+      // Fetch judge documentation
+      try {
+        const docsResponse = await judgeDocumentationAPI.getDocumentation({
+          includeDefaults: true,
+        });
+        setDocumentation(docsResponse.data?.documentation || []);
+      } catch (e) {
+        console.warn('Could not load judge documentation');
+      }
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleFaq = (docId: string, faqIndex: number) => {
+    const key = `${docId}-${faqIndex}`;
+    setExpandedFaqs((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(key)) {
+        newSet.delete(key);
+      } else {
+        newSet.add(key);
+      }
+      return newSet;
+    });
   };
 
   const handleScoreTeam = (team: Team) => {
@@ -243,6 +296,7 @@ function JudgeDashboardContent() {
             {[
               { id: 'overview', label: 'Overview', icon: '📊' },
               { id: 'grading', label: 'Grade Projects', icon: '⚖️' },
+              { id: 'docs', label: 'Documentation', icon: '📚' },
               { id: 'monitoring', label: 'Monitor Sessions', icon: '👁️' },
             ].map((tab) => (
               <button
@@ -623,6 +677,201 @@ function JudgeDashboardContent() {
                 </Link>
               </div>
             </div>
+          </>
+        )}
+
+        {activeTab === 'docs' && (
+          <>
+            {/* Documentation Header */}
+            <div className="glass rounded-xl p-6 border border-neon-blue/30 bg-neon-blue/5 mb-8">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-xl font-bold mb-2">Judge Documentation</h2>
+                  <p className="text-gray-400 text-sm">
+                    Review rubrics, FAQs, and guidelines before scoring projects.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {documentation.length === 0 ? (
+              <div className="glass rounded-xl p-12 text-center border border-gray-700">
+                <div className="text-5xl mb-4">📄</div>
+                <h3 className="text-xl font-bold mb-2">No Documentation Available</h3>
+                <p className="text-gray-400">
+                  Documentation will appear here once an admin creates rubrics or guides.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Rubrics Section */}
+                {documentation.filter((d) => d.type === 'rubric').length > 0 && (
+                  <div>
+                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                      <span className="text-2xl">📊</span> Scoring Rubrics
+                    </h2>
+                    <div className="space-y-4">
+                      {documentation
+                        .filter((d) => d.type === 'rubric')
+                        .map((doc) => (
+                          <div
+                            key={doc._id}
+                            className="glass rounded-xl p-6 border border-neon-purple/30"
+                          >
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-bold">{doc.title}</h3>
+                              {doc.totalPoints && (
+                                <span className="px-3 py-1 bg-neon-purple/20 text-neon-purple rounded-full text-sm font-medium">
+                                  {doc.totalPoints} points total
+                                </span>
+                              )}
+                            </div>
+                            {doc.rubricCriteria && doc.rubricCriteria.length > 0 && (
+                              <div className="space-y-4">
+                                {doc.rubricCriteria.map((criterion, index) => (
+                                  <div
+                                    key={index}
+                                    className="bg-dark-700 rounded-lg p-4 border border-gray-600"
+                                  >
+                                    <div className="flex items-center justify-between mb-2">
+                                      <h4 className="font-semibold text-neon-blue">{criterion.name}</h4>
+                                      <span className="text-sm text-gray-400">
+                                        {criterion.maxPoints} pts
+                                      </span>
+                                    </div>
+                                    <p className="text-sm text-gray-300 mb-3">{criterion.description}</p>
+                                    {criterion.scoringGuide && criterion.scoringGuide.length > 0 && (
+                                      <div className="border-t border-gray-600 pt-3">
+                                        <p className="text-xs text-gray-400 mb-2">Scoring Guide:</p>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                          {criterion.scoringGuide
+                                            .sort((a, b) => b.points - a.points)
+                                            .map((level, levelIndex) => (
+                                              <div
+                                                key={levelIndex}
+                                                className="flex items-start gap-2 text-xs"
+                                              >
+                                                <span className="px-2 py-0.5 bg-dark-600 rounded font-medium min-w-[40px] text-center">
+                                                  {level.points}
+                                                </span>
+                                                <span className="text-gray-300">{level.description}</span>
+                                              </div>
+                                            ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* FAQs Section */}
+                {documentation.filter((d) => d.type === 'faq').length > 0 && (
+                  <div>
+                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                      <span className="text-2xl">❓</span> Frequently Asked Questions
+                    </h2>
+                    <div className="space-y-4">
+                      {documentation
+                        .filter((d) => d.type === 'faq')
+                        .map((doc) => (
+                          <div
+                            key={doc._id}
+                            className="glass rounded-xl p-6 border border-neon-green/30"
+                          >
+                            <h3 className="text-lg font-bold mb-4">{doc.title}</h3>
+                            {doc.faqs && doc.faqs.length > 0 && (
+                              <div className="space-y-2">
+                                {doc.faqs
+                                  .sort((a, b) => a.order - b.order)
+                                  .map((faq, index) => {
+                                    const isExpanded = expandedFaqs.has(`${doc._id}-${index}`);
+                                    return (
+                                      <div
+                                        key={index}
+                                        className="bg-dark-700 rounded-lg border border-gray-600 overflow-hidden"
+                                      >
+                                        <button
+                                          onClick={() => toggleFaq(doc._id, index)}
+                                          className="w-full p-4 text-left flex items-center justify-between hover:bg-dark-600 transition-all"
+                                        >
+                                          <span className="font-medium">{faq.question}</span>
+                                          <span className="text-xl">{isExpanded ? '−' : '+'}</span>
+                                        </button>
+                                        {isExpanded && (
+                                          <div className="px-4 pb-4 text-gray-300 text-sm whitespace-pre-wrap border-t border-gray-600 pt-3">
+                                            {faq.answer}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Guides Section */}
+                {documentation.filter((d) => d.type === 'guide').length > 0 && (
+                  <div>
+                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                      <span className="text-2xl">📖</span> Judging Guides
+                    </h2>
+                    <div className="space-y-4">
+                      {documentation
+                        .filter((d) => d.type === 'guide')
+                        .map((doc) => (
+                          <div
+                            key={doc._id}
+                            className="glass rounded-xl p-6 border border-neon-pink/30"
+                          >
+                            <h3 className="text-lg font-bold mb-4">{doc.title}</h3>
+                            {doc.content && (
+                              <div className="prose prose-invert prose-sm max-w-none">
+                                <div className="whitespace-pre-wrap text-gray-300">{doc.content}</div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* General Documentation */}
+                {documentation.filter((d) => d.type === 'general').length > 0 && (
+                  <div>
+                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                      <span className="text-2xl">📝</span> General Information
+                    </h2>
+                    <div className="space-y-4">
+                      {documentation
+                        .filter((d) => d.type === 'general')
+                        .map((doc) => (
+                          <div
+                            key={doc._id}
+                            className="glass rounded-xl p-6 border border-gray-600"
+                          >
+                            <h3 className="text-lg font-bold mb-4">{doc.title}</h3>
+                            {doc.content && (
+                              <div className="prose prose-invert prose-sm max-w-none">
+                                <div className="whitespace-pre-wrap text-gray-300">{doc.content}</div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
 

@@ -336,6 +336,12 @@ function AdminDashboardContent() {
                       <span className="text-neon-blue">→</span>
                     </div>
                   </Link>
+                  <Link href="/admin/judge-documentation" className="block p-3 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Judge Documentation</span>
+                      <span className="text-neon-blue">→</span>
+                    </div>
+                  </Link>
                 </div>
               </div>
 
@@ -523,7 +529,7 @@ function AdminDashboardContent() {
             {/* Content Management */}
             <div className="glass rounded-xl p-6 border border-gray-700">
               <h3 className="text-lg font-bold mb-4">📚 Content Management</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Link href="/admin/assessments" className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-neon-blue/20 rounded-lg flex items-center justify-center text-xl">📝</div>
@@ -548,6 +554,15 @@ function AdminDashboardContent() {
                     <div>
                       <h4 className="font-semibold">Hackathon Sessions</h4>
                       <p className="text-xs text-gray-400">Control live sessions</p>
+                    </div>
+                  </div>
+                </Link>
+                <Link href="/admin/judge-documentation" className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-yellow-500/20 rounded-lg flex items-center justify-center text-xl">📚</div>
+                    <div>
+                      <h4 className="font-semibold">Judge Docs</h4>
+                      <p className="text-xs text-gray-400">Rubrics, FAQs & guides</p>
                     </div>
                   </div>
                 </Link>

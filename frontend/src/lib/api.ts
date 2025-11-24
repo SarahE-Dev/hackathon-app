@@ -577,4 +577,79 @@ export const hackathonSessionsAPI = {
   },
 };
 
+// Judge Documentation API
+export const judgeDocumentationAPI = {
+  // Get documentation (for judges - active only)
+  getDocumentation: async (params?: {
+    organizationId?: string;
+    hackathonSessionId?: string;
+    type?: string;
+    includeDefaults?: boolean;
+  }) => {
+    const response = await api.get('/judge-documentation', { params });
+    return response.data;
+  },
+
+  // Get all documentation (admin - includes inactive)
+  getAllDocumentation: async (params?: {
+    organizationId?: string;
+    hackathonSessionId?: string;
+    type?: string;
+  }) => {
+    const response = await api.get('/judge-documentation/all', { params });
+    return response.data;
+  },
+
+  // Get documentation by ID
+  getById: async (id: string) => {
+    const response = await api.get(`/judge-documentation/${id}`);
+    return response.data;
+  },
+
+  // Create documentation
+  create: async (data: {
+    hackathonSessionId?: string;
+    organizationId: string;
+    title: string;
+    type: 'rubric' | 'faq' | 'guide' | 'general';
+    rubricCriteria?: Array<{
+      name: string;
+      description: string;
+      maxPoints: number;
+      scoringGuide: Array<{ points: number; description: string }>;
+    }>;
+    faqs?: Array<{ question: string; answer: string; order: number }>;
+    content?: string;
+    isActive?: boolean;
+    isDefault?: boolean;
+  }) => {
+    const response = await api.post('/judge-documentation', data);
+    return response.data;
+  },
+
+  // Update documentation
+  update: async (id: string, data: any) => {
+    const response = await api.put(`/judge-documentation/${id}`, data);
+    return response.data;
+  },
+
+  // Delete documentation
+  delete: async (id: string) => {
+    const response = await api.delete(`/judge-documentation/${id}`);
+    return response.data;
+  },
+
+  // Toggle active status
+  toggle: async (id: string) => {
+    const response = await api.patch(`/judge-documentation/${id}/toggle`);
+    return response.data;
+  },
+
+  // Duplicate documentation
+  duplicate: async (id: string, data?: { hackathonSessionId?: string; title?: string }) => {
+    const response = await api.post(`/judge-documentation/${id}/duplicate`, data);
+    return response.data;
+  },
+};
+
 export default api;
