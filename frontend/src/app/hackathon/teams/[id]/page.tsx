@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios';
 import LiveCodingSession from '@/components/LiveCodingSession';
+import { teamsAPI } from '@/lib/api';
 
 interface TeamMember {
   _id: string;
@@ -22,8 +23,22 @@ interface Team {
   track?: string;
   repoUrl?: string;
   demoUrl?: string;
+  videoUrl?: string;
+  projectExplanation?: string;
+  technicalApproach?: string;
+  challengesOvercome?: string;
   submittedAt?: string;
   disqualified: boolean;
+}
+
+interface SubmitFormData {
+  repoUrl: string;
+  demoUrl: string;
+  videoUrl: string;
+  track: string;
+  projectExplanation: string;
+  technicalApproach: string;
+  challengesOvercome: string;
 }
 
 interface Problem {
@@ -69,6 +84,17 @@ export default function TeamDetailPage() {
   const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'members' | 'code' | 'problems' | 'submit'>('code');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [formData, setFormData] = useState<SubmitFormData>({
+    repoUrl: '',
+    demoUrl: '',
+    videoUrl: '',
+    track: '',
+    projectExplanation: '',
+    technicalApproach: '',
+    challengesOvercome: '',
+  });
 
   useEffect(() => {
     const initializePage = async () => {
@@ -89,6 +115,17 @@ export default function TeamDetailPage() {
         });
         const teamData = teamResponse.data.data.team;
         setTeam(teamData);
+
+        // Populate form with existing data
+        setFormData({
+          repoUrl: teamData.repoUrl || '',
+          demoUrl: teamData.demoUrl || '',
+          videoUrl: teamData.videoUrl || '',
+          track: teamData.track || '',
+          projectExplanation: teamData.projectExplanation || '',
+          technicalApproach: teamData.technicalApproach || '',
+          challengesOvercome: teamData.challengesOvercome || '',
+        });
 
 
         // Fetch coding problems for hackathon
@@ -317,42 +354,171 @@ export default function TeamDetailPage() {
               <div className="glass rounded-2xl p-6 border border-gray-800">
                 <h3 className="text-xl font-bold mb-4">Submit Project</h3>
                 {team.submittedAt ? (
-                  <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
-                    <p className="text-green-400 font-medium">✓ Project Submitted</p>
-                    <p className="text-sm text-gray-300 mt-2">
-                      Submitted at: {new Date(team.submittedAt).toLocaleString()}
-                    </p>
+                  <div className="space-y-4">
+                    <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                      <p className="text-green-400 font-medium">✓ Project Submitted</p>
+                      <p className="text-sm text-gray-300 mt-2">
+                        Submitted at: {new Date(team.submittedAt).toLocaleString()}
+                      </p>
+                    </div>
+                    {/* Show submitted details */}
+                    <div className="space-y-3">
+                      {team.repoUrl && (
+                        <div>
+                          <span className="text-gray-400 text-sm">Repository:</span>
+                          <a href={team.repoUrl} target="_blank" rel="noopener noreferrer" className="text-neon-blue hover:underline ml-2">{team.repoUrl}</a>
+                        </div>
+                      )}
+                      {team.demoUrl && (
+                        <div>
+                          <span className="text-gray-400 text-sm">Demo:</span>
+                          <a href={team.demoUrl} target="_blank" rel="noopener noreferrer" className="text-neon-blue hover:underline ml-2">{team.demoUrl}</a>
+                        </div>
+                      )}
+                      {team.videoUrl && (
+                        <div>
+                          <span className="text-gray-400 text-sm">Video:</span>
+                          <a href={team.videoUrl} target="_blank" rel="noopener noreferrer" className="text-neon-blue hover:underline ml-2">{team.videoUrl}</a>
+                        </div>
+                      )}
+                      {team.projectExplanation && (
+                        <div className="mt-4">
+                          <h4 className="text-gray-400 text-sm mb-2">Project Explanation:</h4>
+                          <div className="bg-dark-700 p-4 rounded-lg whitespace-pre-wrap text-gray-300 text-sm">{team.projectExplanation}</div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    setSubmitting(true);
+                    setSubmitError('');
+                    try {
+                      await teamsAPI.submitProject(teamId, formData);
+                      // Refresh team data to show submitted state
+                      const teamResponse = await axios.get(`${API_URL}/api/teams/${teamId}`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` },
+                      });
+                      setTeam(teamResponse.data.data.team);
+                    } catch (err: any) {
+                      setSubmitError(err.response?.data?.error?.message || 'Failed to submit project');
+                    } finally {
+                      setSubmitting(false);
+                    }
+                  }} className="space-y-6">
+                    {submitError && (
+                      <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-400">
+                        {submitError}
+                      </div>
+                    )}
+
+                    {/* URL Fields */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Repository URL *</label>
+                        <input
+                          type="url"
+                          required
+                          placeholder="https://github.com/..."
+                          value={formData.repoUrl}
+                          onChange={(e) => setFormData({ ...formData, repoUrl: e.target.value })}
+                          className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-neon-blue outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Demo URL</label>
+                        <input
+                          type="url"
+                          placeholder="https://your-demo.com"
+                          value={formData.demoUrl}
+                          onChange={(e) => setFormData({ ...formData, demoUrl: e.target.value })}
+                          className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-neon-blue outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Video URL</label>
+                        <input
+                          type="url"
+                          placeholder="https://youtube.com/..."
+                          value={formData.videoUrl}
+                          onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
+                          className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-neon-blue outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Track/Category</label>
+                        <input
+                          type="text"
+                          placeholder="e.g., Social Impact, Education, Health"
+                          value={formData.track}
+                          onChange={(e) => setFormData({ ...formData, track: e.target.value })}
+                          className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-neon-blue outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Markdown Explanation Fields */}
                     <div>
-                      <label className="block text-sm font-medium mb-2">Repository URL</label>
-                      <input
-                        type="url"
-                        placeholder="https://github.com/..."
-                        className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-neon-blue outline-none"
+                      <label className="block text-sm font-medium mb-2">
+                        Project Explanation *
+                        <span className="text-gray-400 font-normal ml-2">(Markdown supported)</span>
+                      </label>
+                      <p className="text-xs text-gray-400 mb-2">
+                        Describe what your project does, the problem it solves, and how users can benefit from it.
+                      </p>
+                      <textarea
+                        required
+                        rows={6}
+                        placeholder="# My Project&#10;&#10;## What it does&#10;Describe your project...&#10;&#10;## Problem it solves&#10;Explain the problem..."
+                        value={formData.projectExplanation}
+                        onChange={(e) => setFormData({ ...formData, projectExplanation: e.target.value })}
+                        className="w-full px-4 py-3 bg-dark-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-neon-blue outline-none font-mono text-sm"
                       />
                     </div>
+
                     <div>
-                      <label className="block text-sm font-medium mb-2">Demo URL</label>
-                      <input
-                        type="url"
-                        placeholder="https://your-demo.com"
-                        className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-neon-blue outline-none"
+                      <label className="block text-sm font-medium mb-2">
+                        Technical Approach
+                        <span className="text-gray-400 font-normal ml-2">(Markdown supported)</span>
+                      </label>
+                      <p className="text-xs text-gray-400 mb-2">
+                        Explain your technical architecture, key design decisions, and technologies used.
+                      </p>
+                      <textarea
+                        rows={5}
+                        placeholder="## Architecture&#10;- Frontend: React + Next.js&#10;- Backend: Node.js + Express&#10;&#10;## Key Design Decisions&#10;..."
+                        value={formData.technicalApproach}
+                        onChange={(e) => setFormData({ ...formData, technicalApproach: e.target.value })}
+                        className="w-full px-4 py-3 bg-dark-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-neon-blue outline-none font-mono text-sm"
                       />
                     </div>
+
                     <div>
-                      <label className="block text-sm font-medium mb-2">Video URL</label>
-                      <input
-                        type="url"
-                        placeholder="https://youtube.com/..."
-                        className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-neon-blue outline-none"
+                      <label className="block text-sm font-medium mb-2">
+                        Challenges Overcome
+                        <span className="text-gray-400 font-normal ml-2">(Markdown supported)</span>
+                      </label>
+                      <p className="text-xs text-gray-400 mb-2">
+                        Describe the challenges you faced during development and how you solved them.
+                      </p>
+                      <textarea
+                        rows={4}
+                        placeholder="## Challenge 1: Real-time sync&#10;We faced issues with...&#10;&#10;## Solution&#10;We implemented..."
+                        value={formData.challengesOvercome}
+                        onChange={(e) => setFormData({ ...formData, challengesOvercome: e.target.value })}
+                        className="w-full px-4 py-3 bg-dark-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-neon-blue outline-none font-mono text-sm"
                       />
                     </div>
-                    <button className="w-full py-3 bg-gradient-to-r from-neon-blue to-neon-purple text-white rounded-lg font-medium hover:shadow-lg hover:shadow-neon-blue/50 transition-all">
-                      Submit Project
+
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="w-full py-3 bg-gradient-to-r from-neon-blue to-neon-purple text-white rounded-lg font-medium hover:shadow-lg hover:shadow-neon-blue/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {submitting ? 'Submitting...' : 'Submit Project'}
                     </button>
-                  </div>
+                  </form>
                 )}
               </div>
             )}

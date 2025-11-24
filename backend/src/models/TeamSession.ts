@@ -16,6 +16,7 @@ export interface ITeamSession extends Document {
     status: 'not-started' | 'in-progress' | 'submitted' | 'passed' | 'failed';
     code: string;
     language: string;
+    explanation?: string; // Markdown explanation of the solution approach
     testResults: Array<{
       testCaseId: string;
       passed: boolean;
@@ -81,6 +82,7 @@ const TeamSessionSchema = new Schema<ITeamSession>(
       },
       code: { type: String, default: '' },
       language: { type: String, default: 'python' },
+      explanation: { type: String, default: '' }, // Markdown explanation of approach
       testResults: [{
         testCaseId: { type: String, required: true },
         passed: { type: Boolean, required: true },

@@ -18,8 +18,9 @@ interface CodingQuestionProps {
   value: {
     code: string;
     language: string;
+    explanation?: string;
   } | null;
-  onChange: (value: { code: string; language: string }) => void;
+  onChange: (value: { code: string; language: string; explanation?: string }) => void;
   disabled?: boolean;
 }
 
@@ -35,19 +36,25 @@ export default function CodingQuestion({
   const [language, setLanguage] = useState(
     value?.language || question.content.language || 'python'
   );
+  const [explanation, setExplanation] = useState(value?.explanation || '');
   const [output, setOutput] = useState('');
   const [running, setRunning] = useState(false);
 
   const handleCodeChange = (newCode: string | undefined) => {
     if (newCode !== undefined) {
       setCode(newCode);
-      onChange({ code: newCode, language });
+      onChange({ code: newCode, language, explanation });
     }
   };
 
   const handleLanguageChange = (newLanguage: string) => {
     setLanguage(newLanguage);
-    onChange({ code, language: newLanguage });
+    onChange({ code, language: newLanguage, explanation });
+  };
+
+  const handleExplanationChange = (newExplanation: string) => {
+    setExplanation(newExplanation);
+    onChange({ code, language, explanation: newExplanation });
   };
 
   const runCode = async () => {
@@ -183,6 +190,25 @@ export default function CodingQuestion({
           </div>
         </div>
       )}
+
+      {/* Solution Explanation */}
+      <div className="glass rounded-lg p-4 border border-gray-700">
+        <h4 className="font-semibold mb-2 text-neon-blue">
+          Solution Explanation
+          <span className="text-gray-400 font-normal text-sm ml-2">(Markdown supported)</span>
+        </h4>
+        <p className="text-xs text-gray-400 mb-3">
+          Explain your approach, algorithm choice, time/space complexity, and any edge cases you handled.
+        </p>
+        <textarea
+          value={explanation}
+          onChange={(e) => handleExplanationChange(e.target.value)}
+          disabled={disabled}
+          rows={4}
+          placeholder="## My Approach&#10;&#10;I used a two-pointer technique because...&#10;&#10;## Time Complexity: O(n)&#10;## Space Complexity: O(1)"
+          className="w-full px-4 py-3 bg-dark-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-neon-blue outline-none font-mono text-sm disabled:opacity-50"
+        />
+      </div>
 
       {/* Run button */}
       <div className="flex gap-3">

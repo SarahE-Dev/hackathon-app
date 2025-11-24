@@ -102,7 +102,7 @@ export const updateProblemProgress = async (
 ) => {
   try {
     const { sessionId, teamId } = req.params;
-    const { problemId, code, language } = req.body;
+    const { problemId, code, language, explanation } = req.body;
 
     const teamSession = await TeamSession.findOne({ sessionId, teamId });
 
@@ -124,6 +124,9 @@ export const updateProblemProgress = async (
 
     teamSession.problemProgress[problemIndex].code = code;
     teamSession.problemProgress[problemIndex].language = language;
+    if (explanation !== undefined) {
+      teamSession.problemProgress[problemIndex].explanation = explanation;
+    }
 
     if (teamSession.problemProgress[problemIndex].status === 'not-started') {
       teamSession.problemProgress[problemIndex].status = 'in-progress';

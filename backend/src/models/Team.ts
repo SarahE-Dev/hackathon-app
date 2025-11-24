@@ -10,6 +10,16 @@ export interface ITeam extends Document {
   repoUrl?: string;
   demoUrl?: string;
   videoUrl?: string;
+  // New fields for project submission
+  projectExplanation?: string; // Markdown explanation of the project
+  technicalApproach?: string; // Technical approach and architecture
+  challengesOvercome?: string; // Challenges faced and how they were solved
+  codeSnippets?: Array<{
+    filename: string;
+    language: string;
+    code: string;
+    explanation?: string;
+  }>;
   submittedAt?: Date;
   disqualified: boolean;
   createdAt: Date;
@@ -58,6 +68,25 @@ const TeamSchema = new Schema({
     type: String,
     trim: true,
   },
+  // New fields for project submission
+  projectExplanation: {
+    type: String,
+    trim: true,
+  },
+  technicalApproach: {
+    type: String,
+    trim: true,
+  },
+  challengesOvercome: {
+    type: String,
+    trim: true,
+  },
+  codeSnippets: [{
+    filename: { type: String, required: true },
+    language: { type: String, required: true },
+    code: { type: String, required: true },
+    explanation: { type: String },
+  }],
   submittedAt: {
     type: Date,
   },

@@ -66,12 +66,16 @@ export default function DashboardPage() {
         return;
       }
 
-      // Role-based redirect for admin/judge
+      // Role-based redirect for admin/proctor/judge
       if (isAdmin()) {
         router.push('/admin');
         return;
       }
-      if (isJudge() || isProctor()) {
+      if (isProctor()) {
+        router.push('/proctor');
+        return;
+      }
+      if (isJudge()) {
         router.push('/judge');
         return;
       }
