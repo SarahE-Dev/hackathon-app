@@ -61,6 +61,10 @@ function AssessmentBuilderContent() {
       detectCopyPaste: true,
       fullscreenRequired: false,
       enableWebcam: false,
+      recordWebcam: false,
+      recordScreen: false,
+      takeSnapshots: false,
+      snapshotIntervalMinutes: 5,
     },
   });
 
@@ -652,6 +656,95 @@ function AssessmentBuilderContent() {
                           />
                           <span className="text-sm text-gray-300">Enable webcam monitoring</span>
                         </label>
+
+                        {/* Recording Options */}
+                        <div className="mt-4 pt-4 border-t border-gray-700">
+                          <p className="text-sm font-medium text-gray-400 mb-3">Recording Options</p>
+
+                          <label className="flex items-center gap-2 cursor-pointer ml-6 mb-2">
+                            <input
+                              type="checkbox"
+                              checked={settings.proctoring.recordWebcam}
+                              onChange={(e) =>
+                                setSettings({
+                                  ...settings,
+                                  proctoring: {
+                                    ...settings.proctoring,
+                                    recordWebcam: e.target.checked,
+                                  },
+                                })
+                              }
+                              className="w-4 h-4"
+                            />
+                            <span className="text-sm text-gray-300">Record webcam video</span>
+                          </label>
+
+                          <label className="flex items-center gap-2 cursor-pointer ml-6 mb-2">
+                            <input
+                              type="checkbox"
+                              checked={settings.proctoring.recordScreen}
+                              onChange={(e) =>
+                                setSettings({
+                                  ...settings,
+                                  proctoring: {
+                                    ...settings.proctoring,
+                                    recordScreen: e.target.checked,
+                                  },
+                                })
+                              }
+                              className="w-4 h-4"
+                            />
+                            <span className="text-sm text-gray-300">Record screen activity</span>
+                          </label>
+
+                          <label className="flex items-center gap-2 cursor-pointer ml-6 mb-2">
+                            <input
+                              type="checkbox"
+                              checked={settings.proctoring.takeSnapshots}
+                              onChange={(e) =>
+                                setSettings({
+                                  ...settings,
+                                  proctoring: {
+                                    ...settings.proctoring,
+                                    takeSnapshots: e.target.checked,
+                                  },
+                                })
+                              }
+                              className="w-4 h-4"
+                            />
+                            <span className="text-sm text-gray-300">Take periodic snapshots</span>
+                          </label>
+
+                          {settings.proctoring.takeSnapshots && (
+                            <div className="ml-6 mt-2">
+                              <label className="text-sm text-gray-400">
+                                Snapshot interval (minutes)
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="30"
+                                  value={settings.proctoring.snapshotIntervalMinutes || 5}
+                                  onChange={(e) =>
+                                    setSettings({
+                                      ...settings,
+                                      proctoring: {
+                                        ...settings.proctoring,
+                                        snapshotIntervalMinutes: parseInt(e.target.value) || 5,
+                                      },
+                                    })
+                                  }
+                                  className="ml-2 w-16 px-2 py-1 bg-dark-700 border border-gray-600 rounded text-white text-sm"
+                                />
+                              </label>
+                            </div>
+                          )}
+
+                          {(settings.proctoring.recordWebcam || settings.proctoring.recordScreen || settings.proctoring.takeSnapshots) && (
+                            <p className="text-xs text-yellow-400 mt-3 ml-6">
+                              Recording requires user consent before the session starts.
+                            </p>
+                          )}
+                        </div>
                       </>
                     )}
                   </div>
