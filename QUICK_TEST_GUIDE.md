@@ -35,7 +35,7 @@ Starting backend server...
 1. Go to http://localhost:3000/auth/login
 2. Click "Admin" demo button (or enter manually):
    - Email: `admin@example.com`
-   - Password: `Demo@123456`
+   - Password: `password123`
 3. Click "Sign In"
 4. **Expected**: Redirects to `/admin` (Admin Control Panel)
 5. **Verify**: You see admin dashboard with management cards
@@ -44,7 +44,7 @@ Starting backend server...
 1. Logout and return to login
 2. Click "Proctor" demo button:
    - Email: `proctor@example.com`
-   - Password: `Demo@123456`
+   - Password: `password123`
 3. Click "Sign In"
 4. **Expected**: Redirects to `/proctor` (Proctor Dashboard)
 5. **Verify**: You see proctoring monitoring interface
@@ -53,7 +53,7 @@ Starting backend server...
 1. Logout and return to login
 2. Use judge credentials:
    - Email: `judge1@example.com`
-   - Password: `Demo@123456`
+   - Password: `password123`
 3. Click "Sign In"
 4. **Expected**: Redirects to `/judge` (Judge Dashboard)
 5. **Verify**: You see judge scoring interface
@@ -62,7 +62,7 @@ Starting backend server...
 1. Logout and return to login
 2. Click "Student" demo button:
    - Email: `student1@example.com`
-   - Password: `Demo@123456`
+   - Password: `password123`
 3. Click "Sign In"
 4. **Expected**: Redirects to `/dashboard` (Student Dashboard)
 5. **Verify**: You see available assessments and team info
@@ -175,10 +175,10 @@ docker exec -it hackathon-backend npm run seed --workspace=backend
 
 | Role | Email | Password | Redirect |
 |------|-------|----------|----------|
-| Admin | admin@example.com | Demo@123456 | /admin |
-| Proctor | proctor@example.com | Demo@123456 | /proctor |
-| Judge | judge1@example.com | Demo@123456 | /judge |
-| Student | student1@example.com | Demo@123456 | /dashboard |
+| Admin | admin@example.com | password123 | /admin |
+| Proctor | proctor@example.com | password123 | /proctor |
+| Judge | judge1@example.com | password123 | /judge |
+| Student | student1@example.com | password123 | /dashboard |
 
 ## ✅ Success Criteria
 

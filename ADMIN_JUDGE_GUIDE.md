@@ -191,9 +191,9 @@ This guide covers the new admin dashboard, judging interface, and comprehensive 
 - 1 Proctor (`proctor@example.com`)
 - 3 Judges (`judge1@example.com`, `judge2@example.com`, `judge3@example.com`)
 - 1 Grader (`grader@example.com`)
-- 20 Applicants (`student1@example.com` - `student20@example.com`)
+- 20 Fellows (`student1@example.com` - `student20@example.com`)
 
-**All passwords:** `Demo@123456`
+**All passwords:** `password123`
 
 **Questions (6 types):**
 - 2 Multiple Choice (JavaScript, Python)
@@ -448,13 +448,13 @@ docker-compose up --build
 ## Login Credentials Quick Reference
 
 ```
-Admin:     admin@example.com     | Demo@123456
-Proctor:   proctor@example.com   | Demo@123456
-Judge 1:   judge1@example.com    | Demo@123456
-Judge 2:   judge2@example.com    | Demo@123456
-Judge 3:   judge3@example.com    | Demo@123456
-Grader:    grader@example.com    | Demo@123456
-Student:   student1@example.com  | Demo@123456
+Admin:     admin@example.com     | password123
+Proctor:   proctor@example.com   | password123
+Judge 1:   judge1@example.com    | password123
+Judge 2:   judge2@example.com    | password123
+Judge 3:   judge3@example.com    | password123
+Grader:    grader@example.com    | password123
+Student:   student1@example.com  | password123
           (student1-20 available)
 ```
 

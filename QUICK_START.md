@@ -24,13 +24,13 @@ Once all services are up (MongoDB, Redis, Backend, Frontend):
 ### Login Credentials
 
 ```
-Admin:     admin@example.com     / Demo@123456
-Proctor:   proctor@example.com   / Demo@123456
-Judge 1:   judge1@example.com    / Demo@123456
-Judge 2:   judge2@example.com    / Demo@123456
-Judge 3:   judge3@example.com    / Demo@123456
-Grader:    grader@example.com    / Demo@123456
-Students:  student1@example.com - student20@example.com / Demo@123456
+Admin:     admin@example.com     / password123
+Proctor:   proctor@example.com   / password123
+Judge 1:   judge1@example.com    / password123
+Judge 2:   judge2@example.com    / password123
+Judge 3:   judge3@example.com    / password123
+Grader:    grader@example.com    / password123
+Students:  student1@example.com - student20@example.com / password123
 ```
 
 ---

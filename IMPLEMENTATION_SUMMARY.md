@@ -55,7 +55,7 @@ Comprehensive enhancement of the live coding platform with professional admin da
 - Judge: Purple
 - Proctor: Orange
 - Grader: Blue
-- Applicant: Green
+- Fellow: Green
 
 ---
 
@@ -164,7 +164,7 @@ Comprehensive enhancement of the live coding platform with professional admin da
 - 1 Proctor
 - 3 Judges
 - 1 Grader
-- 20 Applicants/Students
+- 20 Fellows/Students
 
 **Questions (6 types):**
 - 2 Multiple Choice (JavaScript, Python basics)
@@ -190,7 +190,7 @@ Comprehensive enhancement of the live coding platform with professional admin da
 - 2 coding challenges
 - Proctoring enabled
 
-**All User Password:** `Demo@123456`
+**All User Password:** `password123`
 
 **Seed Command:**
 ```bash
@@ -400,19 +400,19 @@ npm run seed
 ### 2. Login Credentials
 
 ```
-Admin:     admin@example.com     / Demo@123456
-Proctor:   proctor@example.com   / Demo@123456
-Judge 1:   judge1@example.com    / Demo@123456
-Judge 2:   judge2@example.com    / Demo@123456
-Judge 3:   judge3@example.com    / Demo@123456
-Grader:    grader@example.com    / Demo@123456
-Students:  student1-20@example.com / Demo@123456
+Admin:     admin@codearena.edu     / password123
+Proctor:   proctor@codearena.edu   / password123
+Judge 1:   judge1@codearena.edu    / password123
+Judge 2:   judge2@codearena.edu    / password123
+Judge 3:   judge3@codearena.edu    / password123
+Grader:    grader@codearena.edu    / password123
+Students:  student1-20@codearena.edu / password123
 ```
 
 ### 3. Test Scenarios
 
 #### Admin Workflow:
-1. Login as `admin@example.com`
+1. Login as `admin@codearena.edu`
 2. View dashboard with live stats
 3. Navigate to User Management
 4. Add judge role to a user
@@ -420,7 +420,7 @@ Students:  student1-20@example.com / Demo@123456
 6. Monitor team submissions
 
 #### Judge Workflow (Hackathon):
-1. Login as `judge1@example.com`
+1. Login as `judge1@codearena.edu`
 2. See 5 submitted projects
 3. Click "Score Project" on a team
 4. Review their repo, demo, video

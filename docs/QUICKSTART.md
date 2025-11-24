@@ -26,8 +26,8 @@ Services will be available at:
 Go to: **http://localhost:3000/dashboard**
 
 Use these credentials:
-- **Email**: `demo@example.com`
-- **Password**: `Demo@123456`
+- **Email**: `admin@codearena.edu`
+- **Password**: `password123`
 
 ## Step 3: Test an Assessment
 

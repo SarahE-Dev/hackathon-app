@@ -26,7 +26,7 @@ Implemented role-based redirects in login and register flows:
 - **Admin** → `/admin` (Admin control panel)
 - **Proctor** → `/proctor` (Proctoring dashboard)
 - **Judge** → `/judge` (Judge scoring interface)
-- **Applicant/Student** → `/dashboard` (Student dashboard)
+- **Fellow/Student** → `/dashboard` (Student dashboard)
 
 Priority order: admin > proctor > judge > applicant
 
@@ -116,7 +116,7 @@ Based on RBAC system:
 - View submission details
 - Dashboard: `/judge`
 
-### Applicant/Student
+### Fellow/Student
 - Take assessments
 - Participate in hackathons
 - View their results
@@ -137,13 +137,13 @@ Based on RBAC system:
    ```
 
 2. **RBAC Testing**:
-   - Login as admin: `admin@example.com` / `Demo@123456`
+   - Login as admin: `admin@codearena.edu` / `password123`
    - Verify redirect to `/admin`
-   - Login as proctor: `proctor@example.com` / `Demo@123456`
+   - Login as proctor: `proctor@codearena.edu` / `password123`
    - Verify redirect to `/proctor`
-   - Login as judge: `judge1@example.com` / `Demo@123456`
+   - Login as judge: `judge1@codearena.edu` / `password123`
    - Verify redirect to `/judge`
-   - Login as student: `student1@example.com` / `Demo@123456`
+   - Login as student: `student1@codearena.edu` / `password123`
    - Verify redirect to `/dashboard`
 
 3. **Python-Only Testing**:
@@ -171,19 +171,19 @@ If multi-language support is needed in the future:
 ## Credentials (from seed)
 
 **Admin**:
-- Email: `admin@example.com`
-- Password: `Demo@123456`
+- Email: `admin@codearena.edu`
+- Password: `password123`
 
 **Proctor**:
-- Email: `proctor@example.com`
-- Password: `Demo@123456`
+- Email: `proctor@codearena.edu`
+- Password: `password123`
 
 **Judges**:
-- Email: `judge1@example.com` (Sarah Johnson)
-- Email: `judge2@example.com` (Michael Chen)
-- Email: `judge3@example.com` (Emily Rodriguez)
-- Password: `Demo@123456` (all judges)
+- Email: `judge1@codearena.edu` (Sarah Johnson)
+- Email: `judge2@codearena.edu` (Michael Chen)
+- Email: `judge3@codearena.edu` (Emily Rodriguez)
+- Password: `password123` (all judges)
 
 **Students**:
 - Multiple student accounts created
-- Password: `Demo@123456` (all students)
+- Password: `password123` (all students)
