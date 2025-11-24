@@ -133,32 +133,32 @@ export default function HackathonSessionsListPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'scheduled':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-neon-blue/20 text-neon-blue border-neon-blue/50';
       case 'active':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-neon-green/20 text-neon-green border-neon-green/50';
       case 'paused':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'bg-neon-yellow/20 text-neon-yellow border-neon-yellow/50';
       case 'completed':
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gray-500/20 text-gray-400 border-gray-500/50';
       case 'cancelled':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'bg-neon-pink/20 text-neon-pink border-neon-pink/50';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gray-500/20 text-gray-400 border-gray-500/50';
     }
   };
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case 'easy':
-        return 'text-green-600 bg-green-50 border-green-200';
+        return 'text-neon-green bg-neon-green/20 border-neon-green/50';
       case 'medium':
-        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+        return 'text-neon-yellow bg-neon-yellow/20 border-neon-yellow/50';
       case 'hard':
-        return 'text-red-600 bg-red-50 border-red-200';
+        return 'text-neon-pink bg-neon-pink/20 border-neon-pink/50';
       case 'expert':
-        return 'text-purple-600 bg-purple-50 border-purple-200';
+        return 'text-neon-purple bg-neon-purple/20 border-neon-purple/50';
       default:
-        return 'text-gray-600 bg-gray-50 border-gray-200';
+        return 'text-gray-400 bg-gray-500/20 border-gray-500/50';
     }
   };
 
@@ -185,10 +185,10 @@ export default function HackathonSessionsListPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-dark-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600"></div>
-          <p className="mt-4 text-gray-600">Loading sessions...</p>
+          <div className="w-16 h-16 border-4 border-neon-blue border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading sessions...</p>
         </div>
       </div>
     );

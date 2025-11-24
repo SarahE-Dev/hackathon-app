@@ -71,26 +71,26 @@ export default function LeaderboardPage() {
   const getRankColor = (rank: number) => {
     switch (rank) {
       case 1:
-        return 'text-yellow-600 font-bold text-2xl';
+        return 'text-neon-yellow font-bold text-2xl';
       case 2:
-        return 'text-gray-400 font-bold text-xl';
+        return 'text-gray-300 font-bold text-xl';
       case 3:
-        return 'text-orange-600 font-bold text-xl';
+        return 'text-neon-orange font-bold text-xl';
       default:
-        return 'text-gray-700 font-medium';
+        return 'text-gray-400 font-medium';
     }
   };
 
   const getRankBg = (rank: number) => {
     switch (rank) {
       case 1:
-        return 'bg-yellow-50 border-yellow-200';
+        return 'bg-neon-yellow/10 border-neon-yellow/50';
       case 2:
-        return 'bg-gray-50 border-gray-300';
+        return 'bg-gray-500/10 border-gray-500/50';
       case 3:
-        return 'bg-orange-50 border-orange-200';
+        return 'bg-neon-orange/10 border-neon-orange/50';
       default:
-        return 'bg-white border-gray-200';
+        return 'bg-dark-800 border-gray-700';
     }
   };
 
@@ -105,10 +105,10 @@ export default function LeaderboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center">
+      <div className="min-h-screen bg-dark-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600"></div>
-          <p className="mt-4 text-gray-600">Loading leaderboard...</p>
+          <div className="w-16 h-16 border-4 border-neon-blue border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading leaderboard...</p>
         </div>
       </div>
     );
@@ -116,12 +116,12 @@ export default function LeaderboardPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-dark-900 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
+          <p className="text-neon-pink mb-4">{error}</p>
           <button
             onClick={() => router.back()}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            className="px-4 py-2 bg-gradient-to-r from-neon-blue to-neon-purple text-white rounded-lg hover:opacity-90"
           >
             Go Back
           </button>
@@ -131,28 +131,34 @@ export default function LeaderboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 p-6">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-dark-900 text-white p-6">
+      {/* Animated background */}
+      <div className="pointer-events-none fixed inset-0">
+        <div className="absolute -top-40 -left-32 h-[520px] w-[520px] rounded-full bg-neon-blue/10 blur-3xl animate-float"></div>
+        <div className="absolute top-[60%] right-[10%] h-[420px] w-[420px] rounded-full bg-neon-purple/10 blur-3xl animate-float" style={{ animationDelay: '0.8s' }}></div>
+      </div>
+
+      <div className="max-w-6xl mx-auto relative z-10">
         {/* Header */}
         <div className="mb-8 text-center">
           <div className="inline-block mb-4">
             <div className="text-6xl">🏆</div>
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">{session?.title}</h1>
-          <p className="text-gray-600 mb-4">{session?.description}</p>
+          <h1 className="text-4xl font-bold text-gradient mb-2">{session?.title}</h1>
+          <p className="text-gray-400 mb-4">{session?.description}</p>
           <div className="flex justify-center items-center gap-4">
             <span
-              className={`px-4 py-2 rounded-full text-sm font-medium ${
+              className={`px-4 py-2 rounded-full text-sm font-medium border ${
                 session?.status === 'active'
-                  ? 'bg-green-100 text-green-800'
+                  ? 'bg-neon-green/20 text-neon-green border-neon-green/50'
                   : session?.status === 'completed'
-                  ? 'bg-gray-100 text-gray-800'
-                  : 'bg-yellow-100 text-yellow-800'
+                  ? 'bg-gray-500/20 text-gray-400 border-gray-500/50'
+                  : 'bg-neon-yellow/20 text-neon-yellow border-neon-yellow/50'
               }`}
             >
               {session?.status}
             </span>
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-gray-400">
               {leaderboard.length} team{leaderboard.length !== 1 ? 's' : ''} competing
             </span>
           </div>
@@ -160,30 +166,30 @@ export default function LeaderboardPage() {
 
         {/* Controls */}
         {isAdminOrProctor && (
-          <div className="mb-6 bg-white rounded-lg shadow p-4 flex justify-between items-center">
+          <div className="mb-6 glass rounded-xl p-4 flex justify-between items-center border border-gray-800">
             <div className="flex items-center gap-4">
-              <label className="flex items-center">
+              <label className="flex items-center cursor-pointer">
                 <input
                   type="checkbox"
                   checked={autoRefresh}
                   onChange={(e) => setAutoRefresh(e.target.checked)}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-neon-blue focus:ring-neon-blue border-gray-600 rounded bg-dark-700"
                 />
-                <span className="ml-2 text-sm text-gray-700">Auto-refresh (10s)</span>
+                <span className="ml-2 text-sm text-gray-300">Auto-refresh (10s)</span>
               </label>
               <button
                 onClick={loadLeaderboard}
-                className="text-sm text-indigo-600 hover:text-indigo-700"
+                className="text-sm text-neon-blue hover:text-neon-blue/80 transition-colors"
               >
                 Refresh Now
               </button>
             </div>
             <button
               onClick={() => setRevealed(!revealed)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 revealed
-                  ? 'bg-gray-600 text-white hover:bg-gray-700'
-                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  ? 'bg-dark-700 text-white hover:bg-dark-600 border border-gray-600'
+                  : 'bg-gradient-to-r from-neon-blue to-neon-purple text-white hover:opacity-90'
               }`}
             >
               {revealed ? 'Hide Details' : 'Reveal Details'}
@@ -193,8 +199,8 @@ export default function LeaderboardPage() {
 
         {/* Leaderboard */}
         {leaderboard.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-8 text-center">
-            <p className="text-gray-600">No teams have started yet</p>
+          <div className="glass rounded-xl p-8 text-center border border-gray-800">
+            <p className="text-gray-400">No teams have started yet</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -203,7 +209,7 @@ export default function LeaderboardPage() {
                 key={entry.teamId}
                 className={`${getRankBg(
                   entry.rank
-                )} border-2 rounded-lg shadow-sm overflow-hidden transition-all hover:shadow-md`}
+                )} border-2 rounded-xl overflow-hidden transition-all hover:scale-[1.01] glass`}
               >
                 <div className="p-6">
                   <div className="flex items-center justify-between">
@@ -219,10 +225,10 @@ export default function LeaderboardPage() {
                         )}
                       </div>
                       <div className="flex-1">
-                        <h3 className="text-xl font-semibold text-gray-900 mb-1">
+                        <h3 className="text-xl font-semibold text-white mb-1">
                           {entry.teamName}
                         </h3>
-                        <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <div className="flex items-center gap-4 text-sm text-gray-400">
                           <span>
                             {entry.problemsSolved} / {entry.totalProblems} problems
                           </span>
@@ -232,7 +238,7 @@ export default function LeaderboardPage() {
                             </span>
                           )}
                           {revealed && entry.incidentCount > 0 && (
-                            <span className="text-red-600">
+                            <span className="text-neon-pink">
                               ⚠️ {entry.incidentCount} incidents
                             </span>
                           )}
@@ -242,8 +248,8 @@ export default function LeaderboardPage() {
 
                     {/* Score */}
                     <div className="text-right">
-                      <div className="text-3xl font-bold text-gray-900">{entry.totalScore}</div>
-                      <div className="text-sm text-gray-600">
+                      <div className="text-3xl font-bold text-gradient">{entry.totalScore}</div>
+                      <div className="text-sm text-gray-400">
                         {getScorePercentage(entry.totalScore, entry.maxScore)}% ({entry.maxScore}{' '}
                         max)
                       </div>
@@ -252,16 +258,16 @@ export default function LeaderboardPage() {
 
                   {/* Progress Bar */}
                   <div className="mt-4">
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-dark-700 rounded-full h-2">
                       <div
                         className={`h-2 rounded-full transition-all ${
                           entry.rank === 1
-                            ? 'bg-yellow-500'
+                            ? 'bg-gradient-to-r from-neon-yellow to-neon-orange'
                             : entry.rank === 2
                             ? 'bg-gray-400'
                             : entry.rank === 3
-                            ? 'bg-orange-500'
-                            : 'bg-indigo-500'
+                            ? 'bg-neon-orange'
+                            : 'bg-gradient-to-r from-neon-blue to-neon-purple'
                         }`}
                         style={{
                           width: `${getScorePercentage(entry.totalScore, entry.maxScore)}%`,
@@ -279,9 +285,9 @@ export default function LeaderboardPage() {
         <div className="mt-8 text-center">
           <button
             onClick={() => router.back()}
-            className="px-6 py-3 bg-white text-gray-700 rounded-lg hover:bg-gray-50 shadow"
+            className="px-6 py-3 bg-dark-700 hover:bg-dark-600 text-white rounded-lg border border-gray-600 transition-all"
           >
-            Back to Dashboard
+            ← Back to Dashboard
           </button>
         </div>
       </div>
