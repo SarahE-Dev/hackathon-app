@@ -333,15 +333,30 @@ export default function GradeAttemptPage() {
 
       case 'Coding':
         return (
-          <div className="bg-dark-700 border border-gray-600 rounded-lg overflow-hidden">
-            <div className="bg-dark-800 px-4 py-2 border-b border-gray-600">
-              <span className="text-gray-400 text-sm">
-                Language: {answer.answer?.language || 'Unknown'}
-              </span>
+          <div className="space-y-4">
+            <div className="bg-dark-700 border border-gray-600 rounded-lg overflow-hidden">
+              <div className="bg-dark-800 px-4 py-2 border-b border-gray-600">
+                <span className="text-gray-400 text-sm">
+                  Language: {answer.answer?.language || 'Unknown'}
+                </span>
+              </div>
+              <pre className="p-4 text-white font-mono text-sm overflow-x-auto">
+                {answer.answer?.code || answer.answer}
+              </pre>
             </div>
-            <pre className="p-4 text-white font-mono text-sm overflow-x-auto">
-              {answer.answer?.code || answer.answer}
-            </pre>
+            {/* Show solution explanation if provided */}
+            {answer.answer?.explanation && (
+              <div className="bg-dark-700 border border-indigo-500/30 rounded-lg overflow-hidden">
+                <div className="bg-indigo-500/10 px-4 py-2 border-b border-indigo-500/30">
+                  <span className="text-indigo-400 text-sm font-medium">
+                    Solution Explanation (Markdown)
+                  </span>
+                </div>
+                <div className="p-4 text-gray-300 text-sm whitespace-pre-wrap font-mono">
+                  {answer.answer.explanation}
+                </div>
+              </div>
+            )}
           </div>
         );
 

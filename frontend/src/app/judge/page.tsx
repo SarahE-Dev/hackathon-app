@@ -18,6 +18,9 @@ interface Team {
   repoUrl?: string;
   demoUrl?: string;
   videoUrl?: string;
+  projectExplanation?: string;
+  technicalApproach?: string;
+  challengesOvercome?: string;
 }
 
 interface JudgeScore {
@@ -514,6 +517,30 @@ function JudgeDashboardContent() {
 
                       {team.description && (
                         <p className="text-gray-300 text-sm mb-4 line-clamp-3">{team.description}</p>
+                      )}
+
+                      {/* Project Explanation Sections */}
+                      {(team.projectExplanation || team.technicalApproach || team.challengesOvercome) && (
+                        <div className="space-y-3 mb-4 p-3 bg-dark-800 rounded-lg border border-gray-700">
+                          {team.projectExplanation && (
+                            <div>
+                              <h4 className="text-xs font-semibold text-indigo-400 mb-1">Project Explanation</h4>
+                              <p className="text-gray-300 text-xs line-clamp-4 whitespace-pre-wrap">{team.projectExplanation}</p>
+                            </div>
+                          )}
+                          {team.technicalApproach && (
+                            <div>
+                              <h4 className="text-xs font-semibold text-green-400 mb-1">Technical Approach</h4>
+                              <p className="text-gray-300 text-xs line-clamp-3 whitespace-pre-wrap">{team.technicalApproach}</p>
+                            </div>
+                          )}
+                          {team.challengesOvercome && (
+                            <div>
+                              <h4 className="text-xs font-semibold text-orange-400 mb-1">Challenges Overcome</h4>
+                              <p className="text-gray-300 text-xs line-clamp-3 whitespace-pre-wrap">{team.challengesOvercome}</p>
+                            </div>
+                          )}
+                        </div>
                       )}
 
                       <div className="flex gap-2 mb-4 flex-wrap">
