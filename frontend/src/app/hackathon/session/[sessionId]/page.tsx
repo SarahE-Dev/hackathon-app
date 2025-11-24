@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { hackathonSessionsAPI, codeExecutionAPI } from '@/lib/api';
+import { hackathonSessionsAPI, codeExecutionAPI, teamsAPI } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 
 // Dynamically import Monaco Editor to avoid SSR issues
@@ -60,6 +60,9 @@ export default function HackathonSessionPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [warningMessage, setWarningMessage] = useState('');
+  const [editingTeamName, setEditingTeamName] = useState(false);
+  const [newTeamName, setNewTeamName] = useState('');
+  const [savingTeamName, setSavingTeamName] = useState(false);
 
   const lastActivityRef = useRef(Date.now());
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -336,6 +339,35 @@ export default function HackathonSessionPage() {
     }
   };
 
+  const handleEditTeamName = () => {
+    setNewTeamName(teamSession?.teamId.name || '');
+    setEditingTeamName(true);
+  };
+
+  const handleSaveTeamName = async () => {
+    if (!newTeamName.trim() || !teamSession) return;
+
+    setSavingTeamName(true);
+    try {
+      await teamsAPI.updateTeam(teamSession.teamId._id, { name: newTeamName.trim() });
+      // Update local state
+      setTeamSession({
+        ...teamSession,
+        teamId: { ...teamSession.teamId, name: newTeamName.trim() }
+      });
+      setEditingTeamName(false);
+    } catch (err: any) {
+      alert(err.response?.data?.error?.message || 'Failed to update team name');
+    } finally {
+      setSavingTeamName(false);
+    }
+  };
+
+  const handleCancelEditTeamName = () => {
+    setEditingTeamName(false);
+    setNewTeamName('');
+  };
+
   if (!isAuthenticated) {
     router.push('/auth/login');
     return null;
@@ -400,7 +432,49 @@ export default function HackathonSessionPage() {
         <div className="max-w-screen-2xl mx-auto flex justify-between items-center">
           <div>
             <h1 className="text-xl font-bold text-gradient">{teamSession.sessionId.title}</h1>
-            <p className="text-sm text-gray-400">Team: {teamSession.teamId.name}</p>
+            <div className="flex items-center gap-2">
+              {editingTeamName ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-400">Team:</span>
+                  <input
+                    type="text"
+                    value={newTeamName}
+                    onChange={(e) => setNewTeamName(e.target.value)}
+                    className="bg-dark-700 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:border-neon-blue outline-none"
+                    placeholder="Team name"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSaveTeamName();
+                      if (e.key === 'Escape') handleCancelEditTeamName();
+                    }}
+                  />
+                  <button
+                    onClick={handleSaveTeamName}
+                    disabled={savingTeamName || !newTeamName.trim()}
+                    className="px-2 py-1 bg-neon-green/20 text-neon-green hover:bg-neon-green/30 rounded text-xs disabled:opacity-50"
+                  >
+                    {savingTeamName ? '...' : 'Save'}
+                  </button>
+                  <button
+                    onClick={handleCancelEditTeamName}
+                    className="px-2 py-1 bg-gray-600/20 text-gray-400 hover:bg-gray-600/30 rounded text-xs"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 group">
+                  <p className="text-sm text-gray-400">Team: {teamSession.teamId.name}</p>
+                  <button
+                    onClick={handleEditTeamName}
+                    className="opacity-0 group-hover:opacity-100 px-2 py-0.5 bg-dark-700 hover:bg-dark-600 text-gray-400 hover:text-white rounded text-xs transition-all"
+                    title="Edit team name"
+                  >
+                    Edit
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-6">
             <div className="text-right">
