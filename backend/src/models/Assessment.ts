@@ -19,6 +19,10 @@ export interface IProctoringSettings {
   detectCopyPaste: boolean;
   enableWebcam: boolean;
   enableScreenRecording: boolean;
+  recordWebcam: boolean;
+  recordScreen: boolean;
+  takeSnapshots: boolean;
+  snapshotIntervalMinutes: number;
   fullscreenRequired: boolean;
   allowCalculator: boolean;
   allowScratchpad: boolean;
@@ -124,6 +128,22 @@ const ProctoringSettingsSchema = new Schema({
   enableScreenRecording: {
     type: Boolean,
     default: false,
+  },
+  recordWebcam: {
+    type: Boolean,
+    default: false,
+  },
+  recordScreen: {
+    type: Boolean,
+    default: false,
+  },
+  takeSnapshots: {
+    type: Boolean,
+    default: false,
+  },
+  snapshotIntervalMinutes: {
+    type: Number,
+    default: 5,
   },
   fullscreenRequired: {
     type: Boolean,
