@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
 
-type RoleType = 'admin' | 'judge' | 'student';
+type RoleType = 'admin' | 'proctor' | 'judge' | 'fellow';
 
 interface RoleInfo {
   title: string;
@@ -38,31 +38,48 @@ const roleInfo: Record<RoleType, RoleInfo> = {
     color: 'text-neon-blue',
     borderColor: 'border-neon-blue',
     bgColor: 'bg-neon-blue/10',
-    email: 'admin@codearena.edu',
-    password: 'password123',
+    email: 'admin@example.com',
+    password: 'Demo@123456',
+  },
+  proctor: {
+    title: 'Proctor',
+    subtitle: 'Session Monitor',
+    description: 'Monitor live sessions and handle incidents',
+    capabilities: [
+      'Monitor active sessions',
+      'Pause/resume team sessions',
+      'Track violations in real-time',
+      'Force-submit attempts',
+      'Add incident reports',
+    ],
+    icon: '👁️',
+    color: 'text-orange-400',
+    borderColor: 'border-orange-400',
+    bgColor: 'bg-orange-400/10',
+    email: 'proctor@example.com',
+    password: 'Demo@123456',
   },
   judge: {
     title: 'Judge',
-    subtitle: 'Evaluator & Proctor',
-    description: 'Grade submissions and monitor sessions',
+    subtitle: 'Evaluator',
+    description: 'Grade submissions and score projects',
     capabilities: [
       'Grade assessment submissions',
       'Score hackathon projects',
-      'Monitor live sessions',
-      'View participant progress',
-      'Flag violations',
+      'View solution explanations',
       'Provide feedback',
+      'Release grades to fellows',
     ],
     icon: '⚖️',
     color: 'text-neon-purple',
     borderColor: 'border-neon-purple',
     bgColor: 'bg-neon-purple/10',
-    email: 'judge@codearena.edu',
-    password: 'password123',
+    email: 'judge1@example.com',
+    password: 'Demo@123456',
   },
-  student: {
+  fellow: {
     title: 'Fellow',
-    subtitle: 'Student / Participant',
+    subtitle: 'JTC Participant',
     description: 'Take assessments and join hackathons',
     capabilities: [
       'Take coding assessments',
@@ -75,8 +92,8 @@ const roleInfo: Record<RoleType, RoleInfo> = {
     color: 'text-neon-green',
     borderColor: 'border-neon-green',
     bgColor: 'bg-neon-green/10',
-    email: 'student@codearena.edu',
-    password: 'password123',
+    email: 'fellow1@example.com',
+    password: 'Demo@123456',
   },
 };
 
@@ -105,10 +122,12 @@ export default function LoginPage() {
         const user = JSON.parse(userStr);
         const roles = user.roles || [];
 
-        // Check roles in priority order: admin > judge > applicant
+        // Check roles in priority order: admin > proctor > judge > fellow
         if (roles.some((r: any) => r.role === 'admin')) {
           router.push('/admin');
-        } else if (roles.some((r: any) => r.role === 'judge' || r.role === 'proctor')) {
+        } else if (roles.some((r: any) => r.role === 'proctor')) {
+          router.push('/proctor');
+        } else if (roles.some((r: any) => r.role === 'judge')) {
           router.push('/judge');
         } else {
           router.push('/dashboard');
@@ -166,7 +185,7 @@ export default function LoginPage() {
             <h2 className="text-2xl font-bold mb-2 text-white text-center relative z-10">Welcome! Choose Your Role</h2>
             <p className="text-gray-400 text-center mb-8 relative z-10">Select how you want to sign in to the platform</p>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 relative z-10">
               {(Object.keys(roleInfo) as RoleType[]).map((role) => {
                 const info = roleInfo[role];
                 return (

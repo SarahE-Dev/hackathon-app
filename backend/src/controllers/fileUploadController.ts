@@ -117,7 +117,7 @@ export const downloadFile = async (
     const hasAccess = await FileUploadService.verifyFileAccess(
       filename,
       req.user.userId,
-      req.user.roles[0]?.role || 'applicant'
+      req.user.roles[0]?.role || 'fellow'
     );
 
     if (!hasAccess) {
@@ -163,7 +163,7 @@ export const deleteFile = async (
     const hasAccess = await FileUploadService.verifyFileAccess(
       filename,
       req.user.userId,
-      req.user.roles[0]?.role || 'applicant'
+      req.user.roles[0]?.role || 'fellow'
     );
 
     if (!hasAccess) {

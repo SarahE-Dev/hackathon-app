@@ -1,5 +1,5 @@
 /**
- * User Roles in the System
+ * User Roles in the System (Justice Through Code)
  *
  * ADMIN - Full system access: manage users, assessments, sessions, and all settings
  * PROCTOR - Monitor live sessions, pause/resume teams, handle incidents
@@ -8,14 +8,14 @@
  *          Currently, JUDGE handles all grading. GRADER can be implemented for:
  *          - Grading specific question types only
  *          - TA roles with limited permissions
- * APPLICANT - Students/participants: take assessments, join hackathons, view results
+ * FELLOW - JTC Fellows: take assessments, join hackathon teams, view their results
  */
 export enum UserRole {
   ADMIN = 'admin',
   PROCTOR = 'proctor',
   GRADER = 'grader', // Reserved - not currently used in routes
   JUDGE = 'judge',
-  APPLICANT = 'applicant',
+  FELLOW = 'fellow',
 }
 
 export enum QuestionType {

@@ -62,7 +62,7 @@ function AnalyticsContent() {
             judge: 12,
             proctor: 8,
             grader: 15,
-            applicant: 110,
+            fellow: 110,
           },
           activeToday: 45,
           newThisWeek: 12,
@@ -221,7 +221,7 @@ function AnalyticsContent() {
                   judge: 'bg-purple-500',
                   proctor: 'bg-orange-500',
                   grader: 'bg-blue-500',
-                  applicant: 'bg-green-500',
+                  fellow: 'bg-green-500',
                 };
                 return (
                   <div key={role}>

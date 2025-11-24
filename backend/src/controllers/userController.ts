@@ -98,7 +98,7 @@ export const createUser = async (
       firstName,
       lastName,
       passwordHash,
-      roles: roles || (organizationId ? [{ role: UserRole.APPLICANT, organizationId }] : []),
+      roles: roles || (organizationId ? [{ role: UserRole.FELLOW, organizationId }] : []),
       isActive: true,
       emailVerified: false,
     });

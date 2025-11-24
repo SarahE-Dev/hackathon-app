@@ -49,11 +49,11 @@ export default function RegisterPage() {
       localStorage.setItem('refreshToken', response.data.tokens.refreshToken);
       localStorage.setItem('user', JSON.stringify(response.data.user));
 
-      // Role-based redirect (new registrations typically get applicant role)
+      // Role-based redirect (new registrations typically get fellow role)
       const user = response.data.user;
       const roles = user.roles || [];
       
-      // Check roles in priority order: admin > proctor > judge > applicant
+      // Check roles in priority order: admin > proctor > judge > fellow
       if (roles.some((r: any) => r.role === 'admin')) {
         router.push('/admin');
       } else if (roles.some((r: any) => r.role === 'proctor')) {

@@ -86,7 +86,7 @@ const seed = async () => {
       firstName: 'Student',
       lastName: 'User',
       passwordHash: demoPassword,
-      roles: [{ role: UserRole.APPLICANT, organizationId: org._id, cohortId: org.cohorts[0]._id }],
+      roles: [{ role: UserRole.FELLOW, organizationId: org._id, cohortId: org.cohorts[0]._id }],
       isActive: true,
       emailVerified: true,
     });
@@ -162,7 +162,7 @@ const seed = async () => {
       firstName: 'Old Student',
       lastName: 'User',
       passwordHash: oldAdminPassword,
-      roles: [{ role: UserRole.APPLICANT, organizationId: org._id, cohortId: org.cohorts[0]._id }],
+      roles: [{ role: UserRole.FELLOW, organizationId: org._id, cohortId: org.cohorts[0]._id }],
       isActive: true,
       emailVerified: true,
     });
@@ -355,7 +355,7 @@ const seed = async () => {
     console.log('\n  🟢 Student:');
     console.log(`    Email: student@codearena.edu`);
     console.log(`    Password: password123`);
-    console.log(`    Role: Applicant (Take assessments & participate in hackathons)`);
+    console.log(`    Role: Fellow (Take assessments & participate in hackathons)`);
     console.log('\n📚 Sample Data:');
     console.log(`  Organization: ${org.name}`);
     console.log(`  Users: 8 (4 new + 4 legacy)`);

@@ -28,7 +28,7 @@ function UsersManagementContent() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showRoleModal, setShowRoleModal] = useState(false);
 
-  const roleOptions = ['admin', 'judge', 'proctor', 'grader', 'applicant'];
+  const roleOptions = ['admin', 'judge', 'proctor', 'grader', 'fellow'];
 
   useEffect(() => {
     loadUsers();
@@ -107,7 +107,7 @@ function UsersManagementContent() {
       judge: 'bg-purple-500/20 text-purple-400 border-purple-500/50',
       proctor: 'bg-orange-500/20 text-orange-400 border-orange-500/50',
       grader: 'bg-blue-500/20 text-blue-400 border-blue-500/50',
-      applicant: 'bg-green-500/20 text-green-400 border-green-500/50',
+      fellow: 'bg-green-500/20 text-green-400 border-green-500/50',
     };
     return colors[role] || 'bg-gray-500/20 text-gray-400 border-gray-500/50';
   };
@@ -119,7 +119,7 @@ function UsersManagementContent() {
       judge: users.filter((u) => u.roles.some((r) => r.role === 'judge')).length,
       proctor: users.filter((u) => u.roles.some((r) => r.role === 'proctor')).length,
       grader: users.filter((u) => u.roles.some((r) => r.role === 'grader')).length,
-      applicant: users.filter((u) => u.roles.some((r) => r.role === 'applicant')).length,
+      fellow: users.filter((u) => u.roles.some((r) => r.role === 'fellow')).length,
     };
   };
 
@@ -177,8 +177,8 @@ function UsersManagementContent() {
             <div className="text-2xl font-bold text-blue-400">{stats.grader}</div>
           </div>
           <div className="glass rounded-xl p-4 border border-green-500/30">
-            <div className="text-gray-400 text-sm mb-1">Applicants</div>
-            <div className="text-2xl font-bold text-green-400">{stats.applicant}</div>
+            <div className="text-gray-400 text-sm mb-1">Fellows</div>
+            <div className="text-2xl font-bold text-green-400">{stats.fellow}</div>
           </div>
         </div>
 
