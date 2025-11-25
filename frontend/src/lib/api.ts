@@ -235,42 +235,42 @@ export const assessmentsAPI = {
 // Questions API
 export const questionsAPI = {
   getAll: async (params?: any) => {
-    const response = await api.get('/assessments/questions/list', { params });
+    const response = await api.get('/questions', { params });
     return response.data;
   },
 
   getById: async (id: string) => {
-    const response = await api.get(`/assessments/questions/${id}`);
+    const response = await api.get(`/questions/${id}`);
     return response.data;
   },
 
   create: async (data: any) => {
-    const response = await api.post('/assessments/questions', data);
+    const response = await api.post('/questions', data);
     return response.data;
   },
 
   update: async (id: string, data: any) => {
-    const response = await api.put(`/assessments/questions/${id}`, data);
+    const response = await api.put(`/questions/${id}`, data);
     return response.data;
   },
 
   publish: async (id: string) => {
-    const response = await api.post(`/assessments/questions/${id}/publish`);
+    const response = await api.post(`/questions/${id}/publish`);
     return response.data;
   },
 
   duplicate: async (id: string) => {
-    const response = await api.post(`/assessments/questions/${id}/duplicate`);
+    const response = await api.post(`/questions/${id}/duplicate`);
     return response.data;
   },
 
   archive: async (id: string) => {
-    const response = await api.post(`/assessments/questions/${id}/archive`);
+    const response = await api.patch(`/questions/${id}/archive`);
     return response.data;
   },
 
   delete: async (id: string) => {
-    const response = await api.delete(`/assessments/questions/${id}`);
+    const response = await api.delete(`/questions/${id}`);
     return response.data;
   },
 };

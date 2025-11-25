@@ -129,7 +129,7 @@ export default function TeamDetailPage() {
 
 
         // Fetch coding problems for hackathon
-        const problemsResponse = await axios.get(`${API_URL}/api/assessments/questions/list`, {
+        const problemsResponse = await axios.get(`${API_URL}/api/questions`, {
           headers: { 'Authorization': `Bearer ${token}` },
         });
         const codingProblems = (problemsResponse.data.data?.questions || [])

@@ -17,16 +17,15 @@ export async function seedComprehensive() {
     await Question.deleteMany({});
     await Team.deleteMany({});
     await HackathonSession.deleteMany({});
-    
+
     logger.info('Cleared existing data');
 
     // Create Organization
     const organization = await Organization.create({
       name: 'Justice Through Code',
-      description: 'Empowering communities through technology education',
+      slug: 'justice-through-code',
       settings: {
         allowSelfRegistration: true,
-        defaultRoles: ['fellow'],
       },
     });
     logger.info(`Created organization: ${organization.name}`);
@@ -38,7 +37,7 @@ export async function seedComprehensive() {
       // Admin
       {
         email: 'admin@example.com',
-        password: hashedPassword,
+        passwordHash: hashedPassword,
         firstName: 'Admin',
         lastName: 'User',
         roles: [
@@ -50,7 +49,7 @@ export async function seedComprehensive() {
       // Proctor
       {
         email: 'proctor@example.com',
-        password: hashedPassword,
+        passwordHash: hashedPassword,
         firstName: 'Proctor',
         lastName: 'Monitor',
         roles: [
@@ -62,7 +61,7 @@ export async function seedComprehensive() {
       // Judges
       {
         email: 'judge1@example.com',
-        password: hashedPassword,
+        passwordHash: hashedPassword,
         firstName: 'Sarah',
         lastName: 'Johnson',
         roles: [
@@ -73,7 +72,7 @@ export async function seedComprehensive() {
       },
       {
         email: 'judge2@example.com',
-        password: hashedPassword,
+        passwordHash: hashedPassword,
         firstName: 'Michael',
         lastName: 'Chen',
         roles: [
@@ -84,7 +83,7 @@ export async function seedComprehensive() {
       },
       {
         email: 'judge3@example.com',
-        password: hashedPassword,
+        passwordHash: hashedPassword,
         firstName: 'Emily',
         lastName: 'Rodriguez',
         roles: [
@@ -96,7 +95,7 @@ export async function seedComprehensive() {
       // Grader
       {
         email: 'grader@example.com',
-        password: hashedPassword,
+        passwordHash: hashedPassword,
         firstName: 'Grader',
         lastName: 'Smith',
         roles: [
@@ -108,7 +107,7 @@ export async function seedComprehensive() {
       // Fellows (JTC Participants)
       ...Array.from({ length: 20 }, (_, i) => ({
         email: `fellow${i + 1}@example.com`,
-        password: hashedPassword,
+        passwordHash: hashedPassword,
         firstName: ['Alex', 'Jordan', 'Taylor', 'Morgan', 'Casey', 'Riley', 'Dakota', 'Avery'][i % 8],
         lastName: ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones'][i % 5],
         roles: [
@@ -124,115 +123,108 @@ export async function seedComprehensive() {
 
     // Create Questions for Assessments
     const questions = await Question.create([
-      // MCQ Questions
       {
-        title: 'JavaScript Basics',
-        type: 'multiple-choice',
+        title: 'What is JavaScript?',
+        type: 'mcq-single',
         content: {
-          text: 'What is the output of: console.log(typeof null)?',
+          prompt: 'What is JavaScript?',
           options: [
-            { id: 'a', text: 'object', isCorrect: true },
-            { id: 'b', text: 'null', isCorrect: false },
-            { id: 'c', text: 'undefined', isCorrect: false },
-            { id: 'd', text: 'number', isCorrect: false },
+            { id: 'a', text: 'A server-side language', isCorrect: false },
+            { id: 'b', text: 'A client-side scripting language', isCorrect: true },
+            { id: 'c', text: 'A database language', isCorrect: false },
+            { id: 'd', text: 'A markup language', isCorrect: false },
           ],
+          correctAnswer: 'b',
         },
         points: 10,
         difficulty: 'easy',
         organizationId: organization._id,
+        authorId: admin._id,
         status: 'published',
       },
       {
-        title: 'Python Data Types',
-        type: 'multiple-choice',
+        title: 'Variable Declaration in JavaScript',
+        type: 'mcq-single',
         content: {
-          text: 'Which data type is mutable in Python?',
+          prompt: 'Which keyword is used to declare a constant variable in JavaScript?',
           options: [
-            { id: 'a', text: 'tuple', isCorrect: false },
-            { id: 'b', text: 'string', isCorrect: false },
-            { id: 'c', text: 'list', isCorrect: true },
-            { id: 'd', text: 'int', isCorrect: false },
+            { id: 'a', text: 'const', isCorrect: true },
+            { id: 'b', text: 'var', isCorrect: false },
+            { id: 'c', text: 'let', isCorrect: false },
+            { id: 'd', text: 'static', isCorrect: false },
           ],
+          correctAnswer: 'a',
         },
         points: 10,
         difficulty: 'easy',
         organizationId: organization._id,
+        authorId: admin._id,
         status: 'published',
       },
-      // Coding Questions
       {
-        title: 'Reverse a String',
-        type: 'coding',
+        title: 'Array Methods in JavaScript',
+        type: 'mcq-multi',
         content: {
-          text: 'Write a function that reverses a string.',
-          starterCode: 'function reverseString(str) {\n  // Your code here\n}',
-          testCases: [
-            {
-              input: '"hello"',
-              expectedOutput: '"olleh"',
-              points: 5,
-            },
-            {
-              input: '"JavaScript"',
-              expectedOutput: '"tpircSavaJ"',
-              points: 5,
-            },
+          prompt: 'Which of the following are array methods in JavaScript? (Select all that apply)',
+          options: [
+            { id: 'a', text: 'map()', isCorrect: true },
+            { id: 'b', text: 'filter()', isCorrect: true },
+            { id: 'c', text: 'execute()', isCorrect: false },
+            { id: 'd', text: 'reduce()', isCorrect: true },
           ],
-          allowedLanguages: ['javascript', 'python', 'java'],
-        },
-        points: 20,
-        difficulty: 'medium',
-        organizationId: organization._id,
-        status: 'published',
-      },
-      {
-        title: 'Two Sum Problem',
-        type: 'coding',
-        content: {
-          text: 'Given an array of integers and a target, return indices of two numbers that add up to target.',
-          starterCode: 'function twoSum(nums, target) {\n  // Your code here\n}',
-          testCases: [
-            {
-              input: '[2,7,11,15], 9',
-              expectedOutput: '[0,1]',
-              points: 10,
-            },
-            {
-              input: '[3,2,4], 6',
-              expectedOutput: '[1,2]',
-              points: 10,
-            },
-          ],
-          allowedLanguages: ['javascript', 'python', 'java'],
-        },
-        points: 30,
-        difficulty: 'hard',
-        organizationId: organization._id,
-        status: 'published',
-      },
-      // Essay Questions
-      {
-        title: 'System Design',
-        type: 'long-answer',
-        content: {
-          text: 'Explain how you would design a URL shortening service like bit.ly. Consider scalability, database design, and potential bottlenecks.',
-          wordLimit: 500,
-        },
-        points: 25,
-        difficulty: 'hard',
-        organizationId: organization._id,
-        status: 'published',
-      },
-      {
-        title: 'Algorithm Explanation',
-        type: 'short-answer',
-        content: {
-          text: 'Explain the time complexity of binary search and why it\'s efficient.',
-          wordLimit: 150,
+          correctAnswer: ['a', 'b', 'd'],
         },
         points: 15,
         difficulty: 'medium',
         organizationId: organization._id,
+        authorId: admin._id,
+        status: 'published',
+      },
+      {
+        title: 'FizzBuzz Challenge',
+        type: 'coding',
+        content: {
+          prompt: 'Write a function that returns "Fizz" for multiples of 3, "Buzz" for multiples of 5, and "FizzBuzz" for multiples of both.',
+          codeTemplate: 'function fizzBuzz(n) {\n  // Your code here\n}',
+          language: 'javascript',
+          testCases: [
+            {
+              id: '1',
+              input: 'fizzBuzz(3)',
+              expectedOutput: '"Fizz"',
+              isHidden: false,
+              points: 5,
+            },
+          ],
+        },
+        points: 25,
+        difficulty: 'medium',
+        organizationId: organization._id,
+        authorId: admin._id,
+        status: 'published',
+      },
+      {
+        title: 'Explain Closures',
+        type: 'long-form',
+        content: {
+          prompt: 'Explain what a closure is in JavaScript and provide an example.',
+        },
+        points: 20,
+        difficulty: 'hard',
+        organizationId: organization._id,
+        authorId: admin._id,
+        status: 'published',
+      },
+      {
+        title: 'What is async/await?',
+        type: 'freeform',
+        content: {
+          prompt: 'Describe the purpose and usage of async/await in JavaScript.',
+        },
+        points: 15,
+        difficulty: 'medium',
+        organizationId: organization._id,
+        authorId: admin._id,
         status: 'published',
       },
     ]);
@@ -243,215 +235,277 @@ export async function seedComprehensive() {
     const assessments = await Assessment.create([
       {
         title: 'JavaScript Fundamentals Quiz',
-        description: 'Test your JavaScript knowledge with this comprehensive quiz',
+        description: 'Test your basic JavaScript knowledge',
         organizationId: organization._id,
         authorId: admin._id,
         sections: [
           {
             id: 'section1',
             title: 'Core Concepts',
+            description: 'Test your understanding of JavaScript basics',
             questionIds: [questions[0]._id, questions[1]._id],
+            randomizeQuestions: false,
+            randomizeOptions: false,
           },
         ],
         settings: {
-          timeLimit: 30,
-          passingScore: 70,
-          attempts: 3,
+          totalTimeLimit: 30,
+          attemptsAllowed: 3,
+          showResultsImmediately: true,
+          allowReview: true,
+          allowBackward: true,
+          shuffleSections: false,
           proctoring: {
-            enabled: true,
-            requireWebcam: false,
-            detectTabSwitch: true,
-            preventCopyPaste: true,
+            enabled: false,
+            requireIdCheck: false,
+            detectTabSwitch: false,
+            detectCopyPaste: false,
+            enableWebcam: false,
+            enableScreenRecording: false,
+            recordWebcam: false,
+            recordScreen: false,
+            takeSnapshots: false,
+            snapshotIntervalMinutes: 5,
+            fullscreenRequired: false,
+            allowCalculator: true,
+            allowScratchpad: true,
           },
-          randomizeQuestions: false,
-          showResults: true,
+          accessibility: {
+            allowExtraTime: true,
+            extraTimePercentage: 25,
+            allowScreenReader: true,
+            dyslexiaFriendlyFont: false,
+          },
         },
         status: 'published',
-        publishedAt: new Date(),
-        publishedSnapshot: {
-          version: 1,
-          assessment: {} as any,
-          questions: [questions[0], questions[1]],
-          publishedAt: new Date(),
-        },
+        totalPoints: 20,
       },
       {
-        title: 'Algorithm Challenge',
-        description: 'Solve coding problems to test your algorithmic thinking',
+        title: 'Intermediate JavaScript Challenge',
+        description: 'Challenge yourself with intermediate concepts',
         organizationId: organization._id,
         authorId: admin._id,
         sections: [
           {
             id: 'section1',
-            title: 'Coding Problems',
-            questionIds: [questions[2]._id, questions[3]._id],
+            title: 'Methods & Operators',
+            questionIds: [questions[2]._id],
+            randomizeQuestions: false,
+            randomizeOptions: false,
+          },
+          {
+            id: 'section2',
+            title: 'Coding Problem',
+            questionIds: [questions[3]._id],
+            randomizeQuestions: false,
+            randomizeOptions: false,
           },
         ],
         settings: {
-          timeLimit: 60,
-          passingScore: 60,
-          attempts: 2,
+          totalTimeLimit: 45,
+          attemptsAllowed: 2,
+          showResultsImmediately: false,
+          allowReview: true,
+          allowBackward: true,
+          shuffleSections: false,
           proctoring: {
             enabled: true,
-            requireWebcam: false,
+            requireIdCheck: false,
             detectTabSwitch: true,
-            preventCopyPaste: false, // Allow for coding
+            detectCopyPaste: true,
+            enableWebcam: false,
+            enableScreenRecording: false,
+            recordWebcam: false,
+            recordScreen: false,
+            takeSnapshots: false,
+            snapshotIntervalMinutes: 5,
+            fullscreenRequired: false,
+            allowCalculator: false,
+            allowScratchpad: true,
           },
-          randomizeQuestions: false,
-          showResults: false,
+          accessibility: {
+            allowExtraTime: false,
+            allowScreenReader: false,
+            dyslexiaFriendlyFont: false,
+          },
         },
         status: 'published',
-        publishedAt: new Date(),
-        publishedSnapshot: {
-          version: 1,
-          assessment: {} as any,
-          questions: [questions[2], questions[3]],
-          publishedAt: new Date(),
-        },
+        totalPoints: 40,
       },
       {
-        title: 'Technical Interview Prep',
-        description: 'Comprehensive technical interview preparation',
+        title: 'Advanced JavaScript Assessment',
+        description: 'Test your advanced JavaScript knowledge',
         organizationId: organization._id,
         authorId: admin._id,
         sections: [
           {
             id: 'section1',
-            title: 'Theory',
+            title: 'Advanced Topics',
             questionIds: [questions[4]._id, questions[5]._id],
+            randomizeQuestions: false,
+            randomizeOptions: false,
           },
         ],
         settings: {
-          timeLimit: 45,
-          passingScore: 75,
-          attempts: 1,
+          totalTimeLimit: 60,
+          attemptsAllowed: 1,
+          showResultsImmediately: false,
+          allowReview: false,
+          allowBackward: false,
+          shuffleSections: false,
           proctoring: {
             enabled: true,
-            requireWebcam: true,
+            requireIdCheck: true,
             detectTabSwitch: true,
-            preventCopyPaste: true,
+            detectCopyPaste: true,
+            enableWebcam: true,
+            enableScreenRecording: false,
+            recordWebcam: false,
+            recordScreen: false,
+            takeSnapshots: false,
+            snapshotIntervalMinutes: 10,
+            fullscreenRequired: true,
+            allowCalculator: false,
+            allowScratchpad: true,
           },
-          randomizeQuestions: false,
-          showResults: false,
+          accessibility: {
+            allowExtraTime: true,
+            extraTimePercentage: 50,
+            allowScreenReader: true,
+            dyslexiaFriendlyFont: true,
+          },
         },
         status: 'published',
-        publishedAt: new Date(),
-        publishedSnapshot: {
-          version: 1,
-          assessment: {} as any,
-          questions: [questions[4], questions[5]],
-          publishedAt: new Date(),
-        },
+        totalPoints: 35,
       },
     ]);
 
     logger.info(`Created ${assessments.length} assessments`);
 
-    // Create Teams
+    // Create Teams - 6 teams with 2 fellows each
     const teams = await Team.create([
       {
         name: 'Code Wizards',
-        memberIds: [fellows[0]._id, fellows[1]._id, fellows[2]._id, fellows[3]._id],
         organizationId: organization._id,
+        memberIds: [fellows[0]._id, fellows[1]._id],
         projectTitle: 'AI-Powered Study Assistant',
-        description: 'A smart study assistant that uses AI to help students learn more effectively',
+        description: 'A smart study assistant using AI for personalized learning',
+        track: 'Education',
         repoUrl: 'https://github.com/example/ai-study-assistant',
         demoUrl: 'https://ai-study-assistant.demo.com',
         videoUrl: 'https://youtube.com/watch?v=example1',
-        submittedAt: new Date(),
-        track: 'Education',
+        projectExplanation: 'Our project leverages machine learning for personalized recommendations.',
+        technicalApproach: 'Built with Node.js, React, and TensorFlow.js',
+        challengesOvercome: 'Overcame model accuracy issues with data augmentation',
+        disqualified: false,
       },
       {
         name: 'Data Ninjas',
-        memberIds: [fellows[4]._id, fellows[5]._id, fellows[6]._id],
         organizationId: organization._id,
+        memberIds: [fellows[2]._id, fellows[3]._id],
         projectTitle: 'Community Health Tracker',
-        description: 'Track and visualize community health metrics to improve public health outcomes',
+        description: 'Track and visualize community health metrics',
+        track: 'Health & Wellness',
         repoUrl: 'https://github.com/example/health-tracker',
         demoUrl: 'https://health-tracker.demo.com',
         videoUrl: 'https://youtube.com/watch?v=example2',
-        submittedAt: new Date(),
-        track: 'Healthcare',
+        projectExplanation: 'Comprehensive health monitoring system for communities',
+        technicalApproach: 'Python backend with Vue.js and D3.js visualizations',
+        challengesOvercome: 'Handled real-time data sync and privacy concerns',
+        disqualified: false,
       },
       {
         name: 'Tech Titans',
-        memberIds: [fellows[7]._id, fellows[8]._id, fellows[9]._id, fellows[10]._id],
         organizationId: organization._id,
-        projectTitle: 'Green Energy Monitor',
-        description: 'Monitor and optimize energy consumption in real-time',
+        memberIds: [fellows[4]._id, fellows[5]._id],
+        projectTitle: 'Smart Energy Monitor',
+        description: 'Monitor and optimize energy usage to reduce carbon footprint',
+        track: 'Sustainability',
         repoUrl: 'https://github.com/example/energy-monitor',
         demoUrl: 'https://energy-monitor.demo.com',
         videoUrl: 'https://youtube.com/watch?v=example3',
-        submittedAt: new Date(),
-        track: 'Sustainability',
+        projectExplanation: 'IoT-based system to track and optimize energy consumption',
+        technicalApproach: 'Arduino sensors connected to cloud analytics platform',
+        challengesOvercome: 'Solved connectivity issues with edge computing',
+        disqualified: false,
       },
       {
         name: 'Innovators',
-        memberIds: [fellows[11]._id, fellows[12]._id, fellows[13]._id],
         organizationId: organization._id,
-        projectTitle: 'Local Business Connect',
-        description: 'Platform connecting local businesses with community members',
+        memberIds: [fellows[6]._id, fellows[7]._id],
+        projectTitle: 'Business Network Platform',
+        description: 'Connect entrepreneurs and investors for business growth',
+        track: 'Finance & Business',
         repoUrl: 'https://github.com/example/business-connect',
         demoUrl: 'https://business-connect.demo.com',
-        submittedAt: new Date(),
-        track: 'Community',
+        videoUrl: 'https://youtube.com/watch?v=example4',
+        projectExplanation: 'Platform matching entrepreneurs with investors',
+        technicalApproach: 'Next.js, PostgreSQL, and Redis for matching',
+        challengesOvercome: 'Implemented complex matching algorithms',
+        disqualified: false,
       },
       {
         name: 'Future Builders',
-        memberIds: [fellows[14]._id, fellows[15]._id, fellows[16]._id, fellows[17]._id],
         organizationId: organization._id,
+        memberIds: [fellows[8]._id, fellows[9]._id],
         projectTitle: 'Skills Marketplace',
-        description: 'Connect people who want to learn skills with local mentors',
-        repoUrl: 'https://github.com/example/skills-marketplace',
-        submittedAt: new Date(),
+        description: 'Marketplace for skill-sharing opportunities',
         track: 'Education',
+        repoUrl: 'https://github.com/example/skills-marketplace',
+        demoUrl: 'https://skills-marketplace.demo.com',
+        videoUrl: 'https://youtube.com/watch?v=example5',
+        projectExplanation: 'Connect skill seekers with skill sharers',
+        technicalApproach: 'Microservices with Kubernetes',
+        challengesOvercome: 'Managed scalability through optimization',
+        disqualified: false,
       },
       {
         name: 'Debug Squad',
-        memberIds: [fellows[18]._id, fellows[19]._id],
         organizationId: organization._id,
-        projectTitle: 'Code Review Assistant',
-        description: 'AI-powered code review tool to help developers write better code',
+        memberIds: [fellows[10]._id, fellows[11]._id],
+        projectTitle: 'Code Review Tool',
+        description: 'AI-powered collaborative code review tool',
         track: 'Developer Tools',
-        // Not submitted yet
+        repoUrl: 'https://github.com/example/code-review-tool',
+        demoUrl: 'https://code-review.demo.com',
+        videoUrl: 'https://youtube.com/watch?v=example6',
+        projectExplanation: 'AI-enhanced code review platform',
+        technicalApproach: 'FastAPI with React and OpenAI integration',
+        challengesOvercome: 'Integrated multiple code analysis tools',
+        disqualified: false,
       },
     ]);
 
     logger.info(`Created ${teams.length} teams`);
 
-    // Create Hackathon Session
+    // Create Hackathon Session for December 13, 2025 (4 hours)
+    // Filter for coding questions only
+    const codingQuestions = questions.filter(q => q.type === 'coding');
+
+    // Create hackathon session with coding problems
     const hackathonSession = await HackathonSession.create({
-      title: 'Justice Through Code Hackathon 2024',
-      description: 'Build solutions that empower communities through technology',
+      title: 'Justice Through Code - Hackathon Challenge',
+      description: 'December 13, 2025 - 4 hour live coding hackathon event',
       organizationId: organization._id,
-      startTime: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // Started 2 days ago
-      endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // Ends in 5 days
-      duration: 7 * 24 * 60, // 7 days in minutes
-      problems: [
-        {
-          problemId: questions[2]._id,
-          title: 'Reverse a String',
-          difficulty: 'medium',
-          points: 20,
-          order: 1,
-        },
-        {
-          problemId: questions[3]._id,
-          title: 'Two Sum Problem',
-          difficulty: 'hard',
-          points: 30,
-          order: 2,
-        },
-      ],
+      startTime: new Date('2025-12-13T09:00:00Z'),
+      endTime: new Date('2025-12-13T13:00:00Z'),
+      duration: 240, // 4 hours in minutes
+      problems: codingQuestions.map((q, index) => ({
+        problemId: q._id,
+        title: q.title,
+        difficulty: q.difficulty as 'easy' | 'medium' | 'hard',
+        points: q.points,
+        order: index + 1,
+      })),
       teams: teams.map(t => t._id),
       proctoring: {
         enabled: true,
-        requireFullscreen: false,
+        requireFullscreen: true,
         detectTabSwitch: true,
         detectCopyPaste: true,
         detectIdle: true,
-        idleTimeoutMinutes: 15,
-        allowCalculator: true,
+        idleTimeoutMinutes: 10,
+        allowCalculator: false,
         allowNotes: true,
         recordScreen: false,
         recordWebcam: false,
@@ -459,42 +513,25 @@ export async function seedComprehensive() {
         snapshotIntervalMinutes: 10,
         requireIdentityCheck: false,
       },
-      status: 'active',
-      isActive: true,
+      status: 'scheduled',
+      isActive: false,
+      accommodations: [],
       createdBy: admin._id,
-      startedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
     });
 
-    logger.info('Created hackathon session');
+    logger.info(`Created hackathon session: ${hackathonSession.title}`);
 
-    // Summary
-    console.log('\n' + '='.repeat(50));
-    console.log('✅ SEED DATA CREATED SUCCESSFULLY!');
-    console.log('='.repeat(50));
-    console.log('\n📊 Summary:');
-    console.log(`   Organizations: 1`);
-    console.log(`   Users: ${users.length}`);
-    console.log(`     - Admins: 1`);
-    console.log(`     - Proctors: 1`);
-    console.log(`     - Judges: 3`);
-    console.log(`     - Graders: 1`);
-    console.log(`     - Fellows: 20`);
-    console.log(`   Questions: ${questions.length}`);
-    console.log(`   Assessments: ${assessments.length}`);
-    console.log(`   Teams: ${teams.length}`);
-    console.log(`   Hackathon Sessions: 1`);
-    console.log('\n🔑 Login Credentials (all passwords: Demo@123456):');
-    console.log('   Admin:     admin@example.com');
-    console.log('   Proctor:   proctor@example.com');
-    console.log('   Judge:     judge1@example.com, judge2@example.com, judge3@example.com');
-    console.log('   Grader:    grader@example.com');
-    console.log('   Fellows:   fellow1@example.com - fellow20@example.com');
-    console.log('\n🎯 Ready to test!');
-    console.log('='.repeat(50) + '\n');
+    logger.info('✅ Database seeding completed successfully!');
 
     return {
       organization,
-      users,
+      users: {
+        admin,
+        proctor,
+        judges: [judge1, judge2, judge3],
+        grader,
+        fellows,
+      },
       questions,
       assessments,
       teams,

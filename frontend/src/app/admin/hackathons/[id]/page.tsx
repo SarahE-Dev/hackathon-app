@@ -199,7 +199,7 @@ function HackathonManagementContent() {
     const name = prompt('Enter team name:');
     if (!name) return;
     try {
-      await teamsAPI.createTeam({ name, memberIds: [] });
+      await teamsAPI.createTeam({ name });
       await loadData();
     } catch (error) {
       alert('Failed to create team');
