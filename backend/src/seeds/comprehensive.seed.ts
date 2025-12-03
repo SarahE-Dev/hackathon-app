@@ -189,19 +189,21 @@ Explanation: nums[0] + nums[1] = 2 + 7 = 9
 - Only one valid answer exists`,
           codeTemplate: `def two_sum(nums, target):
     # Your code here
+    # Return a list of two indices [i, j] where nums[i] + nums[j] == target
     pass
 
-# Read input
-nums = list(map(int, input().split()))
-target = int(input())
+# Read input - first line is the array, second line is target
+import json
+nums = json.loads(input())  # e.g., [2, 7, 11, 15]
+target = int(input())       # e.g., 9
 result = two_sum(nums, target)
-print(result[0], result[1])`,
+print(json.dumps(result))   # Output as JSON array`,
           language: 'python',
           testCases: [
-            { id: '1', input: '2 7 11 15\n9', expectedOutput: '0 1', isHidden: false, points: 10 },
-            { id: '2', input: '3 2 4\n6', expectedOutput: '1 2', isHidden: false, points: 10 },
-            { id: '3', input: '3 3\n6', expectedOutput: '0 1', isHidden: true, points: 10 },
-            { id: '4', input: '1 5 3 7 2\n9', expectedOutput: '1 3', isHidden: true, points: 10 },
+            { id: '1', input: '[2, 7, 11, 15]\n9', expectedOutput: '[0, 1]', isHidden: false, points: 10 },
+            { id: '2', input: '[3, 2, 4]\n6', expectedOutput: '[1, 2]', isHidden: false, points: 10 },
+            { id: '3', input: '[3, 3]\n6', expectedOutput: '[0, 1]', isHidden: true, points: 10 },
+            { id: '4', input: '[1, 5, 3, 7, 2]\n9', expectedOutput: '[1, 3]', isHidden: true, points: 10 },
           ],
         },
         points: 40,
@@ -228,18 +230,20 @@ Input: ["H","a","n","n","a","h"]
 Output: ["h","a","n","n","a","H"]`,
           codeTemplate: `def reverse_string(s):
     # Your code here - modify s in-place
+    # s is a list of characters
     pass
 
-# Read input
-s = list(input().strip())
+# Read input as JSON array of characters
+import json
+s = json.loads(input())  # e.g., ["h","e","l","l","o"]
 reverse_string(s)
-print(''.join(s))`,
+print(json.dumps(s))     # Output as JSON array`,
           language: 'python',
           testCases: [
-            { id: '1', input: 'hello', expectedOutput: 'olleh', isHidden: false, points: 10 },
-            { id: '2', input: 'Hannah', expectedOutput: 'hannaH', isHidden: false, points: 10 },
-            { id: '3', input: 'a', expectedOutput: 'a', isHidden: true, points: 10 },
-            { id: '4', input: 'Python', expectedOutput: 'nohtyP', isHidden: true, points: 10 },
+            { id: '1', input: '["h","e","l","l","o"]', expectedOutput: '["o","l","l","e","h"]', isHidden: false, points: 10 },
+            { id: '2', input: '["H","a","n","n","a","h"]', expectedOutput: '["h","a","n","n","a","H"]', isHidden: false, points: 10 },
+            { id: '3', input: '["a"]', expectedOutput: '["a"]', isHidden: true, points: 10 },
+            { id: '4', input: '["P","y","t","h","o","n"]', expectedOutput: '["n","o","h","t","y","P"]', isHidden: true, points: 10 },
           ],
         },
         points: 40,
@@ -349,16 +353,17 @@ Output: 23`,
     # Your code here - use Kadane's algorithm
     pass
 
-# Read input
-nums = list(map(int, input().split()))
+# Read input as JSON array
+import json
+nums = json.loads(input())  # e.g., [-2, 1, -3, 4, -1, 2, 1, -5, 4]
 result = max_subarray(nums)
 print(result)`,
           language: 'python',
           testCases: [
-            { id: '1', input: '-2 1 -3 4 -1 2 1 -5 4', expectedOutput: '6', isHidden: false, points: 15 },
-            { id: '2', input: '1', expectedOutput: '1', isHidden: false, points: 10 },
-            { id: '3', input: '5 4 -1 7 8', expectedOutput: '23', isHidden: true, points: 15 },
-            { id: '4', input: '-1 -2 -3 -4', expectedOutput: '-1', isHidden: true, points: 10 },
+            { id: '1', input: '[-2, 1, -3, 4, -1, 2, 1, -5, 4]', expectedOutput: '6', isHidden: false, points: 15 },
+            { id: '2', input: '[1]', expectedOutput: '1', isHidden: false, points: 10 },
+            { id: '3', input: '[5, 4, -1, 7, 8]', expectedOutput: '23', isHidden: true, points: 15 },
+            { id: '4', input: '[-1, -2, -3, -4]', expectedOutput: '-1', isHidden: true, points: 10 },
           ],
         },
         points: 50,
@@ -383,17 +388,18 @@ Output: [1,2,2,3,5,6]`,
     # Your code here
     pass
 
-# Read input
-nums1 = list(map(int, input().split()))
-nums2 = list(map(int, input().split()))
+# Read input as JSON arrays
+import json
+nums1 = json.loads(input())  # e.g., [1, 2, 3]
+nums2 = json.loads(input())  # e.g., [2, 5, 6]
 result = merge_arrays(nums1, nums2)
-print(' '.join(map(str, result)))`,
+print(json.dumps(result))`,
           language: 'python',
           testCases: [
-            { id: '1', input: '1 2 3\n2 5 6', expectedOutput: '1 2 2 3 5 6', isHidden: false, points: 15 },
-            { id: '2', input: '1\n1', expectedOutput: '1 1', isHidden: false, points: 10 },
-            { id: '3', input: '0\n1 2 3', expectedOutput: '0 1 2 3', isHidden: true, points: 10 },
-            { id: '4', input: '4 5 6\n1 2 3', expectedOutput: '1 2 3 4 5 6', isHidden: true, points: 15 },
+            { id: '1', input: '[1, 2, 3]\n[2, 5, 6]', expectedOutput: '[1, 2, 2, 3, 5, 6]', isHidden: false, points: 15 },
+            { id: '2', input: '[1]\n[1]', expectedOutput: '[1, 1]', isHidden: false, points: 10 },
+            { id: '3', input: '[0]\n[1, 2, 3]', expectedOutput: '[0, 1, 2, 3]', isHidden: true, points: 10 },
+            { id: '4', input: '[4, 5, 6]\n[1, 2, 3]', expectedOutput: '[1, 2, 3, 4, 5, 6]', isHidden: true, points: 15 },
           ],
         },
         points: 50,
@@ -424,17 +430,18 @@ Explanation: 2 does not exist in nums so return -1`,
     # Your code here - implement binary search
     pass
 
-# Read input
-nums = list(map(int, input().split()))
-target = int(input())
+# Read input as JSON array and target
+import json
+nums = json.loads(input())  # e.g., [-1, 0, 3, 5, 9, 12]
+target = int(input())       # e.g., 9
 result = binary_search(nums, target)
 print(result)`,
           language: 'python',
           testCases: [
-            { id: '1', input: '-1 0 3 5 9 12\n9', expectedOutput: '4', isHidden: false, points: 15 },
-            { id: '2', input: '-1 0 3 5 9 12\n2', expectedOutput: '-1', isHidden: false, points: 10 },
-            { id: '3', input: '1\n1', expectedOutput: '0', isHidden: true, points: 10 },
-            { id: '4', input: '1 2 3 4 5 6 7 8 9 10\n7', expectedOutput: '6', isHidden: true, points: 15 },
+            { id: '1', input: '[-1, 0, 3, 5, 9, 12]\n9', expectedOutput: '4', isHidden: false, points: 15 },
+            { id: '2', input: '[-1, 0, 3, 5, 9, 12]\n2', expectedOutput: '-1', isHidden: false, points: 10 },
+            { id: '3', input: '[1]\n1', expectedOutput: '0', isHidden: true, points: 10 },
+            { id: '4', input: '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]\n7', expectedOutput: '6', isHidden: true, points: 15 },
           ],
         },
         points: 50,

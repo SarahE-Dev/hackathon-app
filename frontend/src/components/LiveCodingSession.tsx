@@ -701,16 +701,9 @@ Output: [0,1]
         // Update test results
         const updatedResults: {[key: string]: 'pending' | 'passed' | 'failed'} = {};
         
-        // Process visible test results
+        // Process all test results
         results.forEach((result: any) => {
-          // Find if this is a hidden test
-          const testCase = currentProblem.testCases.find(tc => tc.id === result.id);
-          if (testCase?.isHidden) {
-            // For hidden tests, show passed/failed but not details
-            updatedResults[result.id] = result.passed ? 'passed' : 'failed';
-          } else {
-            updatedResults[result.id] = result.passed ? 'passed' : 'failed';
-          }
+          updatedResults[result.id] = result.passed ? 'passed' : 'failed';
         });
 
         setTestResults(updatedResults);
@@ -725,30 +718,104 @@ Output: [0,1]
           return tc?.isHidden;
         });
 
-        const outputLines = [
-          `Code executed successfully!\n`,
-          `Visible Test Results:`,
-          ...visibleResults.map((result: any) =>
-            `${result.passed ? '✓' : '✗'} Test Case ${result.id}: ${result.passed ? 'PASSED' : 'FAILED'} (${result.executionTime}ms)${!result.passed ? `\n   Input: ${result.input}\n   Expected: ${result.expectedOutput}\n   Got: ${result.actualOutput}` : ''}`
-          ),
-          ``,
-          `Hidden Test Results:`,
-          ...hiddenResults.map((result: any) =>
-            `${result.passed ? '✓' : '✗'} Hidden Test ${result.id}: ${result.passed ? 'PASSED' : 'FAILED'}`
-          ),
-          ``,
-          `Score: ${summary.score} (${summary.passedTests}/${summary.totalTests} tests passed)`,
-          summary.allTestsPassed ? `\n🎉 All tests passed! You can now submit your solution.` : `\n💡 Keep working - some tests still failing.`,
-        ];
+        // Build detailed output
+        const outputLines: string[] = [];
+        
+        // Header
+        outputLines.push('═══════════════════════════════════════════════════════════');
+        outputLines.push('                    TEST RESULTS');
+        outputLines.push('═══════════════════════════════════════════════════════════');
+        outputLines.push('');
+
+        // Visible test results with full details
+        outputLines.push('📋 VISIBLE TESTS:');
+        outputLines.push('───────────────────────────────────────────────────────────');
+        
+        visibleResults.forEach((result: any, index: number) => {
+          const icon = result.passed ? '✅' : '❌';
+          const status = result.passed ? 'PASSED' : 'FAILED';
+          
+          outputLines.push(`${icon} Test ${index + 1}: ${status} (${result.executionTime}ms)`);
+          outputLines.push(`   📥 Input:    ${result.input.replace(/\n/g, ' | ')}`);
+          outputLines.push(`   📤 Expected: ${result.expectedOutput}`);
+          outputLines.push(`   📝 Output:   ${result.actualOutput || '(no output)'}`);
+          
+          // Show error if there was one
+          if (result.error) {
+            outputLines.push(`   ⚠️  Error:    ${result.error}`);
+          }
+          outputLines.push('');
+        });
+
+        // Hidden test results (just pass/fail)
+        if (hiddenResults.length > 0) {
+          outputLines.push('🔒 HIDDEN TESTS:');
+          outputLines.push('───────────────────────────────────────────────────────────');
+          
+          hiddenResults.forEach((result: any, index: number) => {
+            const icon = result.passed ? '✅' : '❌';
+            const status = result.passed ? 'PASSED' : 'FAILED';
+            // Show error for hidden tests too (helps debugging)
+            if (result.error) {
+              outputLines.push(`${icon} Hidden Test ${index + 1}: ${status} - Error: ${result.error}`);
+            } else {
+              outputLines.push(`${icon} Hidden Test ${index + 1}: ${status}`);
+            }
+          });
+          outputLines.push('');
+        }
+
+        // Summary
+        outputLines.push('═══════════════════════════════════════════════════════════');
+        outputLines.push(`📊 SUMMARY: ${summary.passedTests}/${summary.totalTests} tests passed (${summary.score})`);
+        
+        if (summary.allTestsPassed) {
+          outputLines.push('');
+          outputLines.push('🎉 ALL TESTS PASSED! You can now submit your solution.');
+        } else {
+          outputLines.push('');
+          outputLines.push('💡 Some tests failed. Review the output above and try again.');
+        }
+        outputLines.push('═══════════════════════════════════════════════════════════');
 
         setOutput(outputLines.join('\n'));
       } else {
-        setOutput('Code execution failed. Please check your code and try again.');
+        setOutput('❌ Code execution failed. Please check your code and try again.');
       }
 
     } catch (error: any) {
       console.error('Code execution error:', error);
-      setOutput(`Error running code: ${error?.response?.data?.message || error.message || 'Unknown error'}`);
+      
+      // Build detailed error output
+      const errorLines: string[] = [];
+      errorLines.push('═══════════════════════════════════════════════════════════');
+      errorLines.push('                    ❌ EXECUTION ERROR');
+      errorLines.push('═══════════════════════════════════════════════════════════');
+      errorLines.push('');
+      
+      const errorMessage = error?.response?.data?.message || error?.response?.data?.error?.message || error.message || 'Unknown error';
+      errorLines.push(`Error: ${errorMessage}`);
+      
+      // If there's additional error data, show it
+      if (error?.response?.data?.data?.results) {
+        errorLines.push('');
+        errorLines.push('Test Results with Errors:');
+        error.response.data.data.results.forEach((r: any, i: number) => {
+          if (r.error) {
+            errorLines.push(`  Test ${i + 1}: ${r.error}`);
+          }
+        });
+      }
+      
+      errorLines.push('');
+      errorLines.push('═══════════════════════════════════════════════════════════');
+      errorLines.push('💡 Tips:');
+      errorLines.push('   • Check for syntax errors in your code');
+      errorLines.push('   • Make sure you\'re reading input correctly');
+      errorLines.push('   • Ensure your output format matches expected');
+      errorLines.push('═══════════════════════════════════════════════════════════');
+      
+      setOutput(errorLines.join('\n'));
       setTestResults({});
     } finally {
       setRunning(false);
