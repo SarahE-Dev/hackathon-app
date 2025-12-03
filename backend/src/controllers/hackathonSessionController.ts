@@ -49,7 +49,9 @@ export const getAllSessions = async (
 
     const filter: any = {};
     if (status) filter.status = status;
-    if (organizationId) filter.organizationId = organizationId;
+    // Use organizationId from query param or from injected middleware
+    const orgId = organizationId || req.organizationId;
+    if (orgId) filter.organizationId = orgId;
 
     const sessions = await HackathonSession.find(filter)
       .populate('teams', 'name memberIds')

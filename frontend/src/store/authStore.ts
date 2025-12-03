@@ -69,6 +69,8 @@ export const useAuthStore = create<AuthState>()(
             if (refreshToken) {
               localStorage.setItem('refreshToken', refreshToken);
             }
+            // Store user data for login page redirect logic
+            localStorage.setItem('user', JSON.stringify(userData));
           }
 
           set({
@@ -101,6 +103,8 @@ export const useAuthStore = create<AuthState>()(
             if (refreshToken) {
               localStorage.setItem('refreshToken', refreshToken);
             }
+            // Store user data for login page redirect logic
+            localStorage.setItem('user', JSON.stringify(userData));
           }
 
           set({
@@ -126,6 +130,7 @@ export const useAuthStore = create<AuthState>()(
           if (typeof window !== 'undefined') {
             localStorage.removeItem('accessToken');
             localStorage.removeItem('refreshToken');
+            localStorage.removeItem('user');
           }
           set({
             user: null,
@@ -138,6 +143,7 @@ export const useAuthStore = create<AuthState>()(
           if (typeof window !== 'undefined') {
             localStorage.removeItem('accessToken');
             localStorage.removeItem('refreshToken');
+            localStorage.removeItem('user');
           }
           set({
             user: null,

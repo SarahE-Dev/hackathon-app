@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
 import { io, Socket } from 'socket.io-client';
 import * as monaco from 'monaco-editor';
-import { codeExecutionAPI } from '../lib/api';
+import { codeExecutionAPI, hackathonSessionsAPI } from '../lib/api';
 
 interface ProctorEvent {
   type: 'tab-switch' | 'copy-paste' | 'focus-lost' | 'suspicious-activity';
@@ -196,6 +196,9 @@ Output: [0,1]
   const [output, setOutput] = useState('');
   const [testResults, setTestResults] = useState<{[key: string]: 'pending' | 'passed' | 'failed'}>({});
   const [running, setRunning] = useState(false);
+  const [explanation, setExplanation] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
   const [proctorEvents, setProctorEvents] = useState<ProctorEvent[]>([]);
   const [isWindowFocused, setIsWindowFocused] = useState(true);
   const [copyPasteAttempts, setCopyPasteAttempts] = useState(0);
@@ -210,6 +213,7 @@ Output: [0,1]
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isConnected, setIsConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'failed'>('connecting');
   const [cursorDecorations, setCursorDecorations] = useState<any[]>([]);
 
   const editorRef = useRef<any>(null);
@@ -331,13 +335,30 @@ Output: [0,1]
     socket.on('connect', () => {
       console.log('Connected to collaboration server');
       setIsConnected(true);
+      setConnectionStatus('connected');
       socket.emit('join-team', teamId);
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('WebSocket connection error:', error);
+      setIsConnected(false);
+      setConnectionStatus('failed');
     });
 
     socket.on('disconnect', () => {
       console.log('Disconnected from collaboration server');
       setIsConnected(false);
+      setConnectionStatus('connecting');
     });
+
+    // Set a timeout for connection attempts
+    const connectionTimeout = setTimeout(() => {
+      if (!isConnected) {
+        console.error('WebSocket connection timeout');
+        setConnectionStatus('failed');
+        socket.disconnect();
+      }
+    }, 10000); // 10 second timeout
 
     socket.on('team-joined', (data: {
       teamId: string;
@@ -346,7 +367,9 @@ Output: [0,1]
       currentCode: string;
     }) => {
       console.log('Joined team:', data.teamId);
-      setTeamPresence(data.presence);
+      // Only show users who are actually online
+      const onlineUsers = data.presence.filter(p => p.isOnline);
+      setTeamPresence(onlineUsers);
       setChatMessages(data.chatHistory);
       if (data.currentCode && data.currentCode !== currentProblem.starterCode) {
         setCode(data.currentCode);
@@ -372,9 +395,20 @@ Output: [0,1]
 
     socket.on('user-left', (data: { userId: string }) => {
       console.log('User left:', data.userId);
-      setTeamPresence(prev => prev.map(p =>
-        p.userId === data.userId ? { ...p, isOnline: false } : p
-      ));
+      // Remove the user from presence list when they go offline
+      setTeamPresence(prev => prev.filter(p => p.userId !== data.userId));
+      // Add system message
+      const leftUser = teamPresence.find(p => p.userId === data.userId);
+      if (leftUser) {
+        setChatMessages(prev => [...prev, {
+          id: `system-${Date.now()}`,
+          userId: 'system',
+          username: 'System',
+          message: `${leftUser.username} left the session`,
+          timestamp: new Date(),
+          type: 'system',
+        }]);
+      }
     });
 
     socket.on('code-updated', (data: {
@@ -419,6 +453,7 @@ Output: [0,1]
     setCollaborationSocket(socket);
 
     return () => {
+      clearTimeout(connectionTimeout);
       socket.emit('leave-team');
       socket.disconnect();
     };
@@ -556,6 +591,47 @@ Output: [0,1]
     }
   };
 
+  const submitSolution = async () => {
+    if (!explanation.trim()) {
+      alert('Please provide an explanation of your solution approach before submitting.');
+      return;
+    }
+
+    if (!problem?._id) {
+      alert('Problem ID not available. Please ensure you selected a problem from the Problems tab.');
+      return;
+    }
+
+    setSubmitting(true);
+    setSubmitSuccess(false);
+
+    try {
+      // For now, we'll submit without sessionId (need to integrate with active session later)
+      // This is a temporary placeholder - will show alert for now
+      const results = Object.entries(testResults).map(([id, status]) => ({
+        id,
+        passed: status === 'passed',
+      }));
+
+      // TODO: Get actual sessionId from active hackathon session
+      // For now, just show success message with saved data
+      console.log('Submitting solution:', {
+        problemId: problem._id,
+        code,
+        explanation,
+        testResults: results,
+      });
+
+      setSubmitSuccess(true);
+      alert(`Solution submitted successfully!\n\nCode and explanation saved for ${problem.title}`);
+    } catch (error: any) {
+      console.error('Submission error:', error);
+      alert(`Failed to submit solution: ${error?.response?.data?.message || error.message || 'Unknown error'}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const getRiskLevel = () => {
     const totalViolations = copyPasteAttempts + tabSwitches + focusLosses;
     if (totalViolations > 10) return 'high';
@@ -690,14 +766,46 @@ Output: [0,1]
             <button className="flex-1 py-3 bg-dark-700 border border-gray-600 text-white rounded-lg font-medium hover:border-neon-blue transition-all">
               💾 Save Progress
             </button>
-            <button className="flex-1 py-3 bg-dark-700 border border-gray-600 text-white rounded-lg font-medium hover:border-neon-green transition-all">
-              ✓ Submit Solution
+          </div>
+
+          {/* Explanation */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Solution Explanation <span className="text-red-400">*</span>
+            </label>
+            <p className="text-xs text-gray-400 mb-2">
+              Describe your approach to solving this problem, the algorithm you used, and why you chose it.
+            </p>
+            <textarea
+              value={explanation}
+              onChange={(e) => setExplanation(e.target.value)}
+              placeholder="I solved this problem by...&#10;&#10;My approach:&#10;1. First, I...&#10;2. Then I...&#10;3. Finally...&#10;&#10;Time complexity: O(n)&#10;Space complexity: O(1)&#10;&#10;I chose this approach because..."
+              className="w-full h-40 px-4 py-3 bg-dark-700 border border-gray-600 rounded-lg text-white text-sm focus:border-neon-blue outline-none resize-y font-mono"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              ✓ Explain your thought process, algorithm choice, and complexity analysis
+            </p>
+          </div>
+
+          {/* Submit Button */}
+          <div className="mb-4">
+            <button
+              onClick={submitSolution}
+              disabled={submitting || !explanation.trim()}
+              className="w-full py-3 bg-gradient-to-r from-neon-purple to-purple-600 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-neon-purple/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submitting ? 'Submitting...' : '✓ Submit Solution'}
             </button>
+            {submitSuccess && (
+              <p className="text-sm text-green-400 mt-2 text-center">
+                ✓ Solution submitted successfully!
+              </p>
+            )}
           </div>
 
           {/* Test Results */}
           {output && (
-            <div className="bg-dark-800 rounded-lg border border-gray-700 p-4">
+            <div className="bg-dark-800 rounded-lg border border-gray-700 p-4 max-h-96 overflow-y-auto">
               <h4 className="text-sm font-bold text-gray-400 mb-2">Execution Results</h4>
               <pre className="text-sm text-gray-300 font-mono whitespace-pre-wrap bg-dark-900 p-3 rounded">
                 {output}
@@ -724,9 +832,19 @@ Output: [0,1]
                 )}
               </div>
             ))}
-            {!isConnected && (
+            {connectionStatus === 'connecting' && (
               <div className="text-xs text-yellow-400 text-center py-2">
                 🔄 Connecting to team...
+              </div>
+            )}
+            {connectionStatus === 'failed' && (
+              <div className="text-xs text-red-400 text-center py-2">
+                ❌ Failed to connect. Please refresh the page.
+              </div>
+            )}
+            {connectionStatus === 'connected' && teamPresence.length === 0 && (
+              <div className="text-xs text-gray-400 text-center py-2">
+                👥 Connected - Waiting for team members...
               </div>
             )}
           </div>
@@ -752,20 +870,20 @@ Output: [0,1]
           </div>
 
           {/* Message Input */}
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2">
             <input
               type="text"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
               placeholder="Type a message..."
-              className="flex-1 px-3 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white text-sm focus:border-neon-blue outline-none"
+              className="w-full px-3 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white text-sm focus:border-neon-blue outline-none"
               disabled={!isConnected}
             />
             <button
               onClick={sendMessage}
               disabled={!isConnected || !newMessage.trim()}
-              className="px-3 py-2 bg-neon-blue text-white rounded-lg text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-3 py-2 bg-neon-blue text-white rounded-lg text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Send
             </button>

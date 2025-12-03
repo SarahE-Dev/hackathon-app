@@ -4,8 +4,8 @@ export interface ITeam extends Document {
   name: string;
   organizationId: mongoose.Types.ObjectId;
   memberIds: mongoose.Types.ObjectId[];
-  projectTitle: string;
-  description: string;
+  projectTitle?: string;
+  description?: string;
   track?: string;
   repoUrl?: string;
   demoUrl?: string;
@@ -45,12 +45,10 @@ const TeamSchema = new Schema({
   }],
   projectTitle: {
     type: String,
-    required: true,
     trim: true,
   },
   description: {
     type: String,
-    required: true,
   },
   track: {
     type: String,

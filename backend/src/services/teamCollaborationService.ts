@@ -96,9 +96,13 @@ export class TeamCollaborationService {
           }
 
           // Verify user is a team member
-          const isMember = team.memberIds.some(member =>
-            (member as any)._id.toString() === socket.userId
-          );
+          const memberIdStrings = team.memberIds.map(m => {
+            const memberId = typeof m === 'string' ? m : (m as any)._id?.toString() || m.toString();
+            return memberId;
+          });
+          const isMember = memberIdStrings.includes(socket.userId);
+
+          logger.debug(`Team membership check: userId=${socket.userId}, memberIds=${JSON.stringify(memberIdStrings)}, isMember=${isMember}`);
 
           if (!isMember) {
             socket.emit('error', { message: 'Access denied - not a team member' });

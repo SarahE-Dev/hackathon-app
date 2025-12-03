@@ -159,7 +159,7 @@ export default function HackathonTeamsPage() {
                     {/* Action Button */}
                     <div className="mt-6 pt-4 border-t border-gray-700">
                       <button className="w-full py-2 bg-gradient-to-r from-neon-blue to-neon-purple text-white rounded-lg font-medium hover:shadow-lg hover:shadow-neon-blue/50 transition-all">
-                        Join Live Session →
+                        Join Team Space →
                       </button>
                     </div>
                   </div>

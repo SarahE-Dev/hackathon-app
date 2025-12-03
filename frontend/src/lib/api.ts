@@ -517,7 +517,7 @@ export const hackathonSessionsAPI = {
   submitProblem: async (
     sessionId: string,
     teamId: string,
-    data: { problemId: string; testResults: any[] }
+    data: { problemId: string; testResults: any[]; code?: string; explanation?: string }
   ) => {
     const response = await api.post(
       `/hackathon-sessions/${sessionId}/team/${teamId}/problem/submit`,

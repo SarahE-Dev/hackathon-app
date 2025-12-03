@@ -32,13 +32,18 @@ interface Attempt {
 }
 
 interface Team {
-  id: string;
-  _id?: string;
+  _id: string;
   name: string;
+  organizationId: string;
   memberIds: string[];
-  leaderId: string;
   projectTitle?: string;
+  description?: string;
   track?: string;
+  repoUrl?: string;
+  demoUrl?: string;
+  videoUrl?: string;
+  submittedAt?: string;
+  disqualified: boolean;
 }
 
 interface HackathonSession {
@@ -126,9 +131,13 @@ export default function DashboardPage() {
           const teamsData = await teamsAPI.getAllTeams();
           const teams = teamsData.data?.teams || teamsData || [];
           const teamsList = Array.isArray(teams) ? teams : [];
-          const userTeamData = teamsList.find((team: Team) =>
-            team.memberIds?.includes(authUser.id) || team.leaderId === authUser.id
-          );
+          const userTeamData = teamsList.find((team: Team) => {
+            // memberIds might be populated objects or just IDs
+            const memberIdStrings = team.memberIds?.map((m: any) =>
+              typeof m === 'string' ? m : m._id?.toString() || m.toString()
+            ) || [];
+            return memberIdStrings.includes(authUser.id?.toString());
+          });
           setUserTeam(userTeamData || null);
         } catch (teamErr) {
           console.warn('Could not load team data:', teamErr);
@@ -314,40 +323,48 @@ export default function DashboardPage() {
                 <span>👥</span> Your Team
               </h2>
               {userTeam ? (
-                <div className="p-4 bg-neon-purple/10 rounded-lg border border-neon-purple/30">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-xl font-bold text-neon-purple">{userTeam.name}</h3>
-                      {userTeam.projectTitle && (
-                        <p className="text-sm text-gray-400 mt-1">Project: {userTeam.projectTitle}</p>
-                      )}
-                      {userTeam.track && (
-                        <span className="inline-block mt-2 px-2 py-1 bg-neon-blue/20 text-neon-blue text-xs rounded-full">
-                          {userTeam.track}
-                        </span>
-                      )}
+                <div className="space-y-3">
+                  <div className="p-4 bg-neon-purple/10 rounded-lg border border-neon-purple/30">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-xl font-bold text-neon-purple">{userTeam.name}</h3>
+                        <p className="text-xs text-gray-400 mt-2">
+                          {userTeam.memberIds?.length || 0} member{userTeam.memberIds?.length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                      <Link
+                        href={`/hackathon/teams/${userTeam._id || userTeam.id}`}
+                        className="px-4 py-2 bg-neon-purple hover:bg-neon-purple/80 text-white rounded-lg text-sm transition-all"
+                      >
+                        Join Team Space →
+                      </Link>
                     </div>
-                    <Link
-                      href={`/hackathon/teams/${userTeam._id || userTeam.id}`}
-                      className="px-4 py-2 bg-neon-purple hover:bg-neon-purple/80 text-white rounded-lg text-sm transition-all"
-                    >
-                      View Team →
-                    </Link>
                   </div>
+                  {activeSessions.length > 0 && (
+                    <div className="p-4 bg-neon-green/10 rounded-lg border border-neon-green/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-red-500 animate-pulse">●</span>
+                        <h4 className="font-semibold text-neon-green">Live Coding Session Active!</h4>
+                      </div>
+                      <p className="text-sm text-gray-400 mb-3">
+                        Join with your team to work on challenges together
+                      </p>
+                      <Link
+                        href={`/hackathon/teams/${userTeam._id || userTeam.id}`}
+                        className="inline-block px-4 py-2 bg-neon-green hover:bg-neon-green/80 text-white rounded-lg text-sm transition-all font-medium"
+                      >
+                        Join Live Session →
+                      </Link>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <div className="p-6 bg-yellow-500/10 rounded-lg border border-yellow-500/30 text-center">
-                  <div className="text-4xl mb-3">⚠️</div>
-                  <h3 className="text-lg font-bold text-yellow-400 mb-2">Not on a Team</h3>
-                  <p className="text-sm text-gray-400 mb-4">
-                    You haven't been assigned to a hackathon team yet. Contact an admin to get added to a team.
+                <div className="p-6 bg-gray-700/30 rounded-lg border border-gray-600 text-center">
+                  <div className="text-4xl mb-3">👥</div>
+                  <h3 className="text-lg font-bold text-gray-300 mb-2">No Team Yet</h3>
+                  <p className="text-sm text-gray-400">
+                    You'll be assigned to a hackathon team by your instructor when the event begins.
                   </p>
-                  <Link
-                    href="/hackathon/teams"
-                    className="inline-block px-4 py-2 bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 rounded-lg text-sm transition-all"
-                  >
-                    Browse Teams
-                  </Link>
                 </div>
               )}
             </div>
@@ -356,11 +373,9 @@ export default function DashboardPage() {
             <div className="glass rounded-xl p-6 border border-gray-700">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold flex items-center gap-2">
-                  <span>📝</span> Assessments
+                  <span>📝</span> Your Assessments
                 </h2>
-                <Link href="/assessments" className="text-neon-blue hover:underline text-sm">
-                  View All →
-                </Link>
+                <span className="text-sm text-gray-500">{assessments.length} total</span>
               </div>
 
               {assessments.length === 0 ? (
@@ -445,112 +460,49 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Right Column - Quick Actions & Sessions */}
+          {/* Right Column - Progress & Resources */}
           <div className="space-y-6">
-            {/* Quick Actions */}
+            {/* Progress Summary */}
             <div className="glass rounded-xl p-6 border border-gray-700">
-              <h2 className="text-xl font-bold mb-4">Quick Actions</h2>
-              <div className="space-y-3">
-                <Link
-                  href="/assessments"
-                  className="block p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-neon-blue/20 rounded-lg flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
-                      📋
-                    </div>
-                    <div>
-                      <p className="font-semibold">Browse Assessments</p>
-                      <p className="text-xs text-gray-400">View all available tests</p>
-                    </div>
+              <h2 className="text-xl font-bold mb-4">Your Progress</h2>
+              <div className="space-y-4">
+                <div className="p-4 bg-neon-blue/10 rounded-lg border border-neon-blue/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-400">Assessments</span>
+                    <span className="text-xl font-bold text-neon-blue">{completedCount}/{assessments.length}</span>
                   </div>
-                </Link>
-
-                <Link
-                  href="/hackathon/teams"
-                  className="block p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-neon-purple/20 rounded-lg flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
-                      👥
-                    </div>
-                    <div>
-                      <p className="font-semibold">Hackathon Teams</p>
-                      <p className="text-xs text-gray-400">View all teams</p>
-                    </div>
+                  <div className="w-full bg-dark-700 rounded-full h-2">
+                    <div
+                      className="bg-neon-blue h-2 rounded-full transition-all"
+                      style={{ width: `${assessments.length > 0 ? (completedCount / assessments.length) * 100 : 0}%` }}
+                    ></div>
                   </div>
-                </Link>
-
-                <Link
-                  href="/hackathon/sessions"
-                  className="block p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-neon-green/20 rounded-lg flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
-                      🎯
-                    </div>
-                    <div>
-                      <p className="font-semibold">Coding Sessions</p>
-                      <p className="text-xs text-gray-400">Join live challenges</p>
-                    </div>
-                  </div>
-                </Link>
-
-                <Link
-                  href="/assessments/history"
-                  className="block p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-neon-pink/20 rounded-lg flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
-                      📈
-                    </div>
-                    <div>
-                      <p className="font-semibold">My History</p>
-                      <p className="text-xs text-gray-400">View past attempts</p>
-                    </div>
-                  </div>
-                </Link>
-              </div>
-            </div>
-
-            {/* Active Sessions */}
-            <div className="glass rounded-xl p-6 border border-gray-700">
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <span className="text-red-500 animate-pulse">●</span> Live Sessions
-              </h2>
-              {activeSessions.length === 0 ? (
-                <div className="p-4 text-center text-gray-400">
-                  <p className="text-sm">No active sessions right now</p>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {activeSessions.map((session) => (
-                    <Link
-                      key={session._id}
-                      href={`/hackathon/session/${session._id}`}
-                      className="block p-4 bg-gradient-to-r from-neon-green/10 to-neon-blue/10 rounded-lg border border-neon-green/30 hover:border-neon-green transition-all"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-semibold">{session.title}</h3>
-                          <p className="text-xs text-gray-400 mt-1">
-                            {session.description?.slice(0, 50)}...
-                          </p>
-                        </div>
-                        <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full animate-pulse">
-                          LIVE
-                        </span>
+
+                {userTeam && (
+                  <div className="p-4 bg-neon-purple/10 rounded-lg border border-neon-purple/30">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-sm text-gray-400">Hackathon Team</span>
+                        <p className="font-semibold text-white mt-1">{userTeam.name}</p>
                       </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-              <Link
-                href="/hackathon/sessions"
-                className="block mt-4 text-center text-sm text-neon-blue hover:underline"
-              >
-                View All Sessions →
-              </Link>
+                      <span className="text-2xl">👥</span>
+                    </div>
+                  </div>
+                )}
+
+                {inProgressCount > 0 && (
+                  <div className="p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-sm text-gray-400">In Progress</span>
+                        <p className="font-semibold text-yellow-400 mt-1">{inProgressCount} assessment{inProgressCount !== 1 ? 's' : ''}</p>
+                      </div>
+                      <span className="text-2xl">⏱️</span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Tips & Info */}
@@ -566,7 +518,7 @@ export default function DashboardPage() {
                 <div className="p-3 bg-neon-purple/10 rounded-lg border border-neon-purple/20">
                   <p className="flex items-start gap-2">
                     <span>⏱️</span>
-                    <span className="text-gray-300">Watch your time. Move on if stuck and come back later.</span>
+                    <span className="text-gray-300">Remember: you can only view each problem once. Choose wisely!</span>
                   </p>
                 </div>
                 <div className="p-3 bg-neon-green/10 rounded-lg border border-neon-green/20">

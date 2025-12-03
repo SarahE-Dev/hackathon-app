@@ -30,33 +30,14 @@ const roleInfo: Record<RoleType, RoleInfo> = {
       'Create hackathons & coding sessions',
       'Add problems & questions',
       'Manage teams & users',
-      'Monitor sessions (Proctor)',
-      'Grade submissions (Judge)',
+      'Monitor sessions',
       'View analytics & reports',
     ],
     icon: '👑',
     color: 'text-neon-blue',
     borderColor: 'border-neon-blue',
     bgColor: 'bg-neon-blue/10',
-    email: 'admin@example.com',
-    password: 'Demo@123456',
-  },
-  proctor: {
-    title: 'Proctor',
-    subtitle: 'Session Monitor',
-    description: 'Monitor live sessions and handle incidents',
-    capabilities: [
-      'Monitor active sessions',
-      'Pause/resume team sessions',
-      'Track violations in real-time',
-      'Force-submit attempts',
-      'Add incident reports',
-    ],
-    icon: '👁️',
-    color: 'text-orange-400',
-    borderColor: 'border-orange-400',
-    bgColor: 'bg-orange-400/10',
-    email: 'proctor@example.com',
+    email: 'admin@codearena.edu',
     password: 'Demo@123456',
   },
   judge: {
@@ -74,7 +55,7 @@ const roleInfo: Record<RoleType, RoleInfo> = {
     color: 'text-neon-purple',
     borderColor: 'border-neon-purple',
     bgColor: 'bg-neon-purple/10',
-    email: 'judge1@example.com',
+    email: 'judge@codearena.edu',
     password: 'Demo@123456',
   },
   fellow: {
@@ -92,7 +73,25 @@ const roleInfo: Record<RoleType, RoleInfo> = {
     color: 'text-neon-green',
     borderColor: 'border-neon-green',
     bgColor: 'bg-neon-green/10',
-    email: 'fellow1@example.com',
+    email: 'fellow@codearena.edu',
+    password: 'Demo@123456',
+  },
+  proctor: {
+    title: 'Proctor',
+    subtitle: 'Session Monitor',
+    description: 'Monitor live sessions and handle incidents',
+    capabilities: [
+      'Monitor active sessions',
+      'Pause/resume team sessions',
+      'Track violations in real-time',
+      'Force-submit attempts',
+      'Add incident reports',
+    ],
+    icon: '👁️',
+    color: 'text-orange-400',
+    borderColor: 'border-orange-400',
+    bgColor: 'bg-orange-400/10',
+    email: 'proctor@codearena.edu',
     password: 'Demo@123456',
   },
 };
@@ -185,8 +184,8 @@ export default function LoginPage() {
             <h2 className="text-2xl font-bold mb-2 text-white text-center relative z-10">Welcome! Choose Your Role</h2>
             <p className="text-gray-400 text-center mb-8 relative z-10">Select how you want to sign in to the platform</p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 relative z-10">
-              {(Object.keys(roleInfo) as RoleType[]).map((role) => {
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
+              {(['admin', 'judge', 'fellow'] as RoleType[]).map((role) => {
                 const info = roleInfo[role];
                 return (
                   <button

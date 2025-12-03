@@ -36,7 +36,7 @@ export async function seedComprehensive() {
     const users = await User.create([
       // Admin
       {
-        email: 'admin@example.com',
+        email: 'admin@codearena.edu',
         passwordHash: hashedPassword,
         firstName: 'Admin',
         lastName: 'User',
@@ -46,32 +46,21 @@ export async function seedComprehensive() {
         isActive: true,
         emailVerified: true,
       },
-      // Proctor
+      // Judge
       {
-        email: 'proctor@example.com',
+        email: 'judge@codearena.edu',
         passwordHash: hashedPassword,
-        firstName: 'Proctor',
-        lastName: 'Monitor',
-        roles: [
-          { role: 'proctor', organizationId: organization._id },
-        ],
-        isActive: true,
-        emailVerified: true,
-      },
-      // Judges
-      {
-        email: 'judge1@example.com',
-        passwordHash: hashedPassword,
-        firstName: 'Sarah',
-        lastName: 'Johnson',
+        firstName: 'Judge',
+        lastName: 'Evaluator',
         roles: [
           { role: 'judge', organizationId: organization._id },
         ],
         isActive: true,
         emailVerified: true,
       },
+      // Additional Judges for team evaluation
       {
-        email: 'judge2@example.com',
+        email: 'judge2@codearena.edu',
         passwordHash: hashedPassword,
         firstName: 'Michael',
         lastName: 'Chen',
@@ -82,7 +71,7 @@ export async function seedComprehensive() {
         emailVerified: true,
       },
       {
-        email: 'judge3@example.com',
+        email: 'judge3@codearena.edu',
         passwordHash: hashedPassword,
         firstName: 'Emily',
         lastName: 'Rodriguez',
@@ -92,21 +81,21 @@ export async function seedComprehensive() {
         isActive: true,
         emailVerified: true,
       },
-      // Grader
+      // Main Fellow for login testing
       {
-        email: 'grader@example.com',
+        email: 'fellow@codearena.edu',
         passwordHash: hashedPassword,
-        firstName: 'Grader',
-        lastName: 'Smith',
+        firstName: 'Student',
+        lastName: 'Fellow',
         roles: [
-          { role: 'grader', organizationId: organization._id },
+          { role: 'fellow', organizationId: organization._id },
         ],
         isActive: true,
         emailVerified: true,
       },
-      // Fellows (JTC Participants)
-      ...Array.from({ length: 20 }, (_, i) => ({
-        email: `fellow${i + 1}@example.com`,
+      // Additional Fellows (JTC Participants)
+      ...Array.from({ length: 19 }, (_, i) => ({
+        email: `fellow${i + 1}@codearena.edu`,
         passwordHash: hashedPassword,
         firstName: ['Alex', 'Jordan', 'Taylor', 'Morgan', 'Casey', 'Riley', 'Dakota', 'Avery'][i % 8],
         lastName: ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones'][i % 5],
@@ -118,7 +107,7 @@ export async function seedComprehensive() {
       })),
     ]);
 
-    const [admin, proctor, judge1, judge2, judge3, grader, ...fellows] = users;
+    const [admin, judge1, judge2, judge3, ...fellows] = users;
     logger.info(`Created ${users.length} users`);
 
     // Create Questions for Assessments
@@ -382,96 +371,48 @@ export async function seedComprehensive() {
 
     logger.info(`Created ${assessments.length} assessments`);
 
-    // Create Teams - 6 teams with 2 fellows each
+    // Create Teams - 6 teams with 3 fellows each
     const teams = await Team.create([
       {
         name: 'Code Wizards',
         organizationId: organization._id,
-        memberIds: [fellows[0]._id, fellows[1]._id],
-        projectTitle: 'AI-Powered Study Assistant',
-        description: 'A smart study assistant using AI for personalized learning',
-        track: 'Education',
-        repoUrl: 'https://github.com/example/ai-study-assistant',
-        demoUrl: 'https://ai-study-assistant.demo.com',
-        videoUrl: 'https://youtube.com/watch?v=example1',
-        projectExplanation: 'Our project leverages machine learning for personalized recommendations.',
-        technicalApproach: 'Built with Node.js, React, and TensorFlow.js',
-        challengesOvercome: 'Overcame model accuracy issues with data augmentation',
+        memberIds: [fellows[0]._id, fellows[1]._id, fellows[2]._id],
+        description: 'Team Code Wizards',
         disqualified: false,
       },
       {
         name: 'Data Ninjas',
         organizationId: organization._id,
-        memberIds: [fellows[2]._id, fellows[3]._id],
-        projectTitle: 'Community Health Tracker',
-        description: 'Track and visualize community health metrics',
-        track: 'Health & Wellness',
-        repoUrl: 'https://github.com/example/health-tracker',
-        demoUrl: 'https://health-tracker.demo.com',
-        videoUrl: 'https://youtube.com/watch?v=example2',
-        projectExplanation: 'Comprehensive health monitoring system for communities',
-        technicalApproach: 'Python backend with Vue.js and D3.js visualizations',
-        challengesOvercome: 'Handled real-time data sync and privacy concerns',
+        memberIds: [fellows[3]._id, fellows[4]._id, fellows[5]._id],
+        description: 'Team Data Ninjas',
         disqualified: false,
       },
       {
         name: 'Tech Titans',
         organizationId: organization._id,
-        memberIds: [fellows[4]._id, fellows[5]._id],
-        projectTitle: 'Smart Energy Monitor',
-        description: 'Monitor and optimize energy usage to reduce carbon footprint',
-        track: 'Sustainability',
-        repoUrl: 'https://github.com/example/energy-monitor',
-        demoUrl: 'https://energy-monitor.demo.com',
-        videoUrl: 'https://youtube.com/watch?v=example3',
-        projectExplanation: 'IoT-based system to track and optimize energy consumption',
-        technicalApproach: 'Arduino sensors connected to cloud analytics platform',
-        challengesOvercome: 'Solved connectivity issues with edge computing',
+        memberIds: [fellows[6]._id, fellows[7]._id, fellows[8]._id],
+        description: 'Team Tech Titans',
         disqualified: false,
       },
       {
         name: 'Innovators',
         organizationId: organization._id,
-        memberIds: [fellows[6]._id, fellows[7]._id],
-        projectTitle: 'Business Network Platform',
-        description: 'Connect entrepreneurs and investors for business growth',
-        track: 'Finance & Business',
-        repoUrl: 'https://github.com/example/business-connect',
-        demoUrl: 'https://business-connect.demo.com',
-        videoUrl: 'https://youtube.com/watch?v=example4',
-        projectExplanation: 'Platform matching entrepreneurs with investors',
-        technicalApproach: 'Next.js, PostgreSQL, and Redis for matching',
-        challengesOvercome: 'Implemented complex matching algorithms',
+        memberIds: [fellows[9]._id, fellows[10]._id, fellows[11]._id],
+        description: 'Team Innovators',
         disqualified: false,
       },
       {
         name: 'Future Builders',
         organizationId: organization._id,
-        memberIds: [fellows[8]._id, fellows[9]._id],
-        projectTitle: 'Skills Marketplace',
-        description: 'Marketplace for skill-sharing opportunities',
-        track: 'Education',
-        repoUrl: 'https://github.com/example/skills-marketplace',
-        demoUrl: 'https://skills-marketplace.demo.com',
-        videoUrl: 'https://youtube.com/watch?v=example5',
-        projectExplanation: 'Connect skill seekers with skill sharers',
-        technicalApproach: 'Microservices with Kubernetes',
-        challengesOvercome: 'Managed scalability through optimization',
+        memberIds: [fellows[12]._id, fellows[13]._id, fellows[14]._id],
+        description: 'Team Future Builders',
         disqualified: false,
       },
       {
         name: 'Debug Squad',
         organizationId: organization._id,
-        memberIds: [fellows[10]._id, fellows[11]._id],
-        projectTitle: 'Code Review Tool',
-        description: 'AI-powered collaborative code review tool',
-        track: 'Developer Tools',
-        repoUrl: 'https://github.com/example/code-review-tool',
-        demoUrl: 'https://code-review.demo.com',
-        videoUrl: 'https://youtube.com/watch?v=example6',
-        projectExplanation: 'AI-enhanced code review platform',
-        technicalApproach: 'FastAPI with React and OpenAI integration',
-        challengesOvercome: 'Integrated multiple code analysis tools',
+        memberIds: [fellows[15]._id, fellows[16]._id, fellows[17]._id],
+        description: 'Team Debug Squad',
         disqualified: false,
       },
     ]);
@@ -483,12 +424,13 @@ export async function seedComprehensive() {
     const codingQuestions = questions.filter(q => q.type === 'coding');
 
     // Create hackathon session with coding problems
+    const now = new Date();
     const hackathonSession = await HackathonSession.create({
       title: 'Justice Through Code - Hackathon Challenge',
-      description: 'December 13, 2025 - 4 hour live coding hackathon event',
+      description: 'Live coding hackathon event - Currently Active',
       organizationId: organization._id,
-      startTime: new Date('2025-12-13T09:00:00Z'),
-      endTime: new Date('2025-12-13T13:00:00Z'),
+      startTime: new Date(now.getTime() - 60 * 60 * 1000), // Started 1 hour ago
+      endTime: new Date(now.getTime() + 3 * 60 * 60 * 1000), // Ends in 3 hours
       duration: 240, // 4 hours in minutes
       problems: codingQuestions.map((q, index) => ({
         problemId: q._id,
@@ -513,8 +455,8 @@ export async function seedComprehensive() {
         snapshotIntervalMinutes: 10,
         requireIdentityCheck: false,
       },
-      status: 'scheduled',
-      isActive: false,
+      status: 'active',
+      isActive: true,
       accommodations: [],
       createdBy: admin._id,
     });
@@ -527,9 +469,7 @@ export async function seedComprehensive() {
       organization,
       users: {
         admin,
-        proctor,
         judges: [judge1, judge2, judge3],
-        grader,
         fellows,
       },
       questions,

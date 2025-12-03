@@ -144,6 +144,7 @@ export const register = async (
       success: true,
       data: {
         user: {
+          id: user._id,
           _id: user._id,
           email: user.email,
           firstName: user.firstName,
@@ -208,6 +209,7 @@ export const login = async (
       success: true,
       data: {
         user: {
+          id: user._id,
           _id: user._id,
           email: user.email,
           firstName: user.firstName,
@@ -303,6 +305,7 @@ export const getCurrentUser = async (
       success: true,
       data: {
         user: {
+          id: user._id,
           _id: user._id,
           email: user.email,
           firstName: user.firstName,

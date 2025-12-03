@@ -153,7 +153,7 @@ export const submitProblem = async (
 ) => {
   try {
     const { sessionId, teamId } = req.params;
-    const { problemId, testResults } = req.body;
+    const { problemId, testResults, code, explanation } = req.body;
 
     const teamSession = await TeamSession.findOne({ sessionId, teamId });
 
@@ -174,6 +174,14 @@ export const submitProblem = async (
     problem.passedTests = testResults.filter((r: any) => r.passed).length;
     problem.totalTests = testResults.length;
     problem.submittedAt = new Date();
+
+    // Save code and explanation
+    if (code !== undefined) {
+      problem.code = code;
+    }
+    if (explanation !== undefined) {
+      problem.explanation = explanation;
+    }
 
     // Get problem points from hackathon session
     const hackathonSession = await HackathonSession.findById(sessionId);

@@ -7,6 +7,7 @@ import { connectDatabase } from './config/database';
 import { logger } from './utils/logger';
 import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
+import { injectOrganization } from './middleware/organization';
 import { ProctorService } from './services/proctorService';
 import { TeamCollaborationService } from './services/teamCollaborationService';
 
@@ -51,6 +52,7 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(rateLimiter);
+app.use(injectOrganization);
 
 // Health check
 app.get('/health', (req, res) => {
