@@ -1,10 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 
 interface CodingQuestionProps {
   question: {
+    id?: string; // Question ID for tracking changes
+    title?: string; // Problem title
+    prompt?: string; // Problem description/prompt
     content: {
       language: string;
       starterCode?: string;
@@ -39,6 +42,30 @@ export default function CodingQuestion({
   const [explanation, setExplanation] = useState(value?.explanation || '');
   const [output, setOutput] = useState('');
   const [running, setRunning] = useState(false);
+  
+  // Track the question ID to detect when question changes
+  const previousQuestionIdRef = useRef<string | undefined>(question.id);
+  
+  // Reset state when question changes
+  useEffect(() => {
+    if (question.id && question.id !== previousQuestionIdRef.current) {
+      // Question changed - reset to new question's values
+      setCode(value?.code || question.content.starterCode || '');
+      setLanguage(value?.language || question.content.language || 'python');
+      setExplanation(value?.explanation || '');
+      setOutput('');
+      previousQuestionIdRef.current = question.id;
+    }
+  }, [question.id, question.content.starterCode, question.content.language, value]);
+  
+  // Also update if value changes from external source (e.g., loading saved answer)
+  useEffect(() => {
+    if (value) {
+      setCode(value.code || question.content.starterCode || '');
+      setLanguage(value.language || question.content.language || 'python');
+      setExplanation(value.explanation || '');
+    }
+  }, [value, question.content.starterCode, question.content.language]);
 
   const handleCodeChange = (newCode: string | undefined) => {
     if (newCode !== undefined) {
@@ -138,6 +165,20 @@ export default function CodingQuestion({
 
   return (
     <div className="space-y-4">
+      {/* Problem Description */}
+      {question.prompt && (
+        <div className="glass rounded-lg p-5 border border-gray-700 bg-dark-800/50">
+          <h4 className="font-semibold mb-3 text-neon-blue flex items-center gap-2">
+            <span>📋</span> Problem Description
+          </h4>
+          <div className="prose prose-invert prose-sm max-w-none">
+            <div className="text-gray-300 whitespace-pre-wrap leading-relaxed">
+              {question.prompt}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Language selector - Python only */}
       <div className="flex items-center gap-4">
         <label className="text-sm text-gray-400">Language:</label>

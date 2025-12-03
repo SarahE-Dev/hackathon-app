@@ -81,7 +81,11 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
     case 'Coding':
       return (
         <CodingQuestion
+          key={question.id} // Force re-render when question changes
           question={{
+            id: question.id,
+            title: question.title,
+            prompt: (question as any).content?.prompt || (question as any).prompt || question.content || '',
             content: {
               language: (question as any).content?.language || (question as any).language || 'python',
               starterCode: (question as any).content?.codeTemplate || (question as any).codeTemplate || '',

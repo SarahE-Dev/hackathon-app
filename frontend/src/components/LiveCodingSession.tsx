@@ -85,6 +85,8 @@ interface LiveCodingSessionProps {
   };
   onMemberStatusChange?: (statuses: Array<{ odId: string; odStatus: 'offline' | 'in-team-space' | 'live-coding'; odProblemTitle?: string }>) => void;
   onProblemCompleted?: () => void;
+  onSubmitComplete?: () => void; // Called after successful submission to navigate back
+  isAlreadySubmitted?: boolean; // If true, problem was already submitted
   // Shared socket from parent - if provided, we use it instead of creating our own
   sharedSocket?: Socket | null;
 }
@@ -96,6 +98,8 @@ export default function LiveCodingSession({
   problem,
   onMemberStatusChange,
   onProblemCompleted,
+  onSubmitComplete,
+  isAlreadySubmitted = false,
   sharedSocket,
 }: LiveCodingSessionProps) {
   // Convert problem prop to internal format, with fallback for demo
@@ -208,6 +212,7 @@ Output: [0,1]
   const [explanation, setExplanation] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [showExplanationModal, setShowExplanationModal] = useState(false);
   const [proctorEvents, setProctorEvents] = useState<ProctorEvent[]>([]);
   const [isWindowFocused, setIsWindowFocused] = useState(true);
   const [copyPasteAttempts, setCopyPasteAttempts] = useState(0);
@@ -824,7 +829,7 @@ Output: [0,1]
 
   const submitSolution = async () => {
     if (!explanation.trim()) {
-      alert('Please provide an explanation of your solution approach before submitting.');
+      setShowExplanationModal(true);
       return;
     }
 
@@ -844,36 +849,30 @@ Output: [0,1]
       });
 
       if (response.success) {
-        const { summary } = response.data;
-        
-        // Update test results from submission
-        const updatedResults: {[key: string]: 'pending' | 'passed' | 'failed'} = {};
-        response.data.results?.forEach((result: any) => {
-          updatedResults[result.id] = result.passed ? 'passed' : 'failed';
-        });
-        setTestResults(updatedResults);
-
         setSubmitSuccess(true);
         
-        // Check if all tests passed - if so, mark as completed
-        if (summary.allTestsPassed && onProblemCompleted) {
+        // Always mark problem as completed on submission (regardless of test results)
+        // The user has submitted their answer - that's final for this problem
+        if (onProblemCompleted) {
           onProblemCompleted();
         }
         
-        const message = summary.allTestsPassed 
-          ? `🎉 Solution submitted successfully!\n\n✅ All ${summary.totalTests} tests passed!\n\nPoints earned: ${summary.pointsEarned}/${summary.maxPoints}\n\nProblem marked as completed!`
-          : `Solution submitted.\n\n${summary.passedTests}/${summary.totalTests} tests passed.\n\nScore: ${summary.score}\n\n💡 Keep working to pass all tests!`;
-        
-        alert(message);
+        // Navigate back to problems list after a brief delay
+        setTimeout(() => {
+          if (onSubmitComplete) {
+            onSubmitComplete();
+          }
+        }, 1500); // Show success state briefly before navigating
       } else {
         alert('Failed to submit solution. Please try again.');
+        setSubmitting(false);
       }
     } catch (error: any) {
       console.error('Submission error:', error);
       alert(`Failed to submit solution: ${error?.response?.data?.message || error.message || 'Unknown error'}`);
-    } finally {
       setSubmitting(false);
     }
+    // Note: Don't set submitting to false on success - we want to keep showing the submitted state
   };
 
   const getRiskLevel = () => {
@@ -897,7 +896,7 @@ Output: [0,1]
   const showLoading = !sharedSocket && connectionStatus === 'connecting' && !hasConnectedOnce.current;
   
   if (showLoading) {
-    return (
+  return (
       <div className="flex flex-col items-center justify-center py-16">
         <div className="relative mb-6">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-neon-green mx-auto"></div>
@@ -929,6 +928,39 @@ Output: [0,1]
   }
 
   return (
+    <>
+      {/* Explanation Required Modal */}
+      {showExplanationModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="glass rounded-2xl p-8 border border-yellow-500/50 max-w-md w-full animate-in fade-in zoom-in duration-200">
+            <div className="text-center">
+              <div className="text-5xl mb-4">📝</div>
+              <h3 className="text-xl font-bold text-yellow-400 mb-2">Explanation Required</h3>
+              <p className="text-gray-300 mb-4">
+                Before submitting your solution, please provide an explanation of your approach.
+              </p>
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6 text-left">
+                <h4 className="font-semibold text-yellow-300 text-sm mb-2">Your explanation should include:</h4>
+                <ul className="text-sm text-yellow-300/80 space-y-1">
+                  <li>• The algorithm or approach you used</li>
+                  <li>• Why you chose this solution</li>
+                  <li>• Time and space complexity (if known)</li>
+                  <li>• Any trade-offs or alternatives considered</li>
+                </ul>
+              </div>
+              <div className="flex justify-center gap-4">
+                <button
+                  onClick={() => setShowExplanationModal(false)}
+                  className="px-6 py-3 bg-neon-blue hover:bg-neon-blue/80 text-white rounded-lg font-medium transition-all"
+                >
+                  Got it, I'll add one
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
       {/* Main Content Area */}
       <div className="lg:col-span-3 space-y-6">
@@ -1050,37 +1082,102 @@ Output: [0,1]
           </div>
 
           {/* Explanation */}
-          <div className="mb-4">
+          <div className={`mb-4 ${!explanation.trim() ? 'animate-pulse-subtle' : ''}`}>
             <label className="block text-sm font-medium text-gray-300 mb-2">
               Solution Explanation <span className="text-red-400">*</span>
+              {!explanation.trim() && (
+                <span className="ml-2 text-xs text-yellow-400 font-normal">(Required to submit)</span>
+              )}
             </label>
-            <p className="text-xs text-gray-400 mb-2">
-              Describe your approach to solving this problem, the algorithm you used, and why you chose it.
-            </p>
+            <div className="bg-dark-800 rounded-lg p-3 mb-3 border border-gray-700">
+              <p className="text-xs text-gray-300 font-medium mb-2">📝 Your explanation should include:</p>
+              <ul className="text-xs text-gray-400 space-y-1 ml-4">
+                <li>• <span className="text-neon-blue">Algorithm:</span> What approach did you use? (e.g., two pointers, hash map)</li>
+                <li>• <span className="text-neon-blue">Why:</span> Why did you choose this approach?</li>
+                <li>• <span className="text-neon-blue">Complexity:</span> Time & space complexity (e.g., O(n), O(1))</li>
+                <li>• <span className="text-neon-blue">Steps:</span> Brief walkthrough of your solution</li>
+              </ul>
+            </div>
             <textarea
               value={explanation}
               onChange={(e) => setExplanation(e.target.value)}
-              placeholder="I solved this problem by...&#10;&#10;My approach:&#10;1. First, I...&#10;2. Then I...&#10;3. Finally...&#10;&#10;Time complexity: O(n)&#10;Space complexity: O(1)&#10;&#10;I chose this approach because..."
-              className="w-full h-40 px-4 py-3 bg-dark-700 border border-gray-600 rounded-lg text-white text-sm focus:border-neon-blue outline-none resize-y font-mono"
+              placeholder="Example:
+
+ALGORITHM: I used a hash map approach.
+
+WHY: Hash map allows O(1) lookups, making it efficient.
+
+COMPLEXITY: 
+- Time: O(n) - single pass through the array
+- Space: O(n) - storing elements in hash map
+
+STEPS:
+1. Created a hash map to store values and indices
+2. For each element, checked if complement exists
+3. If found, returned the indices"
+              className={`w-full h-48 px-4 py-3 bg-dark-700 border rounded-lg text-white text-sm focus:border-neon-blue outline-none resize-y font-mono transition-colors placeholder:text-gray-500 ${
+                !explanation.trim() 
+                  ? 'border-yellow-500/50 focus:border-yellow-500' 
+                  : 'border-gray-600'
+              }`}
             />
-            <p className="text-xs text-gray-500 mt-1">
-              ✓ Explain your thought process, algorithm choice, and complexity analysis
-            </p>
+            {!submitSuccess && (
+              !explanation.trim() ? (
+                <p className="text-xs text-yellow-400 mt-1">
+                  ⚠️ You must explain your solution approach before submitting
+                </p>
+              ) : (
+                <p className="text-xs text-green-400 mt-1">
+                  ✓ Explanation provided - ready to submit!
+                </p>
+              )
+            )}
           </div>
 
           {/* Submit Button */}
           <div className="mb-4">
-            <button
-              onClick={submitSolution}
-              disabled={submitting || !explanation.trim()}
-              className="w-full py-3 bg-gradient-to-r from-neon-purple to-purple-600 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-neon-purple/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {submitting ? 'Submitting...' : '✓ Submit Solution'}
-            </button>
-            {submitSuccess && (
-              <p className="text-sm text-green-400 mt-2 text-center">
-                ✓ Solution submitted successfully!
-              </p>
+            {isAlreadySubmitted ? (
+              // Already submitted state
+              <div className="w-full py-4 bg-dark-600 border border-gray-600 text-gray-400 rounded-lg font-medium text-center">
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Already Submitted
+                </span>
+                <p className="text-xs text-gray-500 mt-1">You've already submitted this problem</p>
+              </div>
+            ) : submitSuccess ? (
+              // Success state - show confirmation
+              <div className="w-full py-4 bg-gradient-to-r from-green-600 to-green-500 text-white rounded-lg font-medium text-center">
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Solution Submitted! Returning to problems...
+                </span>
+              </div>
+            ) : (
+              <button
+                onClick={submitSolution}
+                disabled={submitting}
+                className={`w-full py-3 rounded-lg font-medium transition-all ${
+                  explanation.trim()
+                    ? 'bg-gradient-to-r from-neon-purple to-purple-600 text-white hover:shadow-lg hover:shadow-neon-purple/50'
+                    : 'bg-dark-600 border border-yellow-500/50 text-yellow-400 cursor-pointer hover:bg-dark-500'
+                } ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {submitting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Submitting...
+                  </span>
+                ) : explanation.trim() ? (
+                  '✓ Submit Solution'
+                ) : (
+                  '📝 Add Explanation to Submit'
+                )}
+              </button>
             )}
           </div>
 
@@ -1270,5 +1367,6 @@ Output: [0,1]
         )}
       </div>
     </div>
+    </>
   );
 }

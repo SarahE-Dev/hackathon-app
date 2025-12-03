@@ -751,15 +751,19 @@ export default function TeamDetailPage() {
                       return (
                         <div
                           key={problem._id}
-                          onClick={() => handleProblemClick(problem)}
-                          className={`p-4 cursor-pointer transition-all ${
-                            isCurrentlySelected
-                              ? 'bg-neon-blue/10 border-l-4 border-l-neon-blue'
-                              : isCompleted
-                                ? 'bg-neon-green/5 hover:bg-neon-green/10 border-l-4 border-l-neon-green'
+                          onClick={() => {
+                            // Don't allow clicking on completed problems
+                            if (isCompleted) return;
+                            handleProblemClick(problem);
+                          }}
+                          className={`p-4 transition-all ${
+                            isCompleted
+                              ? 'bg-neon-green/5 border-l-4 border-l-neon-green cursor-not-allowed opacity-75'
+                              : isCurrentlySelected
+                                ? 'bg-neon-blue/10 border-l-4 border-l-neon-blue cursor-pointer'
                                 : isInProgress
-                                  ? 'bg-yellow-500/5 hover:bg-yellow-500/10 border-l-4 border-l-yellow-500'
-                                  : 'hover:bg-dark-700 border-l-4 border-l-transparent'
+                                  ? 'bg-yellow-500/5 hover:bg-yellow-500/10 border-l-4 border-l-yellow-500 cursor-pointer'
+                                  : 'hover:bg-dark-700 border-l-4 border-l-transparent cursor-pointer'
                           }`}
                         >
                           <div className="flex items-center justify-between">
@@ -776,7 +780,7 @@ export default function TeamDetailPage() {
                               </div>
                               
                               <div>
-                                <h4 className="font-semibold text-white">
+                                <h4 className={`font-semibold ${isCompleted ? 'text-gray-400' : 'text-white'}`}>
                                   {isStarted ? problem.title : `Problem ${index + 1}`}
                                 </h4>
                                 <div className="flex items-center gap-2 mt-1">
@@ -798,20 +802,17 @@ export default function TeamDetailPage() {
                             <div className="flex items-center gap-2">
                               {isCompleted ? (
                                 <span className="text-xs bg-neon-green/20 text-neon-green px-3 py-1 rounded-full font-medium">
-                                  ✓ Completed
+                                  ✓ Submitted
                                 </span>
                               ) : isInProgress ? (
                                 <span className="text-xs bg-yellow-500/20 text-yellow-500 px-3 py-1 rounded-full">
-                                  In Progress
+                                  In Progress →
                                 </span>
                               ) : (
                                 <span className="text-xs bg-dark-600 text-gray-400 px-3 py-1 rounded-full">
-                                  Not Started
+                                  Start →
                                 </span>
                               )}
-                              <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                              </svg>
                             </div>
                           </div>
                         </div>
@@ -839,6 +840,12 @@ export default function TeamDetailPage() {
                     problem={selectedProblem}
                     onMemberStatusChange={handleMemberStatusUpdate}
                     onProblemCompleted={() => handleProblemCompleted(selectedProblem._id)}
+                    onSubmitComplete={() => {
+                      // After submission, go back to problems list
+                      setSelectedProblem(null);
+                      setActiveTab('problems');
+                    }}
+                    isAlreadySubmitted={problemProgress.get(selectedProblem._id) === 'completed'}
                     sharedSocket={presenceSocket}
                   />
                 ) : (

@@ -593,6 +593,7 @@ export default function TakeAssessmentPage() {
               {/* Question-specific component */}
               <div className="mt-6">
                 <QuestionRenderer
+                  key={currentQuestion._id} // Force re-render when question changes
                   question={{
                     ...currentQuestion,
                     id: currentQuestion._id, // Map _id to id
