@@ -304,7 +304,7 @@ export default function DashboardPage() {
               </h2>
               {userTeam ? (
                 <div className="p-5 bg-gradient-to-r from-neon-purple/10 to-neon-blue/10 rounded-xl border border-neon-purple/40">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-4">
                       <div className="w-14 h-14 bg-neon-purple/20 rounded-xl flex items-center justify-center text-2xl">
                         🏆
@@ -321,6 +321,22 @@ export default function DashboardPage() {
                       className="inline-flex items-center gap-2 px-5 py-3 bg-neon-purple hover:bg-neon-purple/80 text-white rounded-lg font-medium transition-all shadow-lg shadow-neon-purple/20"
                     >
                       <span>🚀</span> Join Team Space
+                    </Link>
+                  </div>
+                  
+                  {/* Quick Links */}
+                  <div className="flex gap-3 pt-3 border-t border-neon-purple/20">
+                    <Link
+                      href={`/hackathon/teams/${userTeam._id}/reviews`}
+                      className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-dark-800/50 hover:bg-dark-700/50 text-gray-300 hover:text-white rounded-lg text-sm transition-all border border-gray-700 hover:border-gray-600"
+                    >
+                      <span>📋</span> View Reviews
+                    </Link>
+                    <Link
+                      href="/hackathon/leaderboard"
+                      className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-dark-800/50 hover:bg-dark-700/50 text-gray-300 hover:text-white rounded-lg text-sm transition-all border border-gray-700 hover:border-gray-600"
+                    >
+                      <span>🏆</span> Leaderboard
                     </Link>
                   </div>
                 </div>
@@ -444,18 +460,6 @@ export default function DashboardPage() {
                     ></div>
                   </div>
                 </div>
-
-                {userTeam && (
-                  <div className="p-4 bg-neon-purple/10 rounded-lg border border-neon-purple/30">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-sm text-gray-400">Hackathon Team</span>
-                        <p className="font-semibold text-white mt-1">{userTeam.name}</p>
-                      </div>
-                      <span className="text-2xl">👥</span>
-                    </div>
-                  </div>
-                )}
 
                 {inProgressCount > 0 && (
                   <div className="p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/30">

@@ -8,6 +8,8 @@ import {
   getSessionLeaderboard,
   getAllSessionSubmissions,
   addJudgeFeedback,
+  getLeaderboard,
+  getMyTeamReviews,
 } from '../controllers/teamSubmissionController';
 import { authenticate } from '../middleware/auth';
 
@@ -60,9 +62,21 @@ router.post('/:teamId/:sessionId/:problemId/submit', submitSolution);
 
 /**
  * GET /api/team-submissions/leaderboard/:sessionId
- * Get leaderboard for a session
+ * Get leaderboard for a session (old endpoint)
  */
 router.get('/leaderboard/:sessionId', getSessionLeaderboard);
+
+/**
+ * GET /api/team-submissions/hackathon-leaderboard/:sessionId
+ * Get hackathon leaderboard with judge scores
+ */
+router.get('/hackathon-leaderboard/:sessionId', getLeaderboard);
+
+/**
+ * GET /api/team-submissions/my-reviews/:teamId
+ * Get a team's own submissions with judge feedback
+ */
+router.get('/my-reviews/:teamId', getMyTeamReviews);
 
 export default router;
 

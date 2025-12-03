@@ -588,6 +588,18 @@ export const teamSubmissionsAPI = {
     const response = await api.post(`/team-submissions/${submissionId}/feedback`, feedback);
     return response.data;
   },
+  
+  // Get hackathon leaderboard with judge scores
+  getHackathonLeaderboard: async (sessionId: string) => {
+    const response = await api.get(`/team-submissions/hackathon-leaderboard/${sessionId}`);
+    return response.data;
+  },
+  
+  // Get my team's reviews (for fellows to view their feedback)
+  getMyTeamReviews: async (teamId: string) => {
+    const response = await api.get(`/team-submissions/my-reviews/${teamId}`);
+    return response.data;
+  },
 };
 
 // Hackathon Sessions API

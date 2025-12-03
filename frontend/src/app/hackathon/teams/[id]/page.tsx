@@ -501,12 +501,12 @@ export default function TeamDetailPage() {
                   🔄 Dev Reset
                 </button>
               )}
-              <Link
-                href="/dashboard"
-                className="px-4 py-2 bg-dark-700 hover:bg-dark-600 border border-gray-600 rounded-lg transition-all"
-              >
+            <Link
+              href="/dashboard"
+              className="px-4 py-2 bg-dark-700 hover:bg-dark-600 border border-gray-600 rounded-lg transition-all"
+            >
                 ← Dashboard
-              </Link>
+            </Link>
             </div>
           </div>
         </div>
@@ -529,8 +529,8 @@ export default function TeamDetailPage() {
                   const isOnline = isLiveCoding || isInTeamSpace;
                   
                   return (
-                    <div
-                      key={member._id}
+                  <div
+                    key={member._id}
                       className={`p-3 rounded-lg border transition-all ${
                         isLiveCoding 
                           ? 'bg-neon-green/10 border-neon-green/30' 
@@ -586,16 +586,16 @@ export default function TeamDetailPage() {
                   <span className="text-gray-500">
                     {Array.from(memberStatuses.values()).filter(s => s.odStatus === 'live-coding').length}
                   </span>
-                </div>
+              </div>
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full bg-neon-blue"></div>
                     <span className="text-gray-400">In Team Space</span>
-                  </div>
+            </div>
                   <span className="text-gray-500">
                     {Array.from(memberStatuses.values()).filter(s => s.odStatus === 'in-team-space').length}
-                  </span>
-                </div>
+                      </span>
+                    </div>
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full bg-gray-600"></div>
@@ -643,9 +643,9 @@ export default function TeamDetailPage() {
                 .reduce((sum, p) => sum + (p.points || 0), 0);
 
               return (
-                <div className="space-y-6">
+              <div className="space-y-6">
                   {/* Welcome Card */}
-                  <div className="glass rounded-2xl p-6 border border-gray-800">
+                <div className="glass rounded-2xl p-6 border border-gray-800">
                     <h3 className="text-2xl font-bold mb-2">Welcome, Team {team.name}! 🎉</h3>
                     <p className="text-gray-400 mb-6">{team.description || 'Ready to tackle some coding challenges together?'}</p>
 
@@ -687,12 +687,12 @@ export default function TeamDetailPage() {
                     </div>
 
                     {/* CTA */}
-                    <button
+                      <button
                       onClick={() => setActiveTab('problems')}
                       className="w-full px-6 py-4 bg-gradient-to-r from-neon-blue to-neon-purple hover:opacity-90 text-white rounded-xl font-medium transition-all text-lg"
-                    >
+                      >
                       🧩 View Problems
-                    </button>
+                      </button>
                   </div>
 
                   {/* Quick Stats */}
@@ -724,12 +724,12 @@ export default function TeamDetailPage() {
                 <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
                   <div className="flex items-start gap-3">
                     <span className="text-2xl">⚠️</span>
-                    <div>
+                        <div>
                       <h4 className="font-semibold text-yellow-400">One-Time Access</h4>
                       <p className="text-sm text-yellow-300/80 mt-1">
                         You can only view each problem <strong>once</strong>. Once you start a problem, you cannot go back to view others you haven't started. Choose wisely!
                       </p>
-                    </div>
+                      </div>
                   </div>
                 </div>
 
@@ -738,20 +738,20 @@ export default function TeamDetailPage() {
                   <div className="p-4 border-b border-gray-800 bg-dark-800">
                     <h3 className="font-bold">Select a Problem to Start</h3>
                     <p className="text-xs text-gray-400 mt-1">Problems are sorted by difficulty: Easy → Medium → Hard</p>
-                  </div>
+              </div>
                   
                   <div className="divide-y divide-gray-800">
-                    {problems.map((problem, index) => {
+                  {problems.map((problem, index) => {
                       const status = problemProgress.get(problem._id) || 'not-started';
                       const isStarted = status !== 'not-started';
                       const isCompleted = status === 'completed';
                       const isInProgress = status === 'in-progress';
                       const isCurrentlySelected = selectedProblem?._id === problem._id;
 
-                      return (
-                        <div
-                          key={problem._id}
-                          onClick={() => {
+                    return (
+                      <div
+                        key={problem._id}
+                        onClick={() => {
                             // Don't allow clicking on completed problems
                             if (isCompleted) return;
                             handleProblemClick(problem);
@@ -777,7 +777,7 @@ export default function TeamDetailPage() {
                                     : 'bg-dark-600 text-gray-400'
                               }`}>
                                 {isCompleted ? '✓' : isInProgress ? '◐' : index + 1}
-                              </div>
+                            </div>
                               
                               <div>
                                 <h4 className={`font-semibold ${isCompleted ? 'text-gray-400' : 'text-white'}`}>
@@ -785,18 +785,18 @@ export default function TeamDetailPage() {
                                 </h4>
                                 <div className="flex items-center gap-2 mt-1">
                                   <span className={`text-xs font-medium px-2 py-0.5 rounded ${
-                                    problem.difficulty === 'easy' ? 'bg-green-500/20 text-green-400' :
-                                    problem.difficulty === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
-                                    'bg-red-500/20 text-red-400'
-                                  }`}>
-                                    {problem.difficulty.toUpperCase()}
-                                  </span>
+                                problem.difficulty === 'easy' ? 'bg-green-500/20 text-green-400' :
+                                problem.difficulty === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                                'bg-red-500/20 text-red-400'
+                              }`}>
+                                {problem.difficulty.toUpperCase()}
+                              </span>
                                   <span className="text-xs text-gray-500">•</span>
                                   <span className={`text-xs ${isCompleted ? 'text-neon-green' : 'text-neon-blue'}`}>
                                     {isCompleted ? `+${problem.points}` : problem.points} pts
-                                  </span>
-                                </div>
-                              </div>
+                              </span>
+                            </div>
+                          </div>
                             </div>
 
                             <div className="flex items-center gap-2">
@@ -814,10 +814,10 @@ export default function TeamDetailPage() {
                                 </span>
                               )}
                             </div>
-                          </div>
                         </div>
-                      );
-                    })}
+                      </div>
+                    );
+                  })}
                   </div>
                 </div>
 

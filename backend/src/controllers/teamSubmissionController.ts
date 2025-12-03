@@ -678,3 +678,222 @@ export const addJudgeFeedback = async (
   }
 };
 
+/**
+ * Get leaderboard for a hackathon session
+ * Shows all teams ranked by total points earned from judge reviews
+ */
+export const getLeaderboard = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { sessionId } = req.params;
+    
+    // Get all teams in this session
+    const HackathonSession = (await import('../models/HackathonSession')).default;
+    const session = await HackathonSession.findById(sessionId)
+      .populate('teams', 'name memberIds');
+    
+    if (!session) {
+      throw new ApiError(404, 'Session not found');
+    }
+    
+    const teamIds = session.teams.map((t: any) => t._id);
+    
+    // Aggregate submissions by team
+    const teamStats = await TeamSubmission.aggregate([
+      {
+        $match: {
+          teamId: { $in: teamIds },
+          status: 'submitted',
+        },
+      },
+      {
+        $lookup: {
+          from: 'questions',
+          localField: 'problemId',
+          foreignField: '_id',
+          as: 'problem',
+        },
+      },
+      {
+        $unwind: '$problem',
+      },
+      {
+        $group: {
+          _id: '$teamId',
+          totalSubmissions: { $sum: 1 },
+          reviewedSubmissions: {
+            $sum: { $cond: [{ $ifNull: ['$judgeFeedback.reviewedAt', false] }, 1, 0] },
+          },
+          totalJudgePoints: {
+            $sum: {
+              $cond: [
+                { $ifNull: ['$judgeFeedback.totalJudgeScore', false] },
+                { $multiply: [{ $divide: ['$judgeFeedback.totalJudgeScore', 100] }, '$problem.points'] },
+                0,
+              ],
+            },
+          },
+          maxPossiblePoints: { $sum: '$problem.points' },
+          avgJudgeScore: {
+            $avg: {
+              $cond: [
+                { $ifNull: ['$judgeFeedback.totalJudgeScore', false] },
+                '$judgeFeedback.totalJudgeScore',
+                null,
+              ],
+            },
+          },
+          passedTests: { $sum: '$passedTests' },
+          totalTests: { $sum: '$totalTests' },
+        },
+      },
+      {
+        $sort: { totalJudgePoints: -1 },
+      },
+    ]);
+    
+    // Enrich with team names
+    const Team = (await import('../models/Team')).default;
+    const teams = await Team.find({ _id: { $in: teamIds } }).select('name memberIds');
+    const teamMap = new Map(teams.map(t => [t._id.toString(), t]));
+    
+    const leaderboard = teamStats.map((stat, index) => {
+      const team = teamMap.get(stat._id.toString());
+      return {
+        rank: index + 1,
+        teamId: stat._id,
+        teamName: team?.name || 'Unknown Team',
+        memberCount: team?.memberIds?.length || 0,
+        totalSubmissions: stat.totalSubmissions,
+        reviewedSubmissions: stat.reviewedSubmissions,
+        totalJudgePoints: Math.round(stat.totalJudgePoints * 10) / 10,
+        maxPossiblePoints: stat.maxPossiblePoints,
+        avgJudgeScore: stat.avgJudgeScore ? Math.round(stat.avgJudgeScore) : null,
+        passedTests: stat.passedTests,
+        totalTests: stat.totalTests,
+        passRate: stat.totalTests > 0 ? Math.round((stat.passedTests / stat.totalTests) * 100) : 0,
+      };
+    });
+    
+    // Add teams with no submissions
+    const teamsWithSubmissions = new Set(teamStats.map(s => s._id.toString()));
+    const teamsWithoutSubmissions = teams.filter(t => !teamsWithSubmissions.has(t._id.toString()));
+    
+    teamsWithoutSubmissions.forEach(team => {
+      leaderboard.push({
+        rank: leaderboard.length + 1,
+        teamId: team._id,
+        teamName: team.name,
+        memberCount: team.memberIds?.length || 0,
+        totalSubmissions: 0,
+        reviewedSubmissions: 0,
+        totalJudgePoints: 0,
+        maxPossiblePoints: 0,
+        avgJudgeScore: null,
+        passedTests: 0,
+        totalTests: 0,
+        passRate: 0,
+      });
+    });
+
+    res.json({
+      success: true,
+      data: {
+        sessionTitle: session.title,
+        leaderboard,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get a team's own submissions with judge feedback
+ * For fellows to view their team's progress and reviews
+ */
+export const getMyTeamReviews = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user!.userId;
+    const { teamId } = req.params;
+    
+    // Verify user is a member of this team
+    const Team = (await import('../models/Team')).default;
+    const team = await Team.findById(teamId);
+    
+    if (!team) {
+      throw new ApiError(404, 'Team not found');
+    }
+    
+    const isMember = team.memberIds.some((m: any) => m.toString() === userId);
+    if (!isMember) {
+      throw new ApiError(403, 'You are not a member of this team');
+    }
+    
+    // Get all submissions for this team
+    const submissions = await TeamSubmission.find({ teamId })
+      .populate('problemId', 'title difficulty points')
+      .populate('submittedBy', 'firstName lastName')
+      .sort({ submittedAt: -1 });
+    
+    // Calculate team totals
+    const stats = {
+      totalSubmissions: submissions.length,
+      reviewedSubmissions: submissions.filter(s => s.judgeFeedback?.reviewedAt).length,
+      totalJudgePoints: 0,
+      maxPossiblePoints: 0,
+      flaggedSubmissions: submissions.filter(s => s.judgeFeedback?.flagged).length,
+    };
+    
+    submissions.forEach(sub => {
+      const problem = sub.problemId as any;
+      if (problem?.points) {
+        stats.maxPossiblePoints += problem.points;
+        if (sub.judgeFeedback?.totalJudgeScore) {
+          stats.totalJudgePoints += (sub.judgeFeedback.totalJudgeScore / 100) * problem.points;
+        }
+      }
+    });
+    
+    stats.totalJudgePoints = Math.round(stats.totalJudgePoints * 10) / 10;
+
+    res.json({
+      success: true,
+      data: {
+        team: {
+          _id: team._id,
+          name: team.name,
+        },
+        stats,
+        submissions: submissions.map(sub => ({
+          _id: sub._id,
+          problem: sub.problemId,
+          code: sub.code,
+          explanation: sub.explanation,
+          passedTests: sub.passedTests,
+          totalTests: sub.totalTests,
+          status: sub.status,
+          submittedBy: sub.submittedBy,
+          submittedAt: sub.submittedAt,
+          judgeFeedback: sub.judgeFeedback ? {
+            rubricScores: sub.judgeFeedback.rubricScores,
+            totalJudgeScore: sub.judgeFeedback.totalJudgeScore,
+            feedback: sub.judgeFeedback.feedback,
+            flagged: sub.judgeFeedback.flagged,
+            reviewedAt: sub.judgeFeedback.reviewedAt,
+          } : null,
+        })),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

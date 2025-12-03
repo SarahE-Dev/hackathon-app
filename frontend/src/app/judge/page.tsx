@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { RoleGuard } from '@/components/guards/RoleGuard';
 import { useAuthStore } from '@/store/authStore';
 import { teamSubmissionsAPI, hackathonSessionsAPI } from '@/lib/api';
@@ -135,7 +136,8 @@ interface TeamData {
 }
 
 function JudgeDashboardContent() {
-  const { user } = useAuthStore();
+  const router = useRouter();
+  const { user, logout } = useAuthStore();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedSession, setSelectedSession] = useState<string>('');
   const [teamsData, setTeamsData] = useState<TeamData[]>([]);
@@ -341,11 +343,20 @@ function JudgeDashboardContent() {
                 ))}
               </select>
               <Link
-                href="/dashboard"
-                className="px-4 py-2 bg-dark-700 hover:bg-dark-600 border border-gray-600 rounded-lg transition-colors"
+                href="/hackathon/leaderboard"
+                className="px-4 py-2 bg-dark-700 hover:bg-dark-600 border border-gray-600 rounded-lg transition-colors flex items-center gap-2"
               >
-                Dashboard
+                <span>🏆</span> Leaderboard
               </Link>
+              <button
+                onClick={() => {
+                  logout();
+                  router.push('/auth/login');
+                }}
+                className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 text-red-400 rounded-lg transition-colors flex items-center gap-2"
+              >
+                <span>🚪</span> Sign Out
+              </button>
           </div>
         </div>
       </div>
@@ -796,9 +807,9 @@ function JudgeDashboardContent() {
                         ...prev,
                         feedback: e.target.value,
                       }))}
-                      rows={2}
-                      placeholder="Optional comments on approach, suggestions for improvement..."
-                      className="w-full px-3 py-2 bg-dark-900 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-neon-purple"
+                      rows={5}
+                      placeholder="Optional comments on approach, suggestions for improvement, areas of strength, what could be better..."
+                      className="w-full px-3 py-2 bg-dark-900 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-neon-purple resize-y"
               />
             </div>
 
