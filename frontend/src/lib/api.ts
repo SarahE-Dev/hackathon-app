@@ -316,10 +316,13 @@ export const attemptsAPI = {
   },
 
   start: async (assessmentId: string, sessionId?: string) => {
-    const response = await api.post('/attempts/start', {
-      assessmentId,
-      sessionId,
-    });
+    console.log('API start called with assessmentId:', assessmentId);
+    const payload: { assessmentId: string; sessionId?: string } = { assessmentId };
+    if (sessionId) {
+      payload.sessionId = sessionId;
+    }
+    console.log('Sending payload:', payload);
+    const response = await api.post('/attempts/start', payload);
     return response.data;
   },
 

@@ -61,7 +61,6 @@ export default function DashboardPage() {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [attempts, setAttempts] = useState<Map<string, Attempt>>(new Map());
   const [userTeam, setUserTeam] = useState<Team | null>(null);
-  const [activeSessions, setActiveSessions] = useState<HackathonSession[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -89,7 +88,12 @@ export default function DashboardPage() {
         // Fetch assessments
         const assessmentsData = await assessmentsAPI.getAll();
         const assessmentsList = assessmentsData.data?.assessments || [];
-        setAssessments(Array.isArray(assessmentsList) ? assessmentsList : []);
+        // Map _id to id if needed
+        const mappedAssessments = (Array.isArray(assessmentsList) ? assessmentsList : []).map((a: any) => ({
+          ...a,
+          id: a.id || a._id,
+        }));
+        setAssessments(mappedAssessments);
 
         // Fetch user's attempts
         try {
@@ -144,16 +148,6 @@ export default function DashboardPage() {
           setUserTeam(null);
         }
 
-        // Fetch active hackathon sessions
-        try {
-          const sessionsResponse = await hackathonSessionsAPI.getAll();
-          const sessions = sessionsResponse.data?.sessions || [];
-          const active = sessions.filter((s: HackathonSession) => s.status === 'active');
-          setActiveSessions(active);
-        } catch (sessionErr) {
-          console.warn('Could not load sessions:', sessionErr);
-          setActiveSessions([]);
-        }
       } catch (err: any) {
         console.error('Error loading dashboard:', err);
         setError(err.response?.data?.message || 'Failed to load dashboard');
@@ -177,8 +171,13 @@ export default function DashboardPage() {
 
   const handleStartAssessment = async (assessmentId: string) => {
     try {
+      console.log('Starting assessment with ID:', assessmentId);
+      if (!assessmentId) {
+        throw new Error('Assessment ID is required');
+      }
       const response = await attemptsAPI.start(assessmentId);
-      const attemptId = response.data?.id || response.data?.attempt?._id;
+      const attemptId = response.data?.id || response.data?.attempt?._id || response.data?._id;
+      console.log('Start response:', response);
       if (attemptId) {
         router.push(`/assessment/${attemptId}`);
       } else {
@@ -186,7 +185,7 @@ export default function DashboardPage() {
       }
     } catch (err: any) {
       console.error('Start assessment error:', err);
-      setError(err.response?.data?.error?.message || err.message || 'Failed to start assessment');
+      setError(err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Failed to start assessment');
     }
   };
 
@@ -250,36 +249,22 @@ export default function DashboardPage() {
         )}
 
         {/* Welcome Banner - Action-oriented */}
-        {(inProgressCount > 0 || activeSessions.length > 0) && (
+        {inProgressCount > 0 && (
           <div className="glass rounded-xl p-5 border border-neon-green/30 bg-neon-green/5 mb-6">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-3">
-                {inProgressCount > 0 ? (
-                  <>
-                    <span className="text-2xl">⏳</span>
-                    <div>
-                      <p className="font-semibold text-neon-green">You have {inProgressCount} assessment{inProgressCount !== 1 ? 's' : ''} in progress</p>
-                      <p className="text-sm text-gray-400">Continue where you left off</p>
-                    </div>
-                  </>
-                ) : activeSessions.length > 0 ? (
-                  <>
-                    <span className="text-2xl animate-pulse">🔴</span>
-                    <div>
-                      <p className="font-semibold text-neon-green">{activeSessions.length} Live Session{activeSessions.length !== 1 ? 's' : ''} Available!</p>
-                      <p className="text-sm text-gray-400">Join now and start coding</p>
-                    </div>
-                  </>
-                ) : null}
+                <span className="text-2xl">⏳</span>
+                <div>
+                  <p className="font-semibold text-neon-green">You have {inProgressCount} assessment{inProgressCount !== 1 ? 's' : ''} in progress</p>
+                  <p className="text-sm text-gray-400">Continue where you left off</p>
+                </div>
               </div>
-              {inProgressCount > 0 && (
-                <Link
-                  href="/assessments"
-                  className="px-4 py-2 bg-neon-green hover:bg-neon-green/80 text-white rounded-lg font-medium transition-all text-sm"
-                >
-                  Continue Assessment
-                </Link>
-              )}
+              <Link
+                href="/assessments"
+                className="px-4 py-2 bg-neon-green hover:bg-neon-green/80 text-white rounded-lg font-medium transition-all text-sm"
+              >
+                Continue Assessment
+              </Link>
             </div>
           </div>
         )}
@@ -302,14 +287,9 @@ export default function DashboardPage() {
             <p className="text-sm text-gray-400">Completed</p>
           </div>
           <div className="glass rounded-xl p-5 border border-orange-500/20 hover:border-orange-500/40 transition-all">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-2xl">🔴</span>
-              {activeSessions.length > 0 && (
-                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-              )}
-            </div>
-            <p className="text-3xl font-bold text-orange-400">{activeSessions.length}</p>
-            <p className="text-sm text-gray-400">Live Sessions</p>
+            <div className="text-2xl mb-2">🏆</div>
+            <p className="text-3xl font-bold text-orange-400">{userTeam ? 1 : 0}</p>
+            <p className="text-sm text-gray-400">Team{userTeam ? '' : 's'}</p>
           </div>
         </div>
 
@@ -323,47 +303,33 @@ export default function DashboardPage() {
                 <span>👥</span> Your Team
               </h2>
               {userTeam ? (
-                <div className="space-y-3">
-                  <div className="p-4 bg-neon-purple/10 rounded-lg border border-neon-purple/30">
-                    <div className="flex items-center justify-between">
+                <div className="p-5 bg-gradient-to-r from-neon-purple/10 to-neon-blue/10 rounded-xl border border-neon-purple/40">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 bg-neon-purple/20 rounded-xl flex items-center justify-center text-2xl">
+                        🏆
+                      </div>
                       <div>
-                        <h3 className="text-xl font-bold text-neon-purple">{userTeam.name}</h3>
-                        <p className="text-xs text-gray-400 mt-2">
-                          {userTeam.memberIds?.length || 0} member{userTeam.memberIds?.length !== 1 ? 's' : ''}
+                        <h3 className="text-xl font-bold text-white">{userTeam.name}</h3>
+                        <p className="text-sm text-gray-400">
+                          {userTeam.memberIds?.length || 0} team member{userTeam.memberIds?.length !== 1 ? 's' : ''}
                         </p>
                       </div>
-                      <Link
-                        href={`/hackathon/teams/${userTeam._id || userTeam.id}`}
-                        className="px-4 py-2 bg-neon-purple hover:bg-neon-purple/80 text-white rounded-lg text-sm transition-all"
-                      >
-                        Join Team Space →
-                      </Link>
                     </div>
+                    <Link
+                      href={`/hackathon/teams/${userTeam._id}`}
+                      className="inline-flex items-center gap-2 px-5 py-3 bg-neon-purple hover:bg-neon-purple/80 text-white rounded-lg font-medium transition-all shadow-lg shadow-neon-purple/20"
+                    >
+                      <span>🚀</span> Join Team Space
+                    </Link>
                   </div>
-                  {activeSessions.length > 0 && (
-                    <div className="p-4 bg-neon-green/10 rounded-lg border border-neon-green/30">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-red-500 animate-pulse">●</span>
-                        <h4 className="font-semibold text-neon-green">Live Coding Session Active!</h4>
-                      </div>
-                      <p className="text-sm text-gray-400 mb-3">
-                        Join with your team to work on challenges together
-                      </p>
-                      <Link
-                        href={`/hackathon/teams/${userTeam._id || userTeam.id}`}
-                        className="inline-block px-4 py-2 bg-neon-green hover:bg-neon-green/80 text-white rounded-lg text-sm transition-all font-medium"
-                      >
-                        Join Live Session →
-                      </Link>
-                    </div>
-                  )}
                 </div>
               ) : (
-                <div className="p-6 bg-gray-700/30 rounded-lg border border-gray-600 text-center">
+                <div className="p-6 bg-dark-700/30 rounded-lg border border-gray-600 text-center">
                   <div className="text-4xl mb-3">👥</div>
                   <h3 className="text-lg font-bold text-gray-300 mb-2">No Team Yet</h3>
                   <p className="text-sm text-gray-400">
-                    You'll be assigned to a hackathon team by your instructor when the event begins.
+                    You'll be assigned to a team when the hackathon begins. Stay tuned!
                   </p>
                 </div>
               )}

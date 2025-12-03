@@ -82,12 +82,19 @@ interface LiveCodingSessionProps {
       };
     };
   };
+  onMemberStatusChange?: (statuses: Array<{ odId: string; odStatus: 'offline' | 'in-team-space' | 'live-coding'; odProblemTitle?: string }>) => void;
+  onProblemCompleted?: () => void;
+  // Shared socket from parent - if provided, we use it instead of creating our own
+  sharedSocket?: Socket | null;
 }
 
 export default function LiveCodingSession({
   teamId,
   problemTitle,
   problem,
+  onMemberStatusChange,
+  onProblemCompleted,
+  sharedSocket,
 }: LiveCodingSessionProps) {
   // Convert problem prop to internal format, with fallback for demo
   const currentProblem: Problem = problem ? {
@@ -215,8 +222,21 @@ Output: [0,1]
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'failed'>('connecting');
   const [cursorDecorations, setCursorDecorations] = useState<any[]>([]);
+  const hasConnectedOnce = useRef(false);
 
   const editorRef = useRef<any>(null);
+
+  // Notify parent of member status changes
+  useEffect(() => {
+    if (onMemberStatusChange) {
+      const statuses = teamPresence.map(p => ({
+        odId: p.userId,
+        odStatus: p.isOnline ? 'live-coding' as const : 'offline' as const,
+        odProblemTitle: p.isOnline ? problemTitle : undefined,
+      }));
+      onMemberStatusChange(statuses);
+    }
+  }, [teamPresence, onMemberStatusChange, problemTitle]);
 
   // Timer for session duration
   useEffect(() => {
@@ -322,43 +342,115 @@ Output: [0,1]
     }
   }, [copyPasteAttempts, tabSwitches]);
 
-  // Team collaboration socket connection
+  // Use shared socket from parent if available
   useEffect(() => {
+    // If we have a shared socket, use it
+    if (sharedSocket) {
+      console.log('LiveCodingSession: Using shared socket, connected:', sharedSocket.connected);
+      setCollaborationSocket(sharedSocket);
+      
+      // Always mark as connected once when using shared socket
+      // The parent already manages the connection
+      hasConnectedOnce.current = true;
+      setIsConnected(sharedSocket.connected);
+      setConnectionStatus(sharedSocket.connected ? 'connected' : 'connecting');
+      
+      // Set up event listeners on the shared socket
+      const handleConnect = () => {
+        console.log('LiveCodingSession: Shared socket connected');
+        setIsConnected(true);
+        setConnectionStatus('connected');
+      };
+      
+      const handleDisconnect = () => {
+        console.log('LiveCodingSession: Shared socket disconnected');
+        setIsConnected(false);
+      };
+
+      sharedSocket.on('connect', handleConnect);
+      sharedSocket.on('disconnect', handleDisconnect);
+
+      // Listen for presence updates
+      const handleUserJoined = (data: { userId: string; presence: TeamPresence }) => {
+        console.log('User joined:', data.userId);
+        setTeamPresence(prev => {
+          const filtered = prev.filter(p => p.userId !== data.userId);
+          return [...filtered, data.presence];
+        });
+      };
+
+      const handleUserLeft = (data: { userId: string }) => {
+        console.log('User left:', data.userId);
+        setTeamPresence(prev => prev.filter(p => p.userId !== data.userId));
+      };
+
+      const handleCodeUpdated = (data: { userId: string; code: string; cursorPosition?: { line: number; column: number } }) => {
+        if (data.userId !== sharedSocket.id) {
+          setCode(data.code);
+          if (data.cursorPosition) {
+            updateCursorDecoration(data.userId, data.cursorPosition);
+          }
+        }
+      };
+
+      const handleChatMessage = (message: ChatMessage) => {
+        setChatMessages(prev => [...prev, message]);
+      };
+
+      sharedSocket.on('user-joined', handleUserJoined);
+      sharedSocket.on('user-left', handleUserLeft);
+      sharedSocket.on('code-updated', handleCodeUpdated);
+      sharedSocket.on('chat-message', handleChatMessage);
+
+      return () => {
+        sharedSocket.off('connect', handleConnect);
+        sharedSocket.off('disconnect', handleDisconnect);
+        sharedSocket.off('user-joined', handleUserJoined);
+        sharedSocket.off('user-left', handleUserLeft);
+        sharedSocket.off('code-updated', handleCodeUpdated);
+        sharedSocket.off('chat-message', handleChatMessage);
+      };
+    }
+
+    // Fallback: create our own socket if no shared socket provided
     const token = localStorage.getItem('accessToken');
     if (!token || !teamId) return;
 
+    console.log('LiveCodingSession: Creating own socket connection');
     const socket = io(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}`, {
       auth: { token },
       path: '/collaboration',
     });
 
     socket.on('connect', () => {
-      console.log('Connected to collaboration server');
+      console.log('LiveCodingSession: Connected to collaboration server');
       setIsConnected(true);
       setConnectionStatus('connected');
+      hasConnectedOnce.current = true;
       socket.emit('join-team', teamId);
     });
 
     socket.on('connect_error', (error) => {
-      console.error('WebSocket connection error:', error);
+      console.error('LiveCodingSession: Connection error:', error);
       setIsConnected(false);
       setConnectionStatus('failed');
     });
 
-    socket.on('disconnect', () => {
-      console.log('Disconnected from collaboration server');
+    socket.on('disconnect', (reason) => {
+      console.log('LiveCodingSession: Disconnected:', reason);
       setIsConnected(false);
-      setConnectionStatus('connecting');
+      if (reason === 'io server disconnect' || reason === 'io client disconnect') {
+        setConnectionStatus('failed');
+      }
     });
 
-    // Set a timeout for connection attempts
     const connectionTimeout = setTimeout(() => {
-      if (!isConnected) {
-        console.error('WebSocket connection timeout');
+      if (!socket.connected) {
+        console.error('LiveCodingSession: Connection timeout');
         setConnectionStatus('failed');
         socket.disconnect();
       }
-    }, 10000); // 10 second timeout
+    }, 10000);
 
     socket.on('team-joined', (data: {
       teamId: string;
@@ -366,8 +458,11 @@ Output: [0,1]
       chatHistory: ChatMessage[];
       currentCode: string;
     }) => {
-      console.log('Joined team:', data.teamId);
-      // Only show users who are actually online
+      socket.emit('update-status', {
+        status: 'live-coding',
+        problemTitle: problemTitle,
+      });
+      console.log('LiveCodingSession: Joined team:', data.teamId);
       const onlineUsers = data.presence.filter(p => p.isOnline);
       setTeamPresence(onlineUsers);
       setChatMessages(data.chatHistory);
@@ -382,7 +477,6 @@ Output: [0,1]
         const filtered = prev.filter(p => p.userId !== data.userId);
         return [...filtered, data.presence];
       });
-      // Add system message
       setChatMessages(prev => [...prev, {
         id: `system-${Date.now()}`,
         userId: 'system',
@@ -454,10 +548,15 @@ Output: [0,1]
 
     return () => {
       clearTimeout(connectionTimeout);
+      // Emit that we're leaving live coding (back to team space)
+      socket.emit('update-status', {
+        status: 'in-team-space',
+        problemTitle: undefined,
+      });
       socket.emit('leave-team');
       socket.disconnect();
     };
-  }, [teamId]);
+  }, [teamId, problemTitle, sharedSocket, currentProblem.starterCode]);
 
   const updateCursorDecoration = (userId: string, position: { line: number; column: number }) => {
     if (!editorRef.current) return;
@@ -623,7 +722,14 @@ Output: [0,1]
       });
 
       setSubmitSuccess(true);
-      alert(`Solution submitted successfully!\n\nCode and explanation saved for ${problem.title}`);
+      
+      // Check if all tests passed - if so, mark as completed
+      const allTestsPassed = Object.values(testResults).every(status => status === 'passed');
+      if (allTestsPassed && onProblemCompleted) {
+        onProblemCompleted();
+      }
+      
+      alert(`Solution submitted successfully!\n\nCode and explanation saved for ${problem.title}${allTestsPassed ? '\n\n✅ All tests passed! Problem marked as completed.' : ''}`);
     } catch (error: any) {
       console.error('Submission error:', error);
       alert(`Failed to submit solution: ${error?.response?.data?.message || error.message || 'Unknown error'}`);
@@ -646,6 +752,43 @@ Output: [0,1]
       : riskLevel === 'medium'
       ? 'text-yellow-500'
       : 'text-green-500';
+
+  // Show loading state only when:
+  // 1. We don't have a shared socket AND we're still connecting for the first time
+  // 2. If we have a shared socket, never show loading (parent handles connection)
+  const showLoading = !sharedSocket && connectionStatus === 'connecting' && !hasConnectedOnce.current;
+  
+  if (showLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16">
+        <div className="relative mb-6">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-neon-green mx-auto"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-xl">💻</span>
+          </div>
+        </div>
+        <h3 className="text-lg font-bold text-white mb-2">Connecting to Team Session</h3>
+        <p className="text-gray-400 text-sm">Setting up your collaborative coding environment...</p>
+      </div>
+    );
+  }
+
+  // Show error state if connection failed (only for non-shared socket)
+  if (!sharedSocket && connectionStatus === 'failed') {
+    return (
+      <div className="flex flex-col items-center justify-center py-16">
+        <div className="text-5xl mb-4">⚠️</div>
+        <h3 className="text-lg font-bold text-red-400 mb-2">Connection Failed</h3>
+        <p className="text-gray-400 text-sm mb-4">Unable to connect to the team collaboration server.</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-neon-blue hover:bg-neon-blue/80 text-white rounded-lg transition-all"
+        >
+          Retry Connection
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -832,17 +975,12 @@ Output: [0,1]
                 )}
               </div>
             ))}
-            {connectionStatus === 'connecting' && (
+            {!isConnected && (
               <div className="text-xs text-yellow-400 text-center py-2">
-                🔄 Connecting to team...
+                🔄 Reconnecting to team...
               </div>
             )}
-            {connectionStatus === 'failed' && (
-              <div className="text-xs text-red-400 text-center py-2">
-                ❌ Failed to connect. Please refresh the page.
-              </div>
-            )}
-            {connectionStatus === 'connected' && teamPresence.length === 0 && (
+            {isConnected && teamPresence.length === 0 && (
               <div className="text-xs text-gray-400 text-center py-2">
                 👥 Connected - Waiting for team members...
               </div>

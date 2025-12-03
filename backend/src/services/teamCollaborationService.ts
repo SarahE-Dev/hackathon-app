@@ -227,6 +227,20 @@ export class TeamCollaborationService {
         });
       });
 
+      // Status updates (in-team-space vs live-coding)
+      socket.on('update-status', (data: { status: string; problemTitle?: string }) => {
+        if (!socket.teamId) return;
+
+        logger.info(`User ${socket.userId} status update: ${data.status}${data.problemTitle ? ` (${data.problemTitle})` : ''}`);
+
+        // Broadcast status update to all team members
+        this.io.to(`team:${socket.teamId}`).emit('user-status-update', {
+          odId: socket.userId,
+          odStatus: data.status,
+          odProblemTitle: data.problemTitle,
+        });
+      });
+
       // Leave team
       socket.on('leave-team', () => {
         this.handleUserLeave(socket);

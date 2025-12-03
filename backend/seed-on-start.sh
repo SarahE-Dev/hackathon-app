@@ -29,6 +29,12 @@ else
   echo "Database already seeded. Skipping seed."
 fi
 
+# Build TypeScript if dist doesn't exist
+if [ ! -f "/app/backend/dist/index.js" ]; then
+  echo "Building TypeScript..."
+  cd /app && npm run build --workspace=backend
+fi
+
 # Start the backend application
 echo "Starting backend server..."
-cd /app && exec npm run dev --workspace=backend
+cd /app/backend && exec node dist/index.js
