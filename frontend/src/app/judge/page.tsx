@@ -750,7 +750,7 @@ function JudgeDashboardContent() {
                       type="range"
                       min="0"
                           max="100"
-                          step="25"
+                          step="1"
                           value={feedbackForm.rubricScores[criterion.id as keyof typeof feedbackForm.rubricScores]}
                           onChange={(e) => setFeedbackForm(prev => ({
                             ...prev,
