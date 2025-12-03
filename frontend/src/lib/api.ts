@@ -426,6 +426,45 @@ export const codeExecutionAPI = {
   },
 };
 
+// Team Submissions API
+export const teamSubmissionsAPI = {
+  // Get all submissions for a team in a session
+  getTeamSubmissions: async (teamId: string, sessionId: string) => {
+    const response = await api.get(`/team-submissions/${teamId}/${sessionId}`);
+    return response.data;
+  },
+
+  // Get a specific submission
+  getSubmission: async (teamId: string, sessionId: string, problemId: string) => {
+    const response = await api.get(`/team-submissions/${teamId}/${sessionId}/${problemId}`);
+    return response.data;
+  },
+
+  // Save/auto-save a submission
+  saveSubmission: async (teamId: string, sessionId: string, problemId: string, data: { code: string; explanation?: string }) => {
+    const response = await api.put(`/team-submissions/${teamId}/${sessionId}/${problemId}/save`, data);
+    return response.data;
+  },
+
+  // Run tests for a submission
+  runTests: async (teamId: string, sessionId: string, problemId: string, code: string) => {
+    const response = await api.post(`/team-submissions/${teamId}/${sessionId}/${problemId}/run`, { code });
+    return response.data;
+  },
+
+  // Submit final solution
+  submitSolution: async (teamId: string, sessionId: string, problemId: string, data: { code: string; explanation?: string }) => {
+    const response = await api.post(`/team-submissions/${teamId}/${sessionId}/${problemId}/submit`, data);
+    return response.data;
+  },
+
+  // Get leaderboard for a session
+  getLeaderboard: async (sessionId: string) => {
+    const response = await api.get(`/team-submissions/leaderboard/${sessionId}`);
+    return response.data;
+  },
+};
+
 // Hackathon Sessions API
 export const hackathonSessionsAPI = {
   // Get all hackathon sessions

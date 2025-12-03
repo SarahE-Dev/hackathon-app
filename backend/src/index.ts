@@ -32,6 +32,7 @@ import plagiarismRoutes from './routes/plagiarism';
 import judgeDocumentationRoutes from './routes/judgeDocumentation';
 import hackathonRosterRoutes from './routes/hackathonRoster';
 import recordingRoutes from './routes/recordings';
+import teamSubmissionRoutes from './routes/teamSubmissions';
 import FileUploadService from './services/fileUploadService';
 import { StorageService } from './services/storageService';
 import { join } from 'path';
@@ -83,6 +84,7 @@ app.use('/api/plagiarism', plagiarismRoutes);
 app.use('/api/judge-documentation', judgeDocumentationRoutes);
 app.use('/api/hackathon-roster', hackathonRosterRoutes);
 app.use('/api/recordings', recordingRoutes);
+app.use('/api/team-submissions', teamSubmissionRoutes);
 
 // Error handling
 app.use(errorHandler);

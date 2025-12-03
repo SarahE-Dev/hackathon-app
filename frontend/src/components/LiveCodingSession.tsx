@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
 import { io, Socket } from 'socket.io-client';
 import * as monaco from 'monaco-editor';
-import { codeExecutionAPI, hackathonSessionsAPI } from '../lib/api';
+import { teamSubmissionsAPI } from '../lib/api';
 
 interface ProctorEvent {
   type: 'tab-switch' | 'copy-paste' | 'focus-lost' | 'suspicious-activity';
@@ -51,6 +51,7 @@ interface ChatMessage {
 
 interface LiveCodingSessionProps {
   teamId: string;
+  sessionId: string;
   problemTitle: string;
   problem?: {
     _id: string;
@@ -90,6 +91,7 @@ interface LiveCodingSessionProps {
 
 export default function LiveCodingSession({
   teamId,
+  sessionId,
   problemTitle,
   problem,
   onMemberStatusChange,
@@ -225,6 +227,41 @@ Output: [0,1]
   const hasConnectedOnce = useRef(false);
 
   const editorRef = useRef<any>(null);
+
+  // Load existing submission when component mounts
+  useEffect(() => {
+    const loadExistingSubmission = async () => {
+      if (!problem?._id) return;
+      
+      try {
+        const response = await teamSubmissionsAPI.getSubmission(teamId, sessionId, problem._id);
+        if (response.success && response.data?.submission) {
+          const submission = response.data.submission;
+          // Load saved code and explanation
+          if (submission.code) {
+            setCode(submission.code);
+          }
+          if (submission.explanation) {
+            setExplanation(submission.explanation);
+          }
+          // Load test results if available
+          if (submission.testResults?.length > 0) {
+            const results: {[key: string]: 'pending' | 'passed' | 'failed'} = {};
+            submission.testResults.forEach((r: any) => {
+              results[r.testCaseId] = r.passed ? 'passed' : 'failed';
+            });
+            setTestResults(results);
+          }
+          console.log('Loaded existing submission for problem:', problem.title);
+        }
+      } catch (error) {
+        // No existing submission, that's fine
+        console.log('No existing submission found');
+      }
+    };
+
+    loadExistingSubmission();
+  }, [teamId, sessionId, problem?._id, problem?.title]);
 
   // Notify parent of member status changes
   useEffect(() => {
@@ -578,6 +615,9 @@ Output: [0,1]
     editorRef.current.deltaDecorations([], [decoration]);
   };
 
+  // Auto-save debounce ref
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const handleCodeChange = (value: string | undefined) => {
     if (value !== undefined) {
       setCode(value);
@@ -587,6 +627,24 @@ Output: [0,1]
         collaborationSocket.emit('code-update', {
           code: value,
         });
+      }
+
+      // Auto-save to backend (debounced)
+      if (problem?._id) {
+        if (autoSaveTimeoutRef.current) {
+          clearTimeout(autoSaveTimeoutRef.current);
+        }
+        autoSaveTimeoutRef.current = setTimeout(async () => {
+          try {
+            await teamSubmissionsAPI.saveSubmission(teamId, sessionId, problem._id, {
+              code: value,
+              explanation,
+            });
+            console.log('Auto-saved code');
+          } catch (error) {
+            console.error('Auto-save failed:', error);
+          }
+        }, 2000); // Save after 2 seconds of inactivity
       }
     }
   };
@@ -618,62 +676,69 @@ Output: [0,1]
   };
 
   const runCode = async () => {
+    if (!problem?._id) {
+      setOutput('Error: Problem ID not available.');
+      return;
+    }
+
     setRunning(true);
-    setOutput('Running code...\n');
+    setOutput('Running code against test cases...\n');
 
     // Initialize test results
     const newTestResults: {[key: string]: 'pending' | 'passed' | 'failed'} = {};
     currentProblem.testCases.forEach(tc => {
-      newTestResults[tc.id] = tc.isHidden ? 'pending' : 'pending';
+      newTestResults[tc.id] = 'pending';
     });
     setTestResults(newTestResults);
 
     try {
-      // Prepare test cases for API (only visible ones for now)
-      const visibleTestCases = currentProblem.testCases.filter(tc => !tc.isHidden);
-
-      const executionData = {
-        code: code,
-        language: currentProblem.language,
-        testCases: visibleTestCases.map(tc => ({
-          id: tc.id,
-          input: tc.input,
-          expectedOutput: tc.expectedOutput,
-        })),
-        timeLimit: 2000, // 2 seconds
-        memoryLimit: 256, // 256MB
-      };
-
-      const response = await codeExecutionAPI.executeCode(executionData);
+      // Use the team submissions API to run tests (includes hidden tests on backend)
+      const response = await teamSubmissionsAPI.runTests(teamId, sessionId, problem._id, code);
 
       if (response.success) {
         const { results, summary } = response.data;
 
         // Update test results
         const updatedResults: {[key: string]: 'pending' | 'passed' | 'failed'} = {};
+        
+        // Process visible test results
         results.forEach((result: any) => {
-          updatedResults[result.id] = result.passed ? 'passed' : 'failed';
-        });
-
-        // Mark hidden tests as pending
-        currentProblem.testCases.filter(tc => tc.isHidden).forEach(tc => {
-          updatedResults[tc.id] = 'pending';
+          // Find if this is a hidden test
+          const testCase = currentProblem.testCases.find(tc => tc.id === result.id);
+          if (testCase?.isHidden) {
+            // For hidden tests, show passed/failed but not details
+            updatedResults[result.id] = result.passed ? 'passed' : 'failed';
+          } else {
+            updatedResults[result.id] = result.passed ? 'passed' : 'failed';
+          }
         });
 
         setTestResults(updatedResults);
 
         // Format output
+        const visibleResults = results.filter((r: any) => {
+          const tc = currentProblem.testCases.find(t => t.id === r.id);
+          return !tc?.isHidden;
+        });
+        const hiddenResults = results.filter((r: any) => {
+          const tc = currentProblem.testCases.find(t => t.id === r.id);
+          return tc?.isHidden;
+        });
+
         const outputLines = [
           `Code executed successfully!\n`,
-          `Test Results:`,
-          ...results.map((result: any) =>
-            `${result.passed ? '✓' : '✗'} Test Case ${result.id}: ${result.passed ? 'PASSED' : 'FAILED'} (${result.executionTime}ms)`
+          `Visible Test Results:`,
+          ...visibleResults.map((result: any) =>
+            `${result.passed ? '✓' : '✗'} Test Case ${result.id}: ${result.passed ? 'PASSED' : 'FAILED'} (${result.executionTime}ms)${!result.passed ? `\n   Input: ${result.input}\n   Expected: ${result.expectedOutput}\n   Got: ${result.actualOutput}` : ''}`
           ),
-          ...currentProblem.testCases.filter(tc => tc.isHidden).map(tc =>
-            `? Test Case ${tc.id}: HIDDEN`
+          ``,
+          `Hidden Test Results:`,
+          ...hiddenResults.map((result: any) =>
+            `${result.passed ? '✓' : '✗'} Hidden Test ${result.id}: ${result.passed ? 'PASSED' : 'FAILED'}`
           ),
           ``,
           `Score: ${summary.score} (${summary.passedTests}/${summary.totalTests} tests passed)`,
+          summary.allTestsPassed ? `\n🎉 All tests passed! You can now submit your solution.` : `\n💡 Keep working - some tests still failing.`,
         ];
 
         setOutput(outputLines.join('\n'));
@@ -705,31 +770,37 @@ Output: [0,1]
     setSubmitSuccess(false);
 
     try {
-      // For now, we'll submit without sessionId (need to integrate with active session later)
-      // This is a temporary placeholder - will show alert for now
-      const results = Object.entries(testResults).map(([id, status]) => ({
-        id,
-        passed: status === 'passed',
-      }));
-
-      // TODO: Get actual sessionId from active hackathon session
-      // For now, just show success message with saved data
-      console.log('Submitting solution:', {
-        problemId: problem._id,
+      // Submit solution using the team submissions API
+      const response = await teamSubmissionsAPI.submitSolution(teamId, sessionId, problem._id, {
         code,
         explanation,
-        testResults: results,
       });
 
-      setSubmitSuccess(true);
-      
-      // Check if all tests passed - if so, mark as completed
-      const allTestsPassed = Object.values(testResults).every(status => status === 'passed');
-      if (allTestsPassed && onProblemCompleted) {
-        onProblemCompleted();
+      if (response.success) {
+        const { summary } = response.data;
+        
+        // Update test results from submission
+        const updatedResults: {[key: string]: 'pending' | 'passed' | 'failed'} = {};
+        response.data.results?.forEach((result: any) => {
+          updatedResults[result.id] = result.passed ? 'passed' : 'failed';
+        });
+        setTestResults(updatedResults);
+
+        setSubmitSuccess(true);
+        
+        // Check if all tests passed - if so, mark as completed
+        if (summary.allTestsPassed && onProblemCompleted) {
+          onProblemCompleted();
+        }
+        
+        const message = summary.allTestsPassed 
+          ? `🎉 Solution submitted successfully!\n\n✅ All ${summary.totalTests} tests passed!\n\nPoints earned: ${summary.pointsEarned}/${summary.maxPoints}\n\nProblem marked as completed!`
+          : `Solution submitted.\n\n${summary.passedTests}/${summary.totalTests} tests passed.\n\nScore: ${summary.score}\n\n💡 Keep working to pass all tests!`;
+        
+        alert(message);
+      } else {
+        alert('Failed to submit solution. Please try again.');
       }
-      
-      alert(`Solution submitted successfully!\n\nCode and explanation saved for ${problem.title}${allTestsPassed ? '\n\n✅ All tests passed! Problem marked as completed.' : ''}`);
     } catch (error: any) {
       console.error('Submission error:', error);
       alert(`Failed to submit solution: ${error?.response?.data?.message || error.message || 'Unknown error'}`);

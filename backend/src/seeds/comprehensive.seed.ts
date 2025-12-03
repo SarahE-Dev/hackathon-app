@@ -169,49 +169,407 @@ export async function seedComprehensive() {
         authorId: admin._id,
         status: 'published',
       },
+      // ===== HACKATHON CODING PROBLEMS (Python) =====
       {
-        title: 'FizzBuzz Challenge',
+        title: 'Two Sum',
         type: 'coding',
         content: {
-          prompt: 'Write a function that returns "Fizz" for multiples of 3, "Buzz" for multiples of 5, and "FizzBuzz" for multiples of both.',
-          codeTemplate: 'function fizzBuzz(n) {\n  // Your code here\n}',
-          language: 'javascript',
+          prompt: `Given a list of integers and a target sum, return the indices of the two numbers that add up to the target.
+
+You may assume that each input would have exactly one solution, and you may not use the same element twice.
+
+**Example:**
+Input: nums = [2, 7, 11, 15], target = 9
+Output: [0, 1]
+Explanation: nums[0] + nums[1] = 2 + 7 = 9
+
+**Constraints:**
+- 2 <= len(nums) <= 1000
+- -10^9 <= nums[i] <= 10^9
+- Only one valid answer exists`,
+          codeTemplate: `def two_sum(nums, target):
+    # Your code here
+    pass
+
+# Read input
+nums = list(map(int, input().split()))
+target = int(input())
+result = two_sum(nums, target)
+print(result[0], result[1])`,
+          language: 'python',
           testCases: [
-            {
-              id: '1',
-              input: 'fizzBuzz(3)',
-              expectedOutput: '"Fizz"',
-              isHidden: false,
-              points: 5,
-            },
+            { id: '1', input: '2 7 11 15\n9', expectedOutput: '0 1', isHidden: false, points: 10 },
+            { id: '2', input: '3 2 4\n6', expectedOutput: '1 2', isHidden: false, points: 10 },
+            { id: '3', input: '3 3\n6', expectedOutput: '0 1', isHidden: true, points: 10 },
+            { id: '4', input: '1 5 3 7 2\n9', expectedOutput: '1 3', isHidden: true, points: 10 },
           ],
         },
-        points: 25,
-        difficulty: 'medium',
+        points: 40,
+        difficulty: 'easy',
+        tags: ['arrays', 'hash-table'],
         organizationId: organization._id,
         authorId: admin._id,
         status: 'published',
       },
       {
-        title: 'Explain Closures',
-        type: 'long-form',
+        title: 'Reverse String',
+        type: 'coding',
         content: {
-          prompt: 'Explain what a closure is in JavaScript and provide an example.',
+          prompt: `Write a function that reverses a string. The input string is given as a list of characters.
+
+You must do this by modifying the input list in-place with O(1) extra memory.
+
+**Example 1:**
+Input: ["h","e","l","l","o"]
+Output: ["o","l","l","e","h"]
+
+**Example 2:**
+Input: ["H","a","n","n","a","h"]
+Output: ["h","a","n","n","a","H"]`,
+          codeTemplate: `def reverse_string(s):
+    # Your code here - modify s in-place
+    pass
+
+# Read input
+s = list(input().strip())
+reverse_string(s)
+print(''.join(s))`,
+          language: 'python',
+          testCases: [
+            { id: '1', input: 'hello', expectedOutput: 'olleh', isHidden: false, points: 10 },
+            { id: '2', input: 'Hannah', expectedOutput: 'hannaH', isHidden: false, points: 10 },
+            { id: '3', input: 'a', expectedOutput: 'a', isHidden: true, points: 10 },
+            { id: '4', input: 'Python', expectedOutput: 'nohtyP', isHidden: true, points: 10 },
+          ],
         },
-        points: 20,
+        points: 40,
+        difficulty: 'easy',
+        tags: ['strings', 'two-pointers'],
+        organizationId: organization._id,
+        authorId: admin._id,
+        status: 'published',
+      },
+      {
+        title: 'FizzBuzz',
+        type: 'coding',
+        content: {
+          prompt: `Given an integer n, return a list of strings where:
+- "FizzBuzz" if the number is divisible by both 3 and 5
+- "Fizz" if the number is divisible by 3
+- "Buzz" if the number is divisible by 5
+- The number itself as a string otherwise
+
+**Example:**
+Input: n = 15
+Output: ["1","2","Fizz","4","Buzz","Fizz","7","8","Fizz","Buzz","11","Fizz","13","14","FizzBuzz"]`,
+          codeTemplate: `def fizz_buzz(n):
+    # Your code here
+    result = []
+    return result
+
+# Read input
+n = int(input())
+result = fizz_buzz(n)
+print(' '.join(result))`,
+          language: 'python',
+          testCases: [
+            { id: '1', input: '3', expectedOutput: '1 2 Fizz', isHidden: false, points: 10 },
+            { id: '2', input: '5', expectedOutput: '1 2 Fizz 4 Buzz', isHidden: false, points: 10 },
+            { id: '3', input: '15', expectedOutput: '1 2 Fizz 4 Buzz Fizz 7 8 Fizz Buzz 11 Fizz 13 14 FizzBuzz', isHidden: true, points: 15 },
+          ],
+        },
+        points: 35,
+        difficulty: 'easy',
+        tags: ['math', 'strings'],
+        organizationId: organization._id,
+        authorId: admin._id,
+        status: 'published',
+      },
+      {
+        title: 'Valid Palindrome',
+        type: 'coding',
+        content: {
+          prompt: `A phrase is a palindrome if, after converting all uppercase letters into lowercase letters and removing all non-alphanumeric characters, it reads the same forward and backward.
+
+Given a string s, return True if it is a palindrome, or False otherwise.
+
+**Example 1:**
+Input: "A man, a plan, a canal: Panama"
+Output: True
+Explanation: "amanaplanacanalpanama" is a palindrome.
+
+**Example 2:**
+Input: "race a car"
+Output: False
+Explanation: "raceacar" is not a palindrome.`,
+          codeTemplate: `def is_palindrome(s):
+    # Your code here
+    pass
+
+# Read input
+s = input()
+result = is_palindrome(s)
+print(result)`,
+          language: 'python',
+          testCases: [
+            { id: '1', input: 'A man, a plan, a canal: Panama', expectedOutput: 'True', isHidden: false, points: 15 },
+            { id: '2', input: 'race a car', expectedOutput: 'False', isHidden: false, points: 15 },
+            { id: '3', input: ' ', expectedOutput: 'True', isHidden: true, points: 10 },
+            { id: '4', input: 'Was it a car or a cat I saw?', expectedOutput: 'True', isHidden: true, points: 10 },
+          ],
+        },
+        points: 50,
+        difficulty: 'medium',
+        tags: ['strings', 'two-pointers'],
+        organizationId: organization._id,
+        authorId: admin._id,
+        status: 'published',
+      },
+      {
+        title: 'Maximum Subarray',
+        type: 'coding',
+        content: {
+          prompt: `Given an integer array nums, find the subarray with the largest sum, and return its sum.
+
+A subarray is a contiguous non-empty sequence of elements within an array.
+
+**Example 1:**
+Input: nums = [-2,1,-3,4,-1,2,1,-5,4]
+Output: 6
+Explanation: The subarray [4,-1,2,1] has the largest sum 6.
+
+**Example 2:**
+Input: nums = [1]
+Output: 1
+
+**Example 3:**
+Input: nums = [5,4,-1,7,8]
+Output: 23`,
+          codeTemplate: `def max_subarray(nums):
+    # Your code here - use Kadane's algorithm
+    pass
+
+# Read input
+nums = list(map(int, input().split()))
+result = max_subarray(nums)
+print(result)`,
+          language: 'python',
+          testCases: [
+            { id: '1', input: '-2 1 -3 4 -1 2 1 -5 4', expectedOutput: '6', isHidden: false, points: 15 },
+            { id: '2', input: '1', expectedOutput: '1', isHidden: false, points: 10 },
+            { id: '3', input: '5 4 -1 7 8', expectedOutput: '23', isHidden: true, points: 15 },
+            { id: '4', input: '-1 -2 -3 -4', expectedOutput: '-1', isHidden: true, points: 10 },
+          ],
+        },
+        points: 50,
+        difficulty: 'medium',
+        tags: ['arrays', 'dynamic-programming'],
+        organizationId: organization._id,
+        authorId: admin._id,
+        status: 'published',
+      },
+      {
+        title: 'Merge Sorted Arrays',
+        type: 'coding',
+        content: {
+          prompt: `You are given two integer arrays nums1 and nums2, sorted in non-decreasing order.
+
+Merge nums1 and nums2 into a single array sorted in non-decreasing order.
+
+**Example:**
+Input: nums1 = [1,2,3], nums2 = [2,5,6]
+Output: [1,2,2,3,5,6]`,
+          codeTemplate: `def merge_arrays(nums1, nums2):
+    # Your code here
+    pass
+
+# Read input
+nums1 = list(map(int, input().split()))
+nums2 = list(map(int, input().split()))
+result = merge_arrays(nums1, nums2)
+print(' '.join(map(str, result)))`,
+          language: 'python',
+          testCases: [
+            { id: '1', input: '1 2 3\n2 5 6', expectedOutput: '1 2 2 3 5 6', isHidden: false, points: 15 },
+            { id: '2', input: '1\n1', expectedOutput: '1 1', isHidden: false, points: 10 },
+            { id: '3', input: '0\n1 2 3', expectedOutput: '0 1 2 3', isHidden: true, points: 10 },
+            { id: '4', input: '4 5 6\n1 2 3', expectedOutput: '1 2 3 4 5 6', isHidden: true, points: 15 },
+          ],
+        },
+        points: 50,
+        difficulty: 'medium',
+        tags: ['arrays', 'sorting', 'two-pointers'],
+        organizationId: organization._id,
+        authorId: admin._id,
+        status: 'published',
+      },
+      {
+        title: 'Binary Search',
+        type: 'coding',
+        content: {
+          prompt: `Given a sorted array of integers and a target value, return the index if the target is found. If not, return -1.
+
+You must write an algorithm with O(log n) runtime complexity.
+
+**Example 1:**
+Input: nums = [-1,0,3,5,9,12], target = 9
+Output: 4
+Explanation: 9 exists in nums and its index is 4
+
+**Example 2:**
+Input: nums = [-1,0,3,5,9,12], target = 2
+Output: -1
+Explanation: 2 does not exist in nums so return -1`,
+          codeTemplate: `def binary_search(nums, target):
+    # Your code here - implement binary search
+    pass
+
+# Read input
+nums = list(map(int, input().split()))
+target = int(input())
+result = binary_search(nums, target)
+print(result)`,
+          language: 'python',
+          testCases: [
+            { id: '1', input: '-1 0 3 5 9 12\n9', expectedOutput: '4', isHidden: false, points: 15 },
+            { id: '2', input: '-1 0 3 5 9 12\n2', expectedOutput: '-1', isHidden: false, points: 10 },
+            { id: '3', input: '1\n1', expectedOutput: '0', isHidden: true, points: 10 },
+            { id: '4', input: '1 2 3 4 5 6 7 8 9 10\n7', expectedOutput: '6', isHidden: true, points: 15 },
+          ],
+        },
+        points: 50,
+        difficulty: 'medium',
+        tags: ['arrays', 'binary-search'],
+        organizationId: organization._id,
+        authorId: admin._id,
+        status: 'published',
+      },
+      {
+        title: 'Climbing Stairs',
+        type: 'coding',
+        content: {
+          prompt: `You are climbing a staircase. It takes n steps to reach the top.
+
+Each time you can either climb 1 or 2 steps. In how many distinct ways can you climb to the top?
+
+**Example 1:**
+Input: n = 2
+Output: 2
+Explanation: There are two ways to climb to the top.
+1. 1 step + 1 step
+2. 2 steps
+
+**Example 2:**
+Input: n = 3
+Output: 3
+Explanation: There are three ways to climb to the top.
+1. 1 step + 1 step + 1 step
+2. 1 step + 2 steps
+3. 2 steps + 1 step`,
+          codeTemplate: `def climb_stairs(n):
+    # Your code here - use dynamic programming
+    pass
+
+# Read input
+n = int(input())
+result = climb_stairs(n)
+print(result)`,
+          language: 'python',
+          testCases: [
+            { id: '1', input: '2', expectedOutput: '2', isHidden: false, points: 15 },
+            { id: '2', input: '3', expectedOutput: '3', isHidden: false, points: 15 },
+            { id: '3', input: '5', expectedOutput: '8', isHidden: true, points: 10 },
+            { id: '4', input: '10', expectedOutput: '89', isHidden: true, points: 10 },
+          ],
+        },
+        points: 50,
+        difficulty: 'medium',
+        tags: ['dynamic-programming', 'math'],
+        organizationId: organization._id,
+        authorId: admin._id,
+        status: 'published',
+      },
+      {
+        title: 'Longest Common Prefix',
+        type: 'coding',
+        content: {
+          prompt: `Write a function to find the longest common prefix string amongst an array of strings.
+
+If there is no common prefix, return an empty string "".
+
+**Example 1:**
+Input: strs = ["flower","flow","flight"]
+Output: "fl"
+
+**Example 2:**
+Input: strs = ["dog","racecar","car"]
+Output: ""
+Explanation: There is no common prefix among the input strings.`,
+          codeTemplate: `def longest_common_prefix(strs):
+    # Your code here
+    pass
+
+# Read input (comma-separated strings)
+strs = input().split(',')
+result = longest_common_prefix(strs)
+print(result if result else 'NONE')`,
+          language: 'python',
+          testCases: [
+            { id: '1', input: 'flower,flow,flight', expectedOutput: 'fl', isHidden: false, points: 20 },
+            { id: '2', input: 'dog,racecar,car', expectedOutput: 'NONE', isHidden: false, points: 15 },
+            { id: '3', input: 'a', expectedOutput: 'a', isHidden: true, points: 10 },
+            { id: '4', input: 'interspecies,interstellar,interstate', expectedOutput: 'inters', isHidden: true, points: 15 },
+          ],
+        },
+        points: 60,
         difficulty: 'hard',
+        tags: ['strings'],
         organizationId: organization._id,
         authorId: admin._id,
         status: 'published',
       },
       {
-        title: 'What is async/await?',
-        type: 'freeform',
+        title: 'Valid Parentheses',
+        type: 'coding',
         content: {
-          prompt: 'Describe the purpose and usage of async/await in JavaScript.',
+          prompt: `Given a string s containing just the characters '(', ')', '{', '}', '[' and ']', determine if the input string is valid.
+
+An input string is valid if:
+1. Open brackets must be closed by the same type of brackets.
+2. Open brackets must be closed in the correct order.
+3. Every close bracket has a corresponding open bracket of the same type.
+
+**Example 1:**
+Input: s = "()"
+Output: True
+
+**Example 2:**
+Input: s = "()[]{}"
+Output: True
+
+**Example 3:**
+Input: s = "(]"
+Output: False`,
+          codeTemplate: `def is_valid(s):
+    # Your code here - use a stack
+    pass
+
+# Read input
+s = input()
+result = is_valid(s)
+print(result)`,
+          language: 'python',
+          testCases: [
+            { id: '1', input: '()', expectedOutput: 'True', isHidden: false, points: 15 },
+            { id: '2', input: '()[]{}', expectedOutput: 'True', isHidden: false, points: 15 },
+            { id: '3', input: '(]', expectedOutput: 'False', isHidden: false, points: 10 },
+            { id: '4', input: '([{}])', expectedOutput: 'True', isHidden: true, points: 10 },
+            { id: '5', input: '((()))', expectedOutput: 'True', isHidden: true, points: 10 },
+          ],
         },
-        points: 15,
-        difficulty: 'medium',
+        points: 60,
+        difficulty: 'hard',
+        tags: ['strings', 'stack'],
         organizationId: organization._id,
         authorId: admin._id,
         status: 'published',

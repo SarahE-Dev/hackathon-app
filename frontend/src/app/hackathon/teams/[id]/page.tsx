@@ -85,6 +85,20 @@ export default function TeamDetailPage() {
   const [confirmProblem, setConfirmProblem] = useState<Problem | null>(null);
   const [presenceSocket, setPresenceSocket] = useState<Socket | null>(null);
   const currentUserIdRef = useRef<string | null>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  
+  // Refs to track current state for socket reconnection
+  const activeTabRef = useRef(activeTab);
+  const selectedProblemRef = useRef(selectedProblem);
+  
+  // Keep refs in sync with state
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
+  
+  useEffect(() => {
+    selectedProblemRef.current = selectedProblem;
+  }, [selectedProblem]);
   
   // Problem progress tracking: 'not-started' | 'in-progress' | 'completed'
   const [problemProgress, setProblemProgress] = useState<Map<string, 'not-started' | 'in-progress' | 'completed'>>(new Map());
@@ -169,11 +183,20 @@ export default function TeamDetailPage() {
       console.log('Team page: Connected to collaboration server');
       setSocketConnected(true);
       socket.emit('join-team', teamId);
-      // Emit initial status as in-team-space
-      socket.emit('update-status', {
-        status: 'in-team-space',
-        problemTitle: undefined,
-      });
+      
+      // Emit status based on current tab/problem state (important for reconnection)
+      if (activeTabRef.current === 'code' && selectedProblemRef.current) {
+        console.log('Team page: Reconnected while in live coding, emitting live-coding status');
+        socket.emit('update-status', {
+          status: 'live-coding',
+          problemTitle: selectedProblemRef.current.title,
+        });
+      } else {
+        socket.emit('update-status', {
+          status: 'in-team-space',
+          problemTitle: undefined,
+        });
+      }
     });
 
     socket.on('disconnect', (reason) => {
@@ -286,6 +309,9 @@ export default function TeamDetailPage() {
         });
 
         if (activeSession) {
+          // Save the session ID for submissions
+          setActiveSessionId(activeSession._id);
+          
           // Fetch full problem details for each problem in the session
           const problemIds = activeSession.problems.map((p: any) => p.problemId);
           const problemPromises = problemIds.map((id: string) => questionsAPI.getById(id));
@@ -308,6 +334,7 @@ export default function TeamDetailPage() {
           setProblems(sessionProblems);
         } else {
           console.warn('No active session found for this team');
+          setActiveSessionId(null);
           setProblems([]);
         }
       } catch (error: any) {
@@ -804,9 +831,10 @@ export default function TeamDetailPage() {
 
             {activeTab === 'code' && team && (
               <>
-                {selectedProblem ? (
+                {selectedProblem && activeSessionId ? (
                   <LiveCodingSession
                     teamId={team._id}
+                    sessionId={activeSessionId}
                     problemTitle={selectedProblem.title}
                     problem={selectedProblem}
                     onMemberStatusChange={handleMemberStatusUpdate}
