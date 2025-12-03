@@ -426,6 +426,88 @@ export const codeExecutionAPI = {
   },
 };
 
+// Proctoring event interface (for type safety)
+export interface ProctoringEvent {
+  type: 
+    | 'copy' 
+    | 'paste' 
+    | 'tab-switch'
+    | 'tab-return'
+    | 'window-blur'
+    | 'window-focus'
+    | 'right-click' 
+    | 'keyboard-shortcut'
+    | 'code-change' 
+    | 'external-paste'
+    | 'fullscreen-exit'
+    | 'fullscreen-enter'
+    | 'mouse-leave'
+    | 'devtools-open'
+    | 'resize'
+    | 'print-attempt'
+    | 'screenshot-attempt'
+    | 'idle-detected'
+    | 'rapid-paste'
+    | 'large-deletion'
+    | 'session-start'
+    | 'session-end';
+  timestamp: Date;
+  metadata?: {
+    textLength?: number;
+    text?: string;
+    keys?: string;
+    fromExternal?: boolean;
+    changeType?: 'insert' | 'delete' | 'replace';
+    linesChanged?: number;
+    duration?: number;
+    windowSize?: { width: number; height: number };
+    screenSize?: { width: number; height: number };
+    isFullscreen?: boolean;
+    visibilityState?: string;
+  };
+}
+
+export interface ProctoringStats {
+  // Copy/paste
+  copyCount: number;
+  pasteCount: number;
+  externalPasteCount: number;
+  largestPaste: number;
+  rapidPasteCount: number;
+  
+  // Focus/attention
+  tabSwitchCount: number;
+  tabSwitchDuration: number;
+  windowBlurCount: number;
+  windowBlurDuration: number;
+  mouseLeaveCount: number;
+  
+  // Suspicious activity
+  suspiciousShortcuts: number;
+  rightClickCount: number;
+  devtoolsOpenCount: number;
+  fullscreenExitCount: number;
+  printAttempts: number;
+  screenshotAttempts: number;
+  
+  // Timing
+  totalTimeSpent: number;
+  activeTypingTime: number;
+  idleTime: number;
+  longestIdlePeriod: number;
+  avgTypingSpeed: number;
+  
+  // Code metrics
+  totalCharsTyped: number;
+  totalCharsDeleted: number;
+  largestDeletion: number;
+  
+  // Analysis
+  suspiciousPatterns: string[];
+  riskScore: number;
+  riskLevel: 'low' | 'medium' | 'high' | 'critical';
+}
+
 // Team Submissions API
 export const teamSubmissionsAPI = {
   // Get all submissions for a team in a session
@@ -440,8 +522,18 @@ export const teamSubmissionsAPI = {
     return response.data;
   },
 
-  // Save/auto-save a submission
-  saveSubmission: async (teamId: string, sessionId: string, problemId: string, data: { code: string; explanation?: string }) => {
+  // Save/auto-save a submission with proctoring data
+  saveSubmission: async (
+    teamId: string, 
+    sessionId: string, 
+    problemId: string, 
+    data: { 
+      code: string; 
+      explanation?: string;
+      proctoringEvents?: ProctoringEvent[];
+      codeSnapshot?: { code: string };
+    }
+  ) => {
     const response = await api.put(`/team-submissions/${teamId}/${sessionId}/${problemId}/save`, data);
     return response.data;
   },
@@ -452,8 +544,19 @@ export const teamSubmissionsAPI = {
     return response.data;
   },
 
-  // Submit final solution
-  submitSolution: async (teamId: string, sessionId: string, problemId: string, data: { code: string; explanation?: string }) => {
+  // Submit final solution with proctoring data
+  submitSolution: async (
+    teamId: string, 
+    sessionId: string, 
+    problemId: string, 
+    data: { 
+      code: string; 
+      explanation?: string;
+      proctoringStats?: ProctoringStats;
+      proctoringEvents?: ProctoringEvent[];
+      codeSnapshots?: Array<{ code: string; timestamp: Date; charCount: number }>;
+    }
+  ) => {
     const response = await api.post(`/team-submissions/${teamId}/${sessionId}/${problemId}/submit`, data);
     return response.data;
   },

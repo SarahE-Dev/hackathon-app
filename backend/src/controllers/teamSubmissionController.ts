@@ -104,7 +104,7 @@ export const saveSubmission = async (
 ) => {
   try {
     const { teamId, sessionId, problemId } = req.params;
-    const { code, explanation } = req.body;
+    const { code, explanation, proctoringEvents, codeSnapshot } = req.body;
     const userId = req.user!.userId;
 
     // Verify user is a member of the team
@@ -126,22 +126,65 @@ export const saveSubmission = async (
       throw new ApiError(404, 'Problem not found');
     }
 
+    // Build update object
+    const updateSet: any = {
+      code,
+      explanation,
+      language: problem.content?.language || 'python',
+      maxPoints: problem.points,
+      submittedBy: userId,
+    };
+
+    // Build push operations for proctoring data
+    const pushOperations: any = {};
+    
+    // Add new proctoring events (append to existing)
+    if (proctoringEvents && Array.isArray(proctoringEvents) && proctoringEvents.length > 0) {
+      pushOperations.proctoringEvents = { $each: proctoringEvents };
+    }
+    
+    // Add code snapshot if provided
+    if (codeSnapshot) {
+      pushOperations.codeSnapshots = {
+        code: codeSnapshot.code?.substring(0, 5000), // Limit size
+        timestamp: new Date(),
+        charCount: codeSnapshot.code?.length || 0,
+      };
+    }
+
+    // Build the full update
+    const updateQuery: any = {
+      $set: updateSet,
+      $setOnInsert: {
+        status: 'in_progress',
+        attempts: 0,
+        startedAt: new Date(),
+        proctoringStats: {
+          copyCount: 0,
+          pasteCount: 0,
+          externalPasteCount: 0,
+          tabSwitchCount: 0,
+          windowBlurCount: 0,
+          suspiciousShortcuts: 0,
+          totalTimeSpent: 0,
+          activeTypingTime: 0,
+          idleTime: 0,
+          avgTypingSpeed: 0,
+          largestPaste: 0,
+          suspiciousPatterns: [],
+          riskScore: 0,
+        },
+      },
+    };
+
+    if (Object.keys(pushOperations).length > 0) {
+      updateQuery.$push = pushOperations;
+    }
+
     // Upsert the submission
     const submission = await TeamSubmission.findOneAndUpdate(
       { teamId, sessionId, problemId },
-      {
-        $set: {
-          code,
-          explanation,
-          language: problem.content?.language || 'python',
-          maxPoints: problem.points,
-          submittedBy: userId,
-        },
-        $setOnInsert: {
-          status: 'in_progress',
-          attempts: 0,
-        },
-      },
+      updateQuery,
       { upsert: true, new: true }
     );
 
@@ -274,7 +317,7 @@ export const submitSolution = async (
 ) => {
   try {
     const { teamId, sessionId, problemId } = req.params;
-    const { code, explanation } = req.body;
+    const { code, explanation, proctoringStats, proctoringEvents, codeSnapshots } = req.body;
     const userId = req.user!.userId;
 
     // Verify user is a member of the team
@@ -317,34 +360,56 @@ export const submitSolution = async (
     const score = totalTests > 0 ? Math.round((passedTests / totalTests) * 100) : 0;
     const pointsEarned = allTestsPassed ? problem.points : 0;
 
+    // Build update object with proctoring data
+    const updateSet: any = {
+      code,
+      explanation,
+      language,
+      testResults: results.map((r) => ({
+        testCaseId: r.id,
+        passed: r.passed,
+        actualOutput: r.actualOutput,
+        expectedOutput: r.expectedOutput,
+        executionTime: r.executionTime,
+        error: r.error,
+      })),
+      passedTests,
+      totalTests,
+      score,
+      pointsEarned,
+      maxPoints: problem.points,
+      allTestsPassed,
+      status: allTestsPassed ? 'passed' : 'submitted',
+      submittedBy: userId,
+      submittedAt: new Date(),
+    };
+
+    // Add final proctoring stats if provided
+    if (proctoringStats) {
+      updateSet.proctoringStats = proctoringStats;
+    }
+
+    const updateQuery: any = {
+      $set: updateSet,
+      $inc: { attempts: 1 },
+    };
+
+    // Add remaining proctoring events and snapshots
+    const pushOperations: any = {};
+    if (proctoringEvents && Array.isArray(proctoringEvents) && proctoringEvents.length > 0) {
+      pushOperations.proctoringEvents = { $each: proctoringEvents };
+    }
+    if (codeSnapshots && Array.isArray(codeSnapshots) && codeSnapshots.length > 0) {
+      pushOperations.codeSnapshots = { $each: codeSnapshots };
+    }
+    if (Object.keys(pushOperations).length > 0) {
+      updateQuery.$push = pushOperations;
+    }
+
     // Update submission with final status
     const submission = await TeamSubmission.findOneAndUpdate(
       { teamId, sessionId, problemId },
-      {
-        $set: {
-          code,
-          explanation,
-          language,
-          testResults: results.map((r) => ({
-            testCaseId: r.id,
-            passed: r.passed,
-            actualOutput: r.actualOutput,
-            expectedOutput: r.expectedOutput,
-            executionTime: r.executionTime,
-            error: r.error,
-          })),
-          passedTests,
-          totalTests,
-          score,
-          pointsEarned,
-          maxPoints: problem.points,
-          allTestsPassed,
-          status: allTestsPassed ? 'passed' : 'submitted',
-          submittedBy: userId,
-          submittedAt: new Date(),
-        },
-        $inc: { attempts: 1 },
-      },
+      updateQuery,
       { upsert: true, new: true }
     );
 

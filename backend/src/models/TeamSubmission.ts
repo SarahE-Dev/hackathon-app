@@ -1,5 +1,37 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+// Proctoring event interface
+export interface IProctoringEvent {
+  type: 'copy' | 'paste' | 'tab-switch' | 'window-blur' | 'right-click' | 
+        'keyboard-shortcut' | 'code-change' | 'external-paste';
+  timestamp: Date;
+  metadata?: {
+    textLength?: number;
+    text?: string; // Only first 100 chars for large pastes
+    keys?: string;
+    fromExternal?: boolean;
+    changeType?: 'insert' | 'delete' | 'replace';
+    linesChanged?: number;
+  };
+}
+
+// Proctoring summary for quick flagging
+export interface IProctoringStats {
+  copyCount: number;
+  pasteCount: number;
+  externalPasteCount: number; // Pastes that don't match recent copies
+  tabSwitchCount: number;
+  windowBlurCount: number;
+  suspiciousShortcuts: number;
+  totalTimeSpent: number; // milliseconds
+  activeTypingTime: number; // milliseconds of actual typing
+  idleTime: number; // milliseconds of inactivity
+  avgTypingSpeed: number; // characters per minute
+  largestPaste: number; // character count
+  suspiciousPatterns: string[];
+  riskScore: number; // 0-100, higher = more suspicious
+}
+
 export interface ITeamSubmission extends Document {
   teamId: mongoose.Types.ObjectId;
   sessionId: mongoose.Types.ObjectId;
@@ -35,6 +67,16 @@ export interface ITeamSubmission extends Document {
   submittedBy: mongoose.Types.ObjectId; // Which team member submitted
   submittedAt?: Date;
   attempts: number;
+  
+  // Proctoring / Anti-cheating
+  proctoringEvents: IProctoringEvent[];
+  proctoringStats: IProctoringStats;
+  codeSnapshots: Array<{
+    code: string;
+    timestamp: Date;
+    charCount: number;
+  }>;
+  startedAt?: Date; // When they first opened the problem
   
   // Timestamps
   createdAt: Date;
@@ -123,6 +165,47 @@ const TeamSubmissionSchema = new Schema<ITeamSubmission>(
     attempts: {
       type: Number,
       default: 1,
+    },
+    // Proctoring fields
+    proctoringEvents: [{
+      type: {
+        type: String,
+        enum: ['copy', 'paste', 'tab-switch', 'window-blur', 'right-click', 
+               'keyboard-shortcut', 'code-change', 'external-paste'],
+        required: true,
+      },
+      timestamp: { type: Date, required: true },
+      metadata: {
+        textLength: Number,
+        text: String,
+        keys: String,
+        fromExternal: Boolean,
+        changeType: String,
+        linesChanged: Number,
+      },
+    }],
+    proctoringStats: {
+      copyCount: { type: Number, default: 0 },
+      pasteCount: { type: Number, default: 0 },
+      externalPasteCount: { type: Number, default: 0 },
+      tabSwitchCount: { type: Number, default: 0 },
+      windowBlurCount: { type: Number, default: 0 },
+      suspiciousShortcuts: { type: Number, default: 0 },
+      totalTimeSpent: { type: Number, default: 0 },
+      activeTypingTime: { type: Number, default: 0 },
+      idleTime: { type: Number, default: 0 },
+      avgTypingSpeed: { type: Number, default: 0 },
+      largestPaste: { type: Number, default: 0 },
+      suspiciousPatterns: [{ type: String }],
+      riskScore: { type: Number, default: 0 },
+    },
+    codeSnapshots: [{
+      code: { type: String, required: true },
+      timestamp: { type: Date, required: true },
+      charCount: { type: Number, required: true },
+    }],
+    startedAt: {
+      type: Date,
     },
   },
   {

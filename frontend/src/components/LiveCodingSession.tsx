@@ -5,12 +5,7 @@ import Editor from '@monaco-editor/react';
 import { io, Socket } from 'socket.io-client';
 import * as monaco from 'monaco-editor';
 import { teamSubmissionsAPI } from '../lib/api';
-
-interface ProctorEvent {
-  type: 'tab-switch' | 'copy-paste' | 'focus-lost' | 'suspicious-activity';
-  timestamp: Date;
-  details: string;
-}
+import { useProctoring } from '../hooks/useProctoring';
 
 interface TestCase {
   id: string;
@@ -213,13 +208,20 @@ Output: [0,1]
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [showExplanationModal, setShowExplanationModal] = useState(false);
-  const [proctorEvents, setProctorEvents] = useState<ProctorEvent[]>([]);
-  const [isWindowFocused, setIsWindowFocused] = useState(true);
-  const [copyPasteAttempts, setCopyPasteAttempts] = useState(0);
-  const [tabSwitches, setTabSwitches] = useState(0);
-  const [focusLosses, setFocusLosses] = useState(0);
   const [sessionTimer, setSessionTimer] = useState(0);
   const sessionStartRef = useRef<Date>(new Date());
+
+  // Proctoring hook - tracks copy/paste, tab switches, etc.
+  const proctoring = useProctoring({
+    enabled: !isAlreadySubmitted, // Disable if already submitted
+    onEvent: (event) => {
+      console.log('Proctoring event:', event.type, event.metadata);
+    },
+  });
+  
+  // Ref to track events that need to be synced to backend
+  const pendingProctoringEvents = useRef<any[]>([]);
+  const lastSnapshotTime = useRef<number>(Date.now());
 
   // Team collaboration state
   const [collaborationSocket, setCollaborationSocket] = useState<Socket | null>(null);
@@ -280,6 +282,18 @@ Output: [0,1]
     }
   }, [teamPresence, onMemberStatusChange, problemTitle]);
 
+  // Queue proctoring events for syncing to backend
+  useEffect(() => {
+    if (proctoring.events.length > 0) {
+      // Add new events to pending queue
+      const lastQueuedIndex = pendingProctoringEvents.current.length;
+      const newEvents = proctoring.events.slice(lastQueuedIndex);
+      if (newEvents.length > 0) {
+        pendingProctoringEvents.current.push(...newEvents);
+      }
+    }
+  }, [proctoring.events]);
+
   // Timer for session duration
   useEffect(() => {
     const interval = setInterval(() => {
@@ -291,98 +305,8 @@ Output: [0,1]
     return () => clearInterval(interval);
   }, []);
 
-  // Monitor window focus (tab switching)
-  useEffect(() => {
-    const handleFocus = () => {
-      setIsWindowFocused(true);
-    };
-
-    const handleBlur = () => {
-      setIsWindowFocused(false);
-      setTabSwitches((prev) => prev + 1);
-      const event: ProctorEvent = {
-        type: 'tab-switch',
-        timestamp: new Date(),
-        details: `User switched away from the coding window`,
-      };
-      setProctorEvents((prev) => [...prev, event]);
-    };
-
-    window.addEventListener('focus', handleFocus);
-    window.addEventListener('blur', handleBlur);
-
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-      window.removeEventListener('blur', handleBlur);
-    };
-  }, []);
-
-  // Monitor copy/paste attempts (log but allow within editor)
-  useEffect(() => {
-    const handleCopy = (e: ClipboardEvent) => {
-      // Log the copy event but don't prevent it - allow copy within the editor
-      setCopyPasteAttempts((prev) => prev + 1);
-      const event: ProctorEvent = {
-        type: 'copy-paste',
-        timestamp: new Date(),
-        details: 'Copy detected (logged)',
-      };
-      setProctorEvents((prev) => [...prev, event]);
-    };
-
-    const handlePaste = (e: ClipboardEvent) => {
-      // Log the paste event but don't prevent it - allow paste within the editor
-      setCopyPasteAttempts((prev) => prev + 1);
-      const event: ProctorEvent = {
-        type: 'copy-paste',
-        timestamp: new Date(),
-        details: 'Paste detected (logged)',
-      };
-      setProctorEvents((prev) => [...prev, event]);
-    };
-
-    const handleCut = (e: ClipboardEvent) => {
-      // Log the cut event but don't prevent it - allow cut within the editor
-      setCopyPasteAttempts((prev) => prev + 1);
-      const event: ProctorEvent = {
-        type: 'copy-paste',
-        timestamp: new Date(),
-        details: 'Cut detected (logged)',
-      };
-      setProctorEvents((prev) => [...prev, event]);
-    };
-
-    document.addEventListener('copy', handleCopy);
-    document.addEventListener('paste', handlePaste);
-    document.addEventListener('cut', handleCut);
-
-    return () => {
-      document.removeEventListener('copy', handleCopy);
-      document.removeEventListener('paste', handlePaste);
-      document.removeEventListener('cut', handleCut);
-    };
-  }, []);
-
-  // Detect unusual activities
-  useEffect(() => {
-    if (copyPasteAttempts > 3) {
-      const event: ProctorEvent = {
-        type: 'suspicious-activity',
-        timestamp: new Date(),
-        details: `Multiple copy/paste attempts (${copyPasteAttempts} total)`,
-      };
-      setProctorEvents((prev) => [...prev, event]);
-    }
-
-    if (tabSwitches > 5) {
-      const event: ProctorEvent = {
-        type: 'suspicious-activity',
-        timestamp: new Date(),
-        details: `Excessive tab switching (${tabSwitches} total)`,
-      };
-      setProctorEvents((prev) => [...prev, event]);
-    }
-  }, [copyPasteAttempts, tabSwitches]);
+  // Proctoring is now handled by the useProctoring hook
+  // It automatically tracks: copy, paste, tab switches, window blur, keyboard shortcuts, etc.
 
   // Use shared socket from parent if available
   useEffect(() => {
@@ -641,11 +565,24 @@ Output: [0,1]
         }
         autoSaveTimeoutRef.current = setTimeout(async () => {
           try {
+            // Get any pending proctoring events
+            const eventsToSend = [...pendingProctoringEvents.current];
+            pendingProctoringEvents.current = [];
+            
+            // Take snapshot every 60 seconds
+            const shouldSnapshot = Date.now() - lastSnapshotTime.current > 60000;
+            if (shouldSnapshot) {
+              proctoring.takeSnapshot(value);
+              lastSnapshotTime.current = Date.now();
+            }
+            
             await teamSubmissionsAPI.saveSubmission(teamId, sessionId, problem._id, {
               code: value,
               explanation,
+              proctoringEvents: eventsToSend.length > 0 ? eventsToSend : undefined,
+              codeSnapshot: shouldSnapshot ? { code: value } : undefined,
             });
-            console.log('Auto-saved code');
+            console.log('Auto-saved code with proctoring data');
           } catch (error) {
             console.error('Auto-save failed:', error);
           }
@@ -842,10 +779,16 @@ Output: [0,1]
     setSubmitSuccess(false);
 
     try {
-      // Submit solution using the team submissions API
+      // Get final proctoring data
+      const proctoringData = proctoring.getFinalStats();
+      
+      // Submit solution using the team submissions API with proctoring data
       const response = await teamSubmissionsAPI.submitSolution(teamId, sessionId, problem._id, {
         code,
         explanation,
+        proctoringStats: proctoringData.stats,
+        proctoringEvents: proctoringData.events,
+        codeSnapshots: proctoringData.codeSnapshots,
       });
 
       if (response.success) {
@@ -875,10 +818,11 @@ Output: [0,1]
     // Note: Don't set submitting to false on success - we want to keep showing the submitted state
   };
 
+  // Get risk level from proctoring stats
   const getRiskLevel = () => {
-    const totalViolations = copyPasteAttempts + tabSwitches + focusLosses;
-    if (totalViolations > 10) return 'high';
-    if (totalViolations > 5) return 'medium';
+    const score = proctoring.stats.riskScore;
+    if (score > 50) return 'high';
+    if (score > 25) return 'medium';
     return 'low';
   };
 
@@ -889,6 +833,12 @@ Output: [0,1]
       : riskLevel === 'medium'
       ? 'text-yellow-500'
       : 'text-green-500';
+  
+  // Convenience variables from proctoring stats for UI
+  const copyPasteAttempts = proctoring.stats.copyCount + proctoring.stats.pasteCount;
+  const tabSwitches = proctoring.stats.tabSwitchCount;
+  const windowBlurCount = proctoring.stats.windowBlurCount;
+  const externalPastes = proctoring.stats.externalPasteCount;
 
   // Show loading state only when:
   // 1. We don't have a shared socket AND we're still connecting for the first time
@@ -1283,10 +1233,7 @@ STEPS:
                     : 'bg-green-500'
                 }`}
                 style={{
-                  width: `${Math.min(
-                    (copyPasteAttempts + tabSwitches + focusLosses) * 10,
-                    100
-                  )}%`,
+                  width: `${proctoring.stats.riskScore}%`,
                 }}
               ></div>
             </div>
@@ -1295,41 +1242,32 @@ STEPS:
 
         {/* Violations Tracker */}
         <div className="glass rounded-2xl p-4 border border-gray-800">
-          <h4 className="text-sm font-bold text-white mb-3">⚠️ Violations</h4>
+          <h4 className="text-sm font-bold text-white mb-3">⚠️ Activity Monitor</h4>
           <div className="space-y-2">
             <div className="flex items-center justify-between p-2 bg-dark-700 rounded">
               <span className="text-xs text-gray-300">📋 Copy/Paste</span>
-              <span className={`text-sm font-bold ${copyPasteAttempts > 3 ? 'text-red-500' : 'text-gray-400'}`}>
+              <span className={`text-sm font-bold ${copyPasteAttempts > 5 ? 'text-red-500' : 'text-gray-400'}`}>
                 {copyPasteAttempts}
               </span>
             </div>
             <div className="flex items-center justify-between p-2 bg-dark-700 rounded">
               <span className="text-xs text-gray-300">🔄 Tab Switches</span>
-              <span className={`text-sm font-bold ${tabSwitches > 5 ? 'text-red-500' : 'text-gray-400'}`}>
+              <span className={`text-sm font-bold ${tabSwitches > 10 ? 'text-red-500' : 'text-gray-400'}`}>
                 {tabSwitches}
               </span>
             </div>
             <div className="flex items-center justify-between p-2 bg-dark-700 rounded">
-              <span className="text-xs text-gray-300">👁️ Focus Loss</span>
-              <span className={`text-sm font-bold ${focusLosses > 3 ? 'text-red-500' : 'text-gray-400'}`}>
-                {focusLosses}
+              <span className="text-xs text-gray-300">🌐 External Pastes</span>
+              <span className={`text-sm font-bold ${externalPastes > 0 ? 'text-red-500' : 'text-gray-400'}`}>
+                {externalPastes}
               </span>
             </div>
-          </div>
-        </div>
-
-        {/* Window Focus Indicator */}
-        <div className="glass rounded-2xl p-4 border border-gray-800">
-          <h4 className="text-sm font-bold text-white mb-3">👁️ Window Status</h4>
-          <div className="flex items-center gap-3">
-            <div
-              className={`w-3 h-3 rounded-full ${
-                isWindowFocused ? 'bg-green-500' : 'bg-red-500'
-              }`}
-            ></div>
-            <span className="text-sm text-gray-300">
-              {isWindowFocused ? 'Focused' : 'Not Focused'}
-            </span>
+            <div className="flex items-center justify-between p-2 bg-dark-700 rounded">
+              <span className="text-xs text-gray-300">👁️ Window Blur</span>
+              <span className={`text-sm font-bold ${windowBlurCount > 10 ? 'text-red-500' : 'text-gray-400'}`}>
+                {windowBlurCount}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -1337,19 +1275,22 @@ STEPS:
         <div className="glass rounded-2xl p-4 border border-gray-800">
           <h4 className="text-sm font-bold text-white mb-3">📝 Recent Events</h4>
           <div className="space-y-2 max-h-64 overflow-y-auto">
-            {proctorEvents.length === 0 ? (
-              <p className="text-xs text-gray-500">No suspicious activity detected</p>
+            {proctoring.events.length === 0 ? (
+              <p className="text-xs text-gray-500">No activity recorded yet</p>
             ) : (
-              proctorEvents.slice(-5).map((event, idx) => (
+              proctoring.events.slice(-5).map((event, idx) => (
                 <div
                   key={idx}
-                  className="p-2 bg-dark-700 rounded text-xs text-gray-300 border-l-2 border-red-500"
+                  className={`p-2 bg-dark-700 rounded text-xs text-gray-300 border-l-2 ${
+                    ['external-paste', 'devtools-open', 'screenshot-attempt', 'print-attempt'].includes(event.type)
+                      ? 'border-red-500'
+                      : 'border-yellow-500'
+                  }`}
                 >
-                  <div className="font-semibold text-red-400">{event.type}</div>
+                  <div className="font-semibold text-gray-200">{event.type.replace(/-/g, ' ')}</div>
                   <div className="text-gray-500">
-                    {event.timestamp.toLocaleTimeString()}
+                    {new Date(event.timestamp).toLocaleTimeString()}
                   </div>
-                  <div className="text-gray-400">{event.details}</div>
                 </div>
               ))
             )}
@@ -1357,11 +1298,13 @@ STEPS:
         </div>
 
         {/* Warning Message */}
-        {(copyPasteAttempts > 3 || tabSwitches > 5 || focusLosses > 3) && (
-          <div className="glass rounded-2xl p-4 border border-red-500/50 bg-red-500/10">
-            <p className="text-sm text-red-400">
-              ⚠️ Your session is being monitored. Suspicious activities are being
-              recorded.
+        {proctoring.stats.riskScore > 25 && (
+          <div className={`glass rounded-2xl p-4 border ${
+            proctoring.stats.riskScore > 50 ? 'border-red-500/50 bg-red-500/10' : 'border-yellow-500/50 bg-yellow-500/10'
+          }`}>
+            <p className={`text-sm ${proctoring.stats.riskScore > 50 ? 'text-red-400' : 'text-yellow-400'}`}>
+              ⚠️ Your session is being monitored. {proctoring.stats.suspiciousPatterns.length > 0 && 
+                `Detected: ${proctoring.stats.suspiciousPatterns.slice(0, 2).join(', ')}`}
             </p>
           </div>
         )}
