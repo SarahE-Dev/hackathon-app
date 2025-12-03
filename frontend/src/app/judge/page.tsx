@@ -4,251 +4,309 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { RoleGuard } from '@/components/guards/RoleGuard';
 import { useAuthStore } from '@/store/authStore';
-import { teamsAPI, hackathonSessionsAPI, judgeDocumentationAPI } from '@/lib/api';
-import axios from 'axios';
+import { teamSubmissionsAPI, hackathonSessionsAPI } from '@/lib/api';
+import Editor from '@monaco-editor/react';
 
-interface Team {
+interface Session {
   _id: string;
-  name: string;
-  memberIds: any[];
-  projectTitle?: string;
-  description?: string;
-  submittedAt?: string;
-  track?: string;
-  repoUrl?: string;
-  demoUrl?: string;
-  videoUrl?: string;
-  projectExplanation?: string;
-  technicalApproach?: string;
-  challengesOvercome?: string;
-}
-
-interface JudgeScore {
-  teamId: string;
-  scores: {
-    impact: number;
-    technicalDepth: number;
-    execution: number;
-    ux: number;
-    innovation: number;
-  };
-  totalScore: number;
-  notes?: string;
-  submittedAt?: string;
-}
-
-interface SessionStats {
-  activeSessions: number;
-  activeTeams: number;
-  totalViolations: number;
-}
-
-interface RubricCriterion {
-  name: string;
-  description: string;
-  maxPoints: number;
-  scoringGuide: Array<{ points: number; description: string }>;
-}
-
-interface FAQ {
-  question: string;
-  answer: string;
-  order: number;
-}
-
-interface JudgeDoc {
-  _id: string;
-  hackathonSessionId?: { _id: string; title: string };
-  organizationId: { _id: string; name: string };
   title: string;
-  type: 'rubric' | 'faq' | 'guide' | 'general';
-  rubricCriteria?: RubricCriterion[];
-  totalPoints?: number;
-  faqs?: FAQ[];
-  content?: string;
-  isActive: boolean;
-  isDefault: boolean;
-  updatedAt: string;
+  status: string;
+}
+
+interface Submission {
+  _id: string;
+  problem: {
+    _id: string;
+    title: string;
+    difficulty: string;
+    points: number;
+  };
+  code: string;
+  language: string;
+  explanation?: string;
+  passedTests: number;
+  totalTests: number;
+  score: number;
+  pointsEarned: number;
+  maxPoints: number;
+  status: string;
+  allTestsPassed: boolean;
+  submittedBy: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+  };
+  submittedAt: string;
+  attempts: number;
+  proctoringStats?: {
+    copyCount: number;
+    pasteCount: number;
+    externalPasteCount: number;
+    tabSwitchCount: number;
+    windowBlurCount: number;
+    riskScore: number;
+    suspiciousPatterns: string[];
+    largestPaste: number;
+  };
+  judgeFeedback?: {
+    rubricScores?: {
+      correctness: number;
+      codeQuality: number;
+      efficiency: number;
+      explanation: number;
+    };
+    totalJudgeScore: number;
+    feedback: string;
+    flagged: boolean;
+    flagReason?: string;
+    reviewedAt: string;
+  };
+}
+
+// Rubric criteria with weights
+const RUBRIC_CRITERIA = [
+  {
+    id: 'correctness',
+    name: 'Correctness',
+    weight: 40,
+    description: 'Does the code produce the correct output for all test cases?',
+    guide: [
+      { score: 100, label: 'All tests pass, handles edge cases' },
+      { score: 75, label: 'Most tests pass, minor issues' },
+      { score: 50, label: 'Some tests pass, logic errors' },
+      { score: 25, label: 'Few tests pass, significant bugs' },
+      { score: 0, label: 'Does not work or no attempt' },
+    ],
+  },
+  {
+    id: 'codeQuality',
+    name: 'Code Quality',
+    weight: 20,
+    description: 'Is the code clean, readable, and well-organized?',
+    guide: [
+      { score: 100, label: 'Excellent - Clean, readable, follows best practices' },
+      { score: 75, label: 'Good - Mostly clean with minor issues' },
+      { score: 50, label: 'Acceptable - Works but messy or hard to read' },
+      { score: 25, label: 'Poor - Difficult to understand' },
+      { score: 0, label: 'Very poor - Incomprehensible' },
+    ],
+  },
+  {
+    id: 'efficiency',
+    name: 'Efficiency',
+    weight: 20,
+    description: 'Is the time/space complexity appropriate for the problem?',
+    guide: [
+      { score: 100, label: 'Optimal solution with best complexity' },
+      { score: 75, label: 'Good solution, near-optimal' },
+      { score: 50, label: 'Acceptable but not optimal' },
+      { score: 25, label: 'Inefficient, could be much better' },
+      { score: 0, label: 'Very inefficient or brute force' },
+    ],
+  },
+  {
+    id: 'explanation',
+    name: 'Explanation',
+    weight: 20,
+    description: 'Did they clearly explain their approach and reasoning?',
+    guide: [
+      { score: 100, label: 'Excellent - Clear, detailed explanation' },
+      { score: 75, label: 'Good - Adequate explanation' },
+      { score: 50, label: 'Basic - Some explanation provided' },
+      { score: 25, label: 'Minimal - Brief or unclear' },
+      { score: 0, label: 'No explanation provided' },
+    ],
+  },
+];
+
+interface TeamData {
+  team: {
+  _id: string;
+    name: string;
+    memberCount: number;
+  };
+  submissions: Submission[];
+  stats: {
+    totalSubmissions: number;
+    passedSubmissions: number;
+    totalPoints: number;
+    avgRiskScore: number;
+  };
 }
 
 function JudgeDashboardContent() {
   const { user } = useAuthStore();
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [myScores, setMyScores] = useState<Map<string, JudgeScore>>(new Map());
-  const [sessionStats, setSessionStats] = useState<SessionStats>({
-    activeSessions: 0,
-    activeTeams: 0,
-    totalViolations: 0,
-  });
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [selectedSession, setSelectedSession] = useState<string>('');
+  const [teamsData, setTeamsData] = useState<TeamData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
-  const [scoring, setScoring] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'grading' | 'monitoring' | 'docs'>('overview');
-  const [documentation, setDocumentation] = useState<JudgeDoc[]>([]);
-  const [expandedFaqs, setExpandedFaqs] = useState<Set<string>>(new Set());
-
-  // Scoring state
-  const [scores, setScores] = useState({
-    impact: 0,
-    technicalDepth: 0,
-    execution: 0,
-    ux: 0,
-    innovation: 0,
+  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+  const [feedbackForm, setFeedbackForm] = useState({
+    rubricScores: {
+      correctness: 0,
+      codeQuality: 0,
+      efficiency: 0,
+      explanation: 0,
+    },
+    feedback: '',
+    flagged: false,
+    flagReason: '',
   });
-  const [notes, setNotes] = useState('');
-  const [conflictOfInterest, setConflictOfInterest] = useState(false);
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  
+  // Calculate total score from rubric
+  const calculateTotalScore = (scores: typeof feedbackForm.rubricScores) => {
+    return Math.round(
+      scores.correctness * 0.40 +
+      scores.codeQuality * 0.20 +
+      scores.efficiency * 0.20 +
+      scores.explanation * 0.20
+    );
+  };
+  const [filterRisk, setFilterRisk] = useState<'all' | 'high' | 'medium' | 'low'>('all');
+  const [sortBy, setSortBy] = useState<'points' | 'risk' | 'submissions'>('points');
 
+  // Load sessions on mount
   useEffect(() => {
-    loadData();
-  }, [user]);
+    const loadSessions = async () => {
+      try {
+        const response = await hackathonSessionsAPI.getAll();
+        const allSessions = response.data?.sessions || [];
+        setSessions(allSessions);
+        
+        const activeSession = allSessions.find((s: Session) => s.status === 'active');
+        if (activeSession) {
+          setSelectedSession(activeSession._id);
+        } else if (allSessions.length > 0) {
+          setSelectedSession(allSessions[0]._id);
+        }
+      } catch (error) {
+        console.error('Error loading sessions:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadSessions();
+  }, []);
 
-  const loadData = async () => {
-    if (!user) return;
-
-    try {
+  // Load submissions when session changes
+  useEffect(() => {
+    if (!selectedSession) return;
+    
+    const loadSubmissions = async () => {
       setLoading(true);
-
-      // Fetch all teams
-      const teamsResponse = await teamsAPI.getAllTeams();
-      const teamsData = Array.isArray(teamsResponse) ? teamsResponse : [];
-      const submittedTeams = teamsData.filter((t: Team) => t.submittedAt);
-      setTeams(submittedTeams);
-
-      // Fetch judge's existing scores
       try {
-        const scoresResponse = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/judge-scores/judge/${user.id}`
-        );
-        const scoresMap = new Map<string, JudgeScore>();
-        if (scoresResponse.data && Array.isArray(scoresResponse.data)) {
-          scoresResponse.data.forEach((score: any) => {
-            scoresMap.set(score.teamId, score);
-          });
-        }
-        setMyScores(scoresMap);
-      } catch (e) {
-        console.warn('Could not load judge scores');
-      }
-
-      // Fetch session stats for proctoring
-      try {
-        const sessionsResponse = await hackathonSessionsAPI.getAll();
-        const sessions = sessionsResponse.data?.sessions || [];
-        const activeSessions = sessions.filter((s: any) => s.status === 'active' || s.status === 'paused');
-
-        let activeTeams = 0;
-        let totalViolations = 0;
-
-        if (activeSessions.length > 0) {
-          const activeTeamsResponse = await hackathonSessionsAPI.getActiveSessions();
-          const teamSessions = activeTeamsResponse.data?.teamSessions || [];
-          activeTeams = teamSessions.length;
-          totalViolations = teamSessions.reduce((sum: number, ts: any) => {
-            return sum + (ts.tabSwitchCount || 0) + (ts.copyPasteCount || 0) + (ts.fullscreenExitCount || 0) + (ts.idleCount || 0);
-          }, 0);
-        }
-
-        setSessionStats({
-          activeSessions: activeSessions.length,
-          activeTeams,
-          totalViolations,
-        });
-      } catch (e) {
-        console.warn('Could not load session stats');
-      }
-
-      // Fetch judge documentation
-      try {
-        const docsResponse = await judgeDocumentationAPI.getDocumentation({
-          includeDefaults: true,
-        });
-        setDocumentation(docsResponse.data?.documentation || []);
-      } catch (e) {
-        console.warn('Could not load judge documentation');
-      }
+        const response = await teamSubmissionsAPI.getAllSessionSubmissions(selectedSession);
+        setTeamsData(response.data?.teams || []);
     } catch (error) {
-      console.error('Error loading data:', error);
+        console.error('Error loading submissions:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const toggleFaq = (docId: string, faqIndex: number) => {
-    const key = `${docId}-${faqIndex}`;
-    setExpandedFaqs((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(key)) {
-        newSet.delete(key);
-      } else {
-        newSet.add(key);
-      }
-      return newSet;
-    });
-  };
+    loadSubmissions();
+  }, [selectedSession]);
 
-  const handleScoreTeam = (team: Team) => {
-    setSelectedTeam(team);
-    const existingScore = myScores.get(team._id);
-
-    if (existingScore) {
-      setScores(existingScore.scores);
-      setNotes(existingScore.notes || '');
-    } else {
-      setScores({
-        impact: 0,
-        technicalDepth: 0,
-        execution: 0,
-        ux: 0,
-        innovation: 0,
-      });
-      setNotes('');
-    }
-    setConflictOfInterest(false);
-  };
-
-  const handleSubmitScore = async () => {
-    if (!selectedTeam || !user) return;
-
-    if (conflictOfInterest) {
-      alert('Please mark your conflict of interest in the notes and do not score this team.');
-      return;
-    }
-
-    const totalScore = Object.values(scores).reduce((sum, val) => sum + val, 0);
-
-    if (totalScore === 0) {
-      alert('Please provide at least one score before submitting.');
-      return;
-    }
-
+  const handleSubmitFeedback = async () => {
+    if (!selectedSubmission) return;
+    
+    setSubmittingFeedback(true);
     try {
-      setScoring(true);
-
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/judge-scores`,
-        {
-          teamId: selectedTeam._id,
-          judgeId: user.id,
-          scores,
-          notes,
-          conflictOfInterest,
-        }
-      );
-
-      alert('Score submitted successfully!');
-      setSelectedTeam(null);
-      await loadData();
+      await teamSubmissionsAPI.addJudgeFeedback(selectedSubmission._id, {
+        rubricScores: feedbackForm.rubricScores,
+        feedback: feedbackForm.feedback,
+        flagged: feedbackForm.flagged,
+        flagReason: feedbackForm.flagReason,
+      });
+      
+      const totalScore = calculateTotalScore(feedbackForm.rubricScores);
+      
+      setTeamsData(prev => prev.map(team => ({
+        ...team,
+        submissions: team.submissions.map(sub => 
+          sub._id === selectedSubmission._id
+            ? { 
+                ...sub, 
+                judgeFeedback: { 
+                  rubricScores: feedbackForm.rubricScores,
+                  totalJudgeScore: totalScore,
+                  feedback: feedbackForm.feedback,
+                  flagged: feedbackForm.flagged,
+                  flagReason: feedbackForm.flagReason,
+                  reviewedAt: new Date().toISOString() 
+                } 
+              }
+            : sub
+        ),
+      })));
+      
+      setSelectedSubmission(null);
+      setFeedbackForm({ 
+        rubricScores: { correctness: 0, codeQuality: 0, efficiency: 0, explanation: 0 },
+        feedback: '', 
+        flagged: false, 
+        flagReason: '' 
+      });
     } catch (error) {
-      console.error('Error submitting score:', error);
-      alert('Failed to submit score. Please try again.');
+      console.error('Error submitting feedback:', error);
+      alert('Failed to submit feedback');
     } finally {
-      setScoring(false);
+      setSubmittingFeedback(false);
     }
   };
 
-  if (loading) {
+  // Summary calculations
+  const totalTeams = teamsData.length;
+  const totalSubmissions = teamsData.reduce((sum, t) => sum + t.stats.totalSubmissions, 0);
+  const passedSubmissions = teamsData.reduce((sum, t) => sum + t.stats.passedSubmissions, 0);
+  const reviewedSubmissions = teamsData.reduce((sum, t) => 
+    sum + t.submissions.filter(s => s.judgeFeedback?.reviewedAt).length, 0
+  );
+  const flaggedSubmissions = teamsData.reduce((sum, t) => 
+    sum + t.submissions.filter(s => s.judgeFeedback?.flagged).length, 0
+  );
+  const highRiskSubmissions = teamsData.reduce((sum, t) => 
+    sum + t.submissions.filter(s => (s.proctoringStats?.riskScore || 0) >= 50).length, 0
+  );
+
+  // Filter and sort teams
+  const filteredTeams = teamsData.filter(team => {
+    if (filterRisk === 'all') return true;
+    if (filterRisk === 'high') return team.stats.avgRiskScore >= 50;
+    if (filterRisk === 'medium') return team.stats.avgRiskScore >= 25 && team.stats.avgRiskScore < 50;
+    return team.stats.avgRiskScore < 25;
+  }).sort((a, b) => {
+    if (sortBy === 'points') return b.stats.totalPoints - a.stats.totalPoints;
+    if (sortBy === 'risk') return b.stats.avgRiskScore - a.stats.avgRiskScore;
+    return b.stats.totalSubmissions - a.stats.totalSubmissions;
+  });
+
+  const getRiskColor = (score: number) => {
+    if (score >= 50) return 'text-red-400';
+    if (score >= 25) return 'text-yellow-400';
+    return 'text-green-400';
+  };
+
+  const getRiskBg = (score: number) => {
+    if (score >= 50) return 'bg-red-500/20 border-red-500/50';
+    if (score >= 25) return 'bg-yellow-500/20 border-yellow-500/50';
+    return 'bg-green-500/20 border-green-500/50';
+  };
+
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty?.toLowerCase()) {
+      case 'easy': return 'text-green-400 border-green-500/50';
+      case 'medium': return 'text-yellow-400 border-yellow-500/50';
+      case 'hard': return 'text-red-400 border-red-500/50';
+      default: return 'text-gray-400 border-gray-500/50';
+    }
+  };
+
+  if (loading && sessions.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-dark-900">
+      <div className="min-h-screen bg-dark-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-neon-purple mx-auto mb-4"></div>
           <p className="text-gray-400">Loading judge dashboard...</p>
@@ -260,832 +318,543 @@ function JudgeDashboardContent() {
   return (
     <div className="min-h-screen bg-dark-900 text-white">
       {/* Header */}
-      <header className="glass border-b border-gray-800 sticky top-0 z-50">
+      <header className="bg-dark-800 border-b border-gray-700 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div>
               <div className="flex items-center gap-3">
                 <span className="text-3xl">⚖️</span>
                 <div>
-                  <h1 className="text-3xl font-bold text-gradient">Judge Dashboard</h1>
-                  <p className="text-gray-400 text-sm">Welcome, {user?.firstName} - Evaluate & Monitor Submissions</p>
-                </div>
+                <h1 className="text-2xl font-bold">Judge Dashboard</h1>
+                <p className="text-gray-400 text-sm">Welcome, {user?.firstName} - Review Team Submissions</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              {/* Progress indicator */}
-              <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-dark-700 rounded-lg border border-gray-600">
-                <span className="text-sm text-gray-400">Progress:</span>
-                <span className="text-sm font-bold text-neon-purple">{myScores.size}/{teams.length}</span>
-                <div className="w-20 h-2 bg-dark-600 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-neon-purple transition-all"
-                    style={{ width: `${teams.length > 0 ? (myScores.size / teams.length) * 100 : 0}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Navigation Tabs */}
-      <div className="bg-dark-800 border-b border-gray-700">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex gap-1">
-            {[
-              { id: 'overview', label: 'Overview', icon: '📊' },
-              { id: 'grading', label: 'Grade Projects', icon: '⚖️' },
-              { id: 'docs', label: 'Documentation', icon: '📚' },
-              { id: 'monitoring', label: 'Monitor Sessions', icon: '👁️' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                className={`px-6 py-4 font-medium transition-all border-b-2 ${
-                  activeTab === tab.id
-                    ? 'border-neon-purple text-neon-purple bg-neon-purple/5'
-                    : 'border-transparent text-gray-400 hover:text-white hover:bg-dark-700'
-                }`}
+              <select
+                value={selectedSession}
+                onChange={(e) => setSelectedSession(e.target.value)}
+                className="px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-neon-purple"
               >
-                <span className="mr-2">{tab.icon}</span>
-                {tab.label}
-              </button>
-            ))}
+                {sessions.map((session) => (
+                  <option key={session._id} value={session._id}>
+                    {session.title}
+                  </option>
+                ))}
+              </select>
+              <Link
+                href="/dashboard"
+                className="px-4 py-2 bg-dark-700 hover:bg-dark-600 border border-gray-600 rounded-lg transition-colors"
+              >
+                Dashboard
+              </Link>
           </div>
         </div>
       </div>
+      </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        {activeTab === 'overview' && (
-          <>
-            {/* Welcome Banner */}
-            <div className="glass rounded-xl p-6 border border-neon-purple/30 bg-neon-purple/5 mb-8">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-xl font-bold mb-2">Your Judging Summary</h2>
-                  <p className="text-gray-400 text-sm">
-                    {teams.length - myScores.size === 0
-                      ? "You've scored all submitted projects! Check back for new submissions."
-                      : `You have ${teams.length - myScores.size} project${teams.length - myScores.size !== 1 ? 's' : ''} left to review.`}
-                  </p>
+      {/* Stats Overview */}
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+          <div className="bg-dark-800 border border-gray-700 rounded-xl p-4">
+            <div className="text-3xl mb-1">👥</div>
+            <div className="text-2xl font-bold text-white">{totalTeams}</div>
+            <div className="text-xs text-gray-400">Teams</div>
                 </div>
-                {teams.length > 0 && teams.length - myScores.size > 0 && (
+          <div className="bg-dark-800 border border-gray-700 rounded-xl p-4">
+            <div className="text-3xl mb-1">📝</div>
+            <div className="text-2xl font-bold text-neon-blue">{totalSubmissions}</div>
+            <div className="text-xs text-gray-400">Submissions</div>
+              </div>
+          <div className="bg-dark-800 border border-green-500/30 rounded-xl p-4">
+            <div className="text-3xl mb-1">✅</div>
+            <div className="text-2xl font-bold text-green-400">{passedSubmissions}</div>
+            <div className="text-xs text-gray-400">Passed Tests</div>
+            </div>
+          <div className="bg-dark-800 border border-neon-purple/30 rounded-xl p-4">
+            <div className="text-3xl mb-1">👁️</div>
+            <div className="text-2xl font-bold text-neon-purple">{reviewedSubmissions}</div>
+            <div className="text-xs text-gray-400">Reviewed</div>
+              </div>
+          <div className="bg-dark-800 border border-red-500/30 rounded-xl p-4">
+            <div className="text-3xl mb-1">⚠️</div>
+            <div className="text-2xl font-bold text-red-400">{highRiskSubmissions}</div>
+            <div className="text-xs text-gray-400">High Risk</div>
+              </div>
+          <div className="bg-dark-800 border border-red-500/30 rounded-xl p-4">
+            <div className="text-3xl mb-1">🚩</div>
+            <div className="text-2xl font-bold text-red-400">{flaggedSubmissions}</div>
+            <div className="text-xs text-gray-400">Flagged</div>
+              </div>
+              </div>
+            </div>
+
+      {/* Filters */}
+      <div className="max-w-7xl mx-auto px-6 pb-4">
+        <div className="bg-dark-800 border border-gray-700 rounded-xl p-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400 text-sm">Filter by Risk:</span>
+              <div className="flex gap-1">
+                {(['all', 'high', 'medium', 'low'] as const).map((level) => (
                   <button
-                    onClick={() => setActiveTab('grading')}
-                    className="px-4 py-2 bg-neon-purple hover:bg-neon-purple/80 text-white rounded-lg font-medium transition-all"
+                    key={level}
+                    onClick={() => setFilterRisk(level)}
+                    className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+                      filterRisk === level
+                        ? level === 'high' ? 'bg-red-500/30 text-red-400 border border-red-500/50'
+                          : level === 'medium' ? 'bg-yellow-500/30 text-yellow-400 border border-yellow-500/50'
+                          : level === 'low' ? 'bg-green-500/30 text-green-400 border border-green-500/50'
+                          : 'bg-neon-purple/30 text-neon-purple border border-neon-purple/50'
+                        : 'bg-dark-700 text-gray-400 border border-gray-600 hover:border-gray-500'
+                    }`}
                   >
-                    Start Grading
+                    {level.charAt(0).toUpperCase() + level.slice(1)}
                   </button>
-                )}
-              </div>
-            </div>
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              <div className="glass rounded-xl p-5 border border-neon-purple/20">
-                <div className="text-2xl mb-2">📦</div>
-                <p className="text-3xl font-bold text-neon-purple">{teams.length}</p>
-                <p className="text-sm text-gray-400">Submitted Projects</p>
-              </div>
-              <div className="glass rounded-xl p-5 border border-neon-green/20">
-                <div className="text-2xl mb-2">✅</div>
-                <p className="text-3xl font-bold text-neon-green">{myScores.size}</p>
-                <p className="text-sm text-gray-400">Scored by You</p>
-              </div>
-              <div className="glass rounded-xl p-5 border border-yellow-500/20">
-                <div className="text-2xl mb-2">⏳</div>
-                <p className="text-3xl font-bold text-yellow-400">{teams.length - myScores.size}</p>
-                <p className="text-sm text-gray-400">Awaiting Review</p>
-              </div>
-              <div className="glass rounded-xl p-5 border border-orange-500/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-2xl">🔴</span>
-                  {sessionStats.activeSessions > 0 && (
-                    <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-                  )}
-                </div>
-                <p className="text-3xl font-bold text-orange-400">{sessionStats.activeSessions}</p>
-                <p className="text-sm text-gray-400">Live Sessions</p>
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <h2 className="text-xl font-bold mb-4">Your Responsibilities</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              {/* Grading Section */}
-              <div className="glass rounded-xl p-6 border border-neon-purple/30">
-                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                  <span className="text-neon-purple">⚖️</span> Grading
-                </h3>
-                <p className="text-sm text-gray-400 mb-4">
-                  Review and score submissions from hackathon teams and assessment attempts.
-                </p>
-                <div className="space-y-3">
-                  <button
-                    onClick={() => setActiveTab('grading')}
-                    className="w-full p-3 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">🏆</span>
-                      <div className="text-left">
-                        <p className="font-medium">Hackathon Projects</p>
-                        <p className="text-xs text-gray-400">{teams.length - myScores.size} awaiting review</p>
+                ))}
+                        </div>
                       </div>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400 text-sm">Sort by:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="px-3 py-1 bg-dark-700 border border-gray-600 rounded-lg text-sm text-white focus:outline-none focus:border-neon-purple"
+              >
+                <option value="points">Points (High to Low)</option>
+                <option value="risk">Risk Score (High to Low)</option>
+                <option value="submissions">Submissions (Most)</option>
+              </select>
                     </div>
-                    <span className="text-neon-purple">→</span>
-                  </button>
-                  <Link href="/judge/grading" className="block p-3 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
+          </div>
+                </div>
+              </div>
+
+      {/* Teams Grid */}
+      <div className="max-w-7xl mx-auto px-6 pb-8">
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-neon-purple"></div>
+                        </div>
+        ) : filteredTeams.length === 0 ? (
+          <div className="bg-dark-800 border border-gray-700 rounded-xl p-12 text-center">
+            <div className="text-5xl mb-4">📭</div>
+            <p className="text-gray-400 text-lg">No submissions found</p>
+                      </div>
+        ) : (
+          <div className="grid gap-4">
+            {filteredTeams.map((teamData) => (
+              <div
+                key={teamData.team._id}
+                className="bg-dark-800 border border-gray-700 rounded-xl overflow-hidden hover:border-gray-600 transition-colors"
+              >
+                {/* Team Header */}
+                <div className="p-4 border-b border-gray-700">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl">📝</span>
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center text-xl font-bold">
+                        {teamData.team.name.charAt(0)}
+                        </div>
                         <div>
-                          <p className="font-medium">Assessment Submissions</p>
-                          <p className="text-xs text-gray-400">Review student assessments</p>
+                        <h3 className="text-lg font-bold text-white">{teamData.team.name}</h3>
+                        <p className="text-gray-400 text-sm">{teamData.team.memberCount} members</p>
                         </div>
                       </div>
-                      <span className="text-neon-purple">→</span>
+                    <div className="flex items-center gap-6">
+                      <div className="text-center">
+                        <div className="text-xl font-bold text-neon-green">{teamData.stats.totalPoints}</div>
+                        <div className="text-xs text-gray-400">Points</div>
                     </div>
-                  </Link>
+                      <div className="text-center">
+                        <div className="text-xl font-bold text-neon-blue">
+                          {teamData.stats.passedSubmissions}/{teamData.stats.totalSubmissions}
                 </div>
+                        <div className="text-xs text-gray-400">Passed</div>
               </div>
-
-              {/* Monitoring Section */}
-              <div className="glass rounded-xl p-6 border border-neon-green/30">
-                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                  <span className="text-neon-green">👁️</span> Monitoring
-                </h3>
-                <p className="text-sm text-gray-400 mb-4">
-                  Monitor live sessions, track participant progress, and flag any violations.
-                </p>
-                <div className="space-y-3">
-                  <Link href="/proctor/monitor" className="block p-3 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl">🔴</span>
-                        <div>
-                          <p className="font-medium">Live Session Monitor</p>
-                          <p className="text-xs text-gray-400">{sessionStats.activeSessions} active sessions</p>
-                        </div>
-                      </div>
-                      <span className="text-neon-green">→</span>
-                    </div>
-                  </Link>
-                  <Link href="/proctor/assessments" className="block p-3 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl">📹</span>
-                        <div>
-                          <p className="font-medium">Assessment Proctoring</p>
-                          <p className="text-xs text-gray-400">Monitor exam attempts</p>
-                        </div>
-                      </div>
-                      <span className="text-neon-green">→</span>
-                    </div>
-                  </Link>
-                  <Link href="/hackathon/sessions" className="block p-3 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl">🎯</span>
-                        <div>
-                          <p className="font-medium">Session Leaderboards</p>
-                          <p className="text-xs text-gray-400">View team rankings</p>
-                        </div>
-                      </div>
-                      <span className="text-neon-green">→</span>
-                    </div>
-                  </Link>
-                </div>
-              </div>
+                      <div className={`px-4 py-2 rounded-lg border ${getRiskBg(teamData.stats.avgRiskScore)}`}>
+                        <div className={`text-lg font-bold ${getRiskColor(teamData.stats.avgRiskScore)}`}>
+                          {teamData.stats.avgRiskScore}%
             </div>
-
-            {/* Recent Activity */}
-            <h2 className="text-xl font-bold mb-4">Recent Projects to Review</h2>
-            <div className="glass rounded-xl border border-gray-700 overflow-hidden">
-              {teams.length === 0 ? (
-                <div className="p-8 text-center text-gray-400">
-                  <div className="text-4xl mb-3">📦</div>
-                  <p>No submitted projects yet</p>
+                        <div className="text-xs text-gray-400">Risk</div>
                 </div>
-              ) : (
-                <div className="divide-y divide-gray-700">
-                  {teams.slice(0, 5).map((team) => {
-                    const hasScored = myScores.has(team._id);
-                    return (
-                      <div key={team._id} className="p-4 hover:bg-dark-700 transition-all flex items-center justify-between">
-                        <div>
-                          <h3 className="font-semibold">{team.name}</h3>
-                          {team.projectTitle && <p className="text-sm text-neon-purple">{team.projectTitle}</p>}
-                          {team.track && <span className="text-xs text-gray-500">{team.track}</span>}
                         </div>
-                        <div className="flex items-center gap-3">
-                          {hasScored ? (
-                            <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full">Scored</span>
-                          ) : (
-                            <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">Pending</span>
-                          )}
-                          <button
-                            onClick={() => {
-                              handleScoreTeam(team);
-                            }}
-                            className="px-3 py-1 bg-neon-purple/20 text-neon-purple hover:bg-neon-purple/30 rounded text-sm transition-all"
-                          >
-                            {hasScored ? 'Update' : 'Score'}
-                          </button>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-              {teams.length > 5 && (
-                <div className="p-4 bg-dark-800 text-center">
-                  <button onClick={() => setActiveTab('grading')} className="text-neon-purple hover:underline text-sm">
-                    View all {teams.length} projects →
-                  </button>
-                </div>
-              )}
-            </div>
-          </>
-        )}
 
-        {activeTab === 'grading' && (
-          <>
-            {/* Grading Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="glass rounded-2xl p-6 border-2 border-neon-purple/20">
-                <h3 className="text-gray-400 text-sm font-medium mb-2">Submitted Projects</h3>
-                <p className="text-4xl font-bold">{teams.length}</p>
-              </div>
-              <div className="glass rounded-2xl p-6 border-2 border-neon-blue/20">
-                <h3 className="text-gray-400 text-sm font-medium mb-2">Your Scores</h3>
-                <p className="text-4xl font-bold">{myScores.size}</p>
-              </div>
-              <div className="glass rounded-2xl p-6 border-2 border-neon-green/20">
-                <h3 className="text-gray-400 text-sm font-medium mb-2">Remaining</h3>
-                <p className="text-4xl font-bold">{teams.length - myScores.size}</p>
-              </div>
-            </div>
-
-            {/* Projects to Score */}
-            <h2 className="text-2xl font-bold mb-6">Projects to Review</h2>
-            {teams.length === 0 ? (
-              <div className="glass rounded-xl p-12 text-center border border-gray-700">
-                <div className="text-5xl mb-4">📦</div>
-                <p className="text-gray-400">No submitted projects yet</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {teams.map((team) => {
-                  const hasScored = myScores.has(team._id);
-                  const score = myScores.get(team._id);
-
-                  return (
-                    <div
-                      key={team._id}
-                      className={`glass rounded-xl p-6 border-2 transition-all ${
-                        hasScored
-                          ? 'border-green-500/20 bg-green-500/5'
-                          : 'border-gray-700 hover:border-neon-purple/40'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <h3 className="text-xl font-bold">{team.name}</h3>
-                          {team.track && (
-                            <span className="inline-block px-2 py-1 bg-neon-blue/20 text-neon-blue text-xs rounded-full mt-2">
-                              {team.track}
+                {/* Submissions */}
+                <div className="p-4">
+                  <div className="grid gap-2">
+                    {teamData.submissions.map((sub) => (
+                      <div
+                        key={sub._id}
+                        onClick={() => {
+                          setSelectedSubmission(sub);
+                          if (sub.judgeFeedback?.rubricScores) {
+                            setFeedbackForm({
+                              rubricScores: sub.judgeFeedback.rubricScores,
+                              feedback: sub.judgeFeedback.feedback || '',
+                              flagged: sub.judgeFeedback.flagged || false,
+                              flagReason: sub.judgeFeedback.flagReason || '',
+                            });
+                          } else {
+                            // Pre-fill correctness based on test results
+                            const correctnessScore = sub.totalTests > 0 
+                              ? Math.round((sub.passedTests / sub.totalTests) * 100) 
+                              : 0;
+                            setFeedbackForm({ 
+                              rubricScores: { 
+                                correctness: correctnessScore, 
+                                codeQuality: 0, 
+                                efficiency: 0, 
+                                explanation: sub.explanation ? 50 : 0 
+                              },
+                              feedback: '', 
+                              flagged: false, 
+                              flagReason: '' 
+                            });
+                          }
+                        }}
+                        className={`p-3 rounded-lg border cursor-pointer transition-all hover:border-neon-purple/50 ${
+                          sub.judgeFeedback?.flagged
+                            ? 'bg-red-500/10 border-red-500/30'
+                            : sub.judgeFeedback?.reviewedAt
+                            ? 'bg-green-500/5 border-green-500/30'
+                            : (sub.proctoringStats?.riskScore || 0) >= 50
+                            ? 'bg-red-500/5 border-red-500/20'
+                            : 'bg-dark-700/50 border-gray-600'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className={`px-2 py-0.5 text-xs border rounded ${getDifficultyColor(sub.problem?.difficulty)}`}>
+                              {sub.problem?.difficulty}
                             </span>
-                          )}
+                            <span className="font-medium text-white">{sub.problem?.title}</span>
+                            <span className={`px-2 py-0.5 text-xs rounded ${
+                              sub.allTestsPassed ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                            }`}>
+                              {sub.passedTests}/{sub.totalTests} tests
+                            </span>
+                            <span className="text-neon-green text-sm">{sub.pointsEarned}/{sub.maxPoints} pts</span>
                         </div>
-                        {hasScored && (
-                          <span className="px-3 py-1 bg-green-500/20 text-green-400 text-sm rounded-full">
-                            Scored
+                          <div className="flex items-center gap-3">
+                            {/* Proctoring indicators */}
+                            {(sub.proctoringStats?.externalPasteCount || 0) > 0 && (
+                              <span className="px-2 py-0.5 text-xs bg-red-500/20 text-red-400 rounded" title="External pastes detected">
+                                📋 {sub.proctoringStats?.externalPasteCount}
                           </span>
                         )}
-                      </div>
-
-                      {team.projectTitle && (
-                        <p className="text-lg font-semibold text-neon-purple mb-2">{team.projectTitle}</p>
-                      )}
-
-                      {team.description && (
-                        <p className="text-gray-300 text-sm mb-4 line-clamp-3">{team.description}</p>
-                      )}
-
-                      {/* Project Explanation Sections */}
-                      {(team.projectExplanation || team.technicalApproach || team.challengesOvercome) && (
-                        <div className="space-y-3 mb-4 p-3 bg-dark-800 rounded-lg border border-gray-700">
-                          {team.projectExplanation && (
-                            <div>
-                              <h4 className="text-xs font-semibold text-indigo-400 mb-1">Project Explanation</h4>
-                              <p className="text-gray-300 text-xs line-clamp-4 whitespace-pre-wrap">{team.projectExplanation}</p>
+                            {(sub.proctoringStats?.tabSwitchCount || 0) > 10 && (
+                              <span className="px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-400 rounded" title="Many tab switches">
+                                🔄 {sub.proctoringStats?.tabSwitchCount}
+                              </span>
+                            )}
+                            <span className={`px-2 py-0.5 text-xs rounded ${getRiskBg(sub.proctoringStats?.riskScore || 0)} ${getRiskColor(sub.proctoringStats?.riskScore || 0)}`}>
+                              {sub.proctoringStats?.riskScore || 0}% risk
+                            </span>
+                            {sub.judgeFeedback?.flagged && (
+                              <span className="text-red-400">🚩</span>
+                            )}
+                            {sub.judgeFeedback?.reviewedAt && !sub.judgeFeedback?.flagged && (
+                              <span className="px-2 py-0.5 text-xs bg-green-500/20 text-green-400 rounded font-medium">
+                                ✓ {sub.judgeFeedback?.totalJudgeScore}%
+                              </span>
+                            )}
                             </div>
-                          )}
-                          {team.technicalApproach && (
-                            <div>
-                              <h4 className="text-xs font-semibold text-green-400 mb-1">Technical Approach</h4>
-                              <p className="text-gray-300 text-xs line-clamp-3 whitespace-pre-wrap">{team.technicalApproach}</p>
                             </div>
-                          )}
-                          {team.challengesOvercome && (
-                            <div>
-                              <h4 className="text-xs font-semibold text-orange-400 mb-1">Challenges Overcome</h4>
-                              <p className="text-gray-300 text-xs line-clamp-3 whitespace-pre-wrap">{team.challengesOvercome}</p>
-                            </div>
+                        {/* Suspicious patterns preview */}
+                        {sub.proctoringStats?.suspiciousPatterns && sub.proctoringStats.suspiciousPatterns.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {sub.proctoringStats.suspiciousPatterns.slice(0, 3).map((p, i) => (
+                              <span key={i} className="px-2 py-0.5 text-xs bg-yellow-500/10 text-yellow-400/80 rounded">
+                                ⚠️ {p}
+                              </span>
+                            ))}
+                            {sub.proctoringStats.suspiciousPatterns.length > 3 && (
+                              <span className="px-2 py-0.5 text-xs text-gray-500">
+                                +{sub.proctoringStats.suspiciousPatterns.length - 3} more
+                              </span>
                           )}
                         </div>
-                      )}
-
-                      <div className="flex gap-2 mb-4 flex-wrap">
-                        {team.repoUrl && (
-                          <a
-                            href={team.repoUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition-all"
-                          >
-                            📁 Repository
-                          </a>
-                        )}
-                        {team.demoUrl && (
-                          <a
-                            href={team.demoUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition-all"
-                          >
-                            🌐 Demo
-                          </a>
-                        )}
-                        {team.videoUrl && (
-                          <a
-                            href={team.videoUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition-all"
-                          >
-                            🎥 Video
-                          </a>
                         )}
                       </div>
-
-                      {hasScored && score && (
-                        <div className="mb-4 p-3 bg-dark-800 rounded">
-                          <p className="text-sm text-gray-400 mb-2">Your Score:</p>
-                          <div className="grid grid-cols-3 gap-2 text-xs">
-                            <div>Impact: {score.scores.impact}/10</div>
-                            <div>Technical: {score.scores.technicalDepth}/10</div>
-                            <div>Execution: {score.scores.execution}/10</div>
-                            <div>UX: {score.scores.ux}/10</div>
-                            <div>Innovation: {score.scores.innovation}/10</div>
-                            <div className="font-bold text-neon-purple">
-                              Total: {score.totalScore}/50
+                    ))}
                             </div>
                           </div>
                         </div>
-                      )}
-
-                      <button
-                        onClick={() => handleScoreTeam(team)}
-                        className={`w-full py-2 rounded-lg font-medium transition-all ${
-                          hasScored
-                            ? 'bg-neon-blue/20 text-neon-blue hover:bg-neon-blue/30'
-                            : 'bg-neon-purple hover:bg-neon-purple/80 text-white'
-                        }`}
-                      >
-                        {hasScored ? 'Update Score' : 'Score Project'}
-                      </button>
-                    </div>
-                  );
-                })}
+            ))}
               </div>
             )}
-
-            {/* Assessment Grading Link */}
-            <div className="mt-8 glass rounded-xl p-6 border border-neon-blue/30">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold mb-1">Assessment Grading</h3>
-                  <p className="text-sm text-gray-400">Review and grade student assessment submissions</p>
                 </div>
-                <Link
-                  href="/judge/grading"
-                  className="px-6 py-3 bg-neon-blue hover:bg-neon-blue/80 text-white rounded-lg font-medium transition-all"
-                >
-                  Grade Assessments →
-                </Link>
-              </div>
-            </div>
-          </>
-        )}
 
-        {activeTab === 'docs' && (
-          <>
-            {/* Documentation Header */}
-            <div className="glass rounded-xl p-6 border border-neon-blue/30 bg-neon-blue/5 mb-8">
-              <div className="flex items-start justify-between">
+      {/* Review Modal */}
+      {selectedSubmission && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-800 rounded-xl border border-gray-700 w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="p-4 border-b border-gray-700 flex items-center justify-between bg-dark-900">
+              <div className="flex items-center gap-4">
+                <div className={`px-3 py-1 rounded border ${getDifficultyColor(selectedSubmission.problem?.difficulty)}`}>
+                  {selectedSubmission.problem?.difficulty}
+                </div>
                 <div>
-                  <h2 className="text-xl font-bold mb-2">Judge Documentation</h2>
+                  <h2 className="text-xl font-bold text-white">{selectedSubmission.problem?.title}</h2>
                   <p className="text-gray-400 text-sm">
-                    Review rubrics, FAQs, and guidelines before scoring projects.
+                    {selectedSubmission.submittedBy?.firstName} {selectedSubmission.submittedBy?.lastName} • 
+                    {selectedSubmission.passedTests}/{selectedSubmission.totalTests} tests passed •
+                    {selectedSubmission.pointsEarned}/{selectedSubmission.maxPoints} points
                   </p>
                 </div>
               </div>
+                                        <button
+                onClick={() => setSelectedSubmission(null)}
+                className="text-gray-400 hover:text-white text-2xl px-2"
+                                        >
+                ×
+                                        </button>
             </div>
 
-            {documentation.length === 0 ? (
-              <div className="glass rounded-xl p-12 text-center border border-gray-700">
-                <div className="text-5xl mb-4">📄</div>
-                <h3 className="text-xl font-bold mb-2">No Documentation Available</h3>
-                <p className="text-gray-400">
-                  Documentation will appear here once an admin creates rubrics or guides.
-                </p>
+            {/* Modal Body */}
+            <div className="flex-1 overflow-auto grid grid-cols-5 gap-0">
+              {/* Left: Code (3 cols) */}
+              <div className="col-span-3 border-r border-gray-700 flex flex-col">
+                <div className="p-3 bg-dark-900 border-b border-gray-700 text-sm font-medium text-gray-400">
+                  💻 Submitted Code ({selectedSubmission.language})
               </div>
-            ) : (
-              <div className="space-y-6">
-                {/* Rubrics Section */}
-                {documentation.filter((d) => d.type === 'rubric').length > 0 && (
-                  <div>
-                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                      <span className="text-2xl">📊</span> Scoring Rubrics
-                    </h2>
-                    <div className="space-y-4">
-                      {documentation
-                        .filter((d) => d.type === 'rubric')
-                        .map((doc) => (
-                          <div
-                            key={doc._id}
-                            className="glass rounded-xl p-6 border border-neon-purple/30"
-                          >
-                            <div className="flex items-center justify-between mb-4">
-                              <h3 className="text-lg font-bold">{doc.title}</h3>
-                              {doc.totalPoints && (
-                                <span className="px-3 py-1 bg-neon-purple/20 text-neon-purple rounded-full text-sm font-medium">
-                                  {doc.totalPoints} points total
-                                </span>
-                              )}
+                <div className="flex-1">
+                  <Editor
+                    height="400px"
+                    language={selectedSubmission.language || 'python'}
+                    value={selectedSubmission.code}
+                    theme="vs-dark"
+                    options={{
+                      readOnly: true,
+                      minimap: { enabled: false },
+                      fontSize: 13,
+                      scrollBeyondLastLine: false,
+                      padding: { top: 10 },
+                    }}
+                  />
                             </div>
-                            {doc.rubricCriteria && doc.rubricCriteria.length > 0 && (
-                              <div className="space-y-4">
-                                {doc.rubricCriteria.map((criterion, index) => (
-                                  <div
-                                    key={index}
-                                    className="bg-dark-700 rounded-lg p-4 border border-gray-600"
-                                  >
-                                    <div className="flex items-center justify-between mb-2">
-                                      <h4 className="font-semibold text-neon-blue">{criterion.name}</h4>
-                                      <span className="text-sm text-gray-400">
-                                        {criterion.maxPoints} pts
-                                      </span>
-                                    </div>
-                                    <p className="text-sm text-gray-300 mb-3">{criterion.description}</p>
-                                    {criterion.scoringGuide && criterion.scoringGuide.length > 0 && (
-                                      <div className="border-t border-gray-600 pt-3">
-                                        <p className="text-xs text-gray-400 mb-2">Scoring Guide:</p>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                          {criterion.scoringGuide
-                                            .sort((a, b) => b.points - a.points)
-                                            .map((level, levelIndex) => (
-                                              <div
-                                                key={levelIndex}
-                                                className="flex items-start gap-2 text-xs"
-                                              >
-                                                <span className="px-2 py-0.5 bg-dark-600 rounded font-medium min-w-[40px] text-center">
-                                                  {level.points}
-                                                </span>
-                                                <span className="text-gray-300">{level.description}</span>
-                                              </div>
-                                            ))}
+                {selectedSubmission.explanation && (
+                  <div className="p-3 border-t border-gray-700">
+                    <div className="text-sm font-medium text-gray-400 mb-2">📝 Explanation</div>
+                    <div className="p-3 bg-dark-900 rounded-lg text-gray-300 text-sm max-h-24 overflow-auto">
+                      {selectedSubmission.explanation}
                                         </div>
                                       </div>
                                     )}
                                   </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
 
-                {/* FAQs Section */}
-                {documentation.filter((d) => d.type === 'faq').length > 0 && (
-                  <div>
-                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                      <span className="text-2xl">❓</span> Frequently Asked Questions
-                    </h2>
-                    <div className="space-y-4">
-                      {documentation
-                        .filter((d) => d.type === 'faq')
-                        .map((doc) => (
-                          <div
-                            key={doc._id}
-                            className="glass rounded-xl p-6 border border-neon-green/30"
-                          >
-                            <h3 className="text-lg font-bold mb-4">{doc.title}</h3>
-                            {doc.faqs && doc.faqs.length > 0 && (
-                              <div className="space-y-2">
-                                {doc.faqs
-                                  .sort((a, b) => a.order - b.order)
-                                  .map((faq, index) => {
-                                    const isExpanded = expandedFaqs.has(`${doc._id}-${index}`);
-                                    return (
-                                      <div
-                                        key={index}
-                                        className="bg-dark-700 rounded-lg border border-gray-600 overflow-hidden"
-                                      >
-                                        <button
-                                          onClick={() => toggleFaq(doc._id, index)}
-                                          className="w-full p-4 text-left flex items-center justify-between hover:bg-dark-600 transition-all"
-                                        >
-                                          <span className="font-medium">{faq.question}</span>
-                                          <span className="text-xl">{isExpanded ? '−' : '+'}</span>
-                                        </button>
-                                        {isExpanded && (
-                                          <div className="px-4 pb-4 text-gray-300 text-sm whitespace-pre-wrap border-t border-gray-600 pt-3">
-                                            {faq.answer}
+              {/* Right: Proctoring & Feedback (2 cols) */}
+              <div className="col-span-2 flex flex-col overflow-auto">
+                {/* Proctoring Stats */}
+                <div className="p-4 border-b border-gray-700">
+                  <h3 className="text-sm font-bold text-gray-400 mb-3 flex items-center gap-2">
+                    🔍 Proctoring Analysis
+                    <span className={`px-2 py-0.5 rounded text-xs ${getRiskBg(selectedSubmission.proctoringStats?.riskScore || 0)} ${getRiskColor(selectedSubmission.proctoringStats?.riskScore || 0)}`}>
+                      {selectedSubmission.proctoringStats?.riskScore || 0}% Risk
+                    </span>
+                  </h3>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-dark-900 rounded-lg p-3 text-center">
+                      <div className="text-lg font-bold text-white">
+                        {(selectedSubmission.proctoringStats?.copyCount || 0) + (selectedSubmission.proctoringStats?.pasteCount || 0)}
                                           </div>
-                                        )}
+                      <div className="text-xs text-gray-500">Copy/Paste</div>
                                       </div>
-                                    );
-                                  })}
+                    <div className={`bg-dark-900 rounded-lg p-3 text-center ${(selectedSubmission.proctoringStats?.externalPasteCount || 0) > 0 ? 'ring-1 ring-red-500/50' : ''}`}>
+                      <div className={`text-lg font-bold ${(selectedSubmission.proctoringStats?.externalPasteCount || 0) > 0 ? 'text-red-400' : 'text-white'}`}>
+                        {selectedSubmission.proctoringStats?.externalPasteCount || 0}
                               </div>
-                            )}
+                      <div className="text-xs text-gray-500">External Paste</div>
                           </div>
-                        ))}
+                    <div className={`bg-dark-900 rounded-lg p-3 text-center ${(selectedSubmission.proctoringStats?.tabSwitchCount || 0) > 10 ? 'ring-1 ring-yellow-500/50' : ''}`}>
+                      <div className={`text-lg font-bold ${(selectedSubmission.proctoringStats?.tabSwitchCount || 0) > 10 ? 'text-yellow-400' : 'text-white'}`}>
+                        {selectedSubmission.proctoringStats?.tabSwitchCount || 0}
                     </div>
+                      <div className="text-xs text-gray-500">Tab Switches</div>
                   </div>
-                )}
-
-                {/* Guides Section */}
-                {documentation.filter((d) => d.type === 'guide').length > 0 && (
-                  <div>
-                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                      <span className="text-2xl">📖</span> Judging Guides
-                    </h2>
-                    <div className="space-y-4">
-                      {documentation
-                        .filter((d) => d.type === 'guide')
-                        .map((doc) => (
-                          <div
-                            key={doc._id}
-                            className="glass rounded-xl p-6 border border-neon-pink/30"
-                          >
-                            <h3 className="text-lg font-bold mb-4">{doc.title}</h3>
-                            {doc.content && (
-                              <div className="prose prose-invert prose-sm max-w-none">
-                                <div className="whitespace-pre-wrap text-gray-300">{doc.content}</div>
+                    <div className="bg-dark-900 rounded-lg p-3 text-center">
+                      <div className="text-lg font-bold text-white">
+                        {selectedSubmission.proctoringStats?.windowBlurCount || 0}
                               </div>
-                            )}
+                      <div className="text-xs text-gray-500">Window Blur</div>
                           </div>
-                        ))}
+                    <div className="bg-dark-900 rounded-lg p-3 text-center col-span-2">
+                      <div className="text-lg font-bold text-white">
+                        {selectedSubmission.proctoringStats?.largestPaste || 0} chars
                     </div>
+                      <div className="text-xs text-gray-500">Largest Paste</div>
                   </div>
-                )}
-
-                {/* General Documentation */}
-                {documentation.filter((d) => d.type === 'general').length > 0 && (
-                  <div>
-                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                      <span className="text-2xl">📝</span> General Information
-                    </h2>
-                    <div className="space-y-4">
-                      {documentation
-                        .filter((d) => d.type === 'general')
-                        .map((doc) => (
-                          <div
-                            key={doc._id}
-                            className="glass rounded-xl p-6 border border-gray-600"
-                          >
-                            <h3 className="text-lg font-bold mb-4">{doc.title}</h3>
-                            {doc.content && (
-                              <div className="prose prose-invert prose-sm max-w-none">
-                                <div className="whitespace-pre-wrap text-gray-300">{doc.content}</div>
                               </div>
-                            )}
-                          </div>
+
+                  {selectedSubmission.proctoringStats?.suspiciousPatterns && 
+                   selectedSubmission.proctoringStats.suspiciousPatterns.length > 0 && (
+                    <div className="mt-3 p-3 bg-red-500/10 rounded-lg border border-red-500/30">
+                      <div className="text-xs text-red-400 font-medium mb-2">⚠️ Suspicious Patterns Detected:</div>
+                      <div className="flex flex-wrap gap-1">
+                        {selectedSubmission.proctoringStats.suspiciousPatterns.map((p, i) => (
+                          <span key={i} className="px-2 py-1 text-xs bg-red-500/20 text-red-300 rounded">
+                            {p}
+                          </span>
                         ))}
                     </div>
                   </div>
                 )}
               </div>
-            )}
-          </>
-        )}
 
-        {activeTab === 'monitoring' && (
-          <>
-            {/* Monitoring Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="glass rounded-2xl p-6 border-2 border-neon-blue/20">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-gray-400 text-sm font-medium">Active Sessions</h3>
-                  <span className="text-2xl">🔴</span>
+                {/* Judge Feedback Form with Rubric */}
+                <div className="p-4 flex-1 overflow-auto">
+                  {/* Total Score Display */}
+                  <div className="mb-4 p-4 bg-gradient-to-r from-neon-purple/20 to-neon-blue/20 rounded-xl border border-neon-purple/30">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm text-gray-400">Total Judge Score</div>
+                        <div className="text-3xl font-bold text-white">
+                          {calculateTotalScore(feedbackForm.rubricScores)}%
                 </div>
-                <p className="text-4xl font-bold text-neon-blue">{sessionStats.activeSessions}</p>
               </div>
-              <div className="glass rounded-2xl p-6 border-2 border-neon-green/20">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-gray-400 text-sm font-medium">Active Teams</h3>
-                  <span className="text-2xl">👥</span>
+                      <div className="text-right">
+                        <div className="text-sm text-gray-400">Problem Worth</div>
+                        <div className="text-2xl font-bold text-neon-green">
+                          {selectedSubmission?.maxPoints || 0} pts
                 </div>
-                <p className="text-4xl font-bold text-neon-green">{sessionStats.activeTeams}</p>
               </div>
-              <div className="glass rounded-2xl p-6 border-2 border-red-500/20">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-gray-400 text-sm font-medium">Violations</h3>
-                  <span className="text-2xl">⚠️</span>
                 </div>
-                <p className="text-4xl font-bold text-red-400">{sessionStats.totalViolations}</p>
+                    <div className="mt-2 text-xs text-gray-500">
+                      Points Earned: {Math.round((calculateTotalScore(feedbackForm.rubricScores) / 100) * (selectedSubmission?.maxPoints || 0))} / {selectedSubmission?.maxPoints || 0}
               </div>
             </div>
 
-            {/* Monitoring Actions */}
-            <h2 className="text-2xl font-bold mb-6">Monitoring Tools</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Link href="/proctor/monitor" className="glass rounded-2xl p-8 border-2 border-neon-green/30 hover:border-neon-green transition-all group">
-                <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">👁️</div>
-                <h3 className="text-2xl font-bold mb-2 text-neon-green">Live Session Monitor</h3>
-                <p className="text-gray-400 mb-4">
-                  Watch active hackathon sessions in real-time. Monitor team progress, view code submissions, and track violations.
-                </p>
-                <ul className="text-sm text-gray-400 space-y-1 mb-4">
-                  <li>• Real-time session tracking</li>
-                  <li>• Violation alerts</li>
-                  <li>• Team progress monitoring</li>
-                  <li>• Session controls</li>
-                </ul>
-                <div className="inline-flex items-center gap-2 text-neon-green font-medium">
-                  Open Monitor <span>→</span>
-                </div>
-              </Link>
-
-              <Link href="/proctor/assessments" className="glass rounded-2xl p-8 border-2 border-neon-blue/30 hover:border-neon-blue transition-all group">
-                <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">📹</div>
-                <h3 className="text-2xl font-bold mb-2 text-neon-blue">Assessment Proctoring</h3>
-                <p className="text-gray-400 mb-4">
-                  Monitor student assessment attempts. View webcam feeds, track suspicious activity, and ensure exam integrity.
-                </p>
-                <ul className="text-sm text-gray-400 space-y-1 mb-4">
-                  <li>• Tab switch detection</li>
-                  <li>• Copy/paste monitoring</li>
-                  <li>• Webcam verification</li>
-                  <li>• Force submit controls</li>
-                </ul>
-                <div className="inline-flex items-center gap-2 text-neon-blue font-medium">
-                  Open Proctoring <span>→</span>
-                </div>
-              </Link>
-
-              <Link href="/hackathon/sessions" className="glass rounded-2xl p-8 border-2 border-neon-purple/30 hover:border-neon-purple transition-all group">
-                <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">🏆</div>
-                <h3 className="text-2xl font-bold mb-2 text-neon-purple">Session Leaderboards</h3>
-                <p className="text-gray-400 mb-4">
-                  View real-time leaderboards for active sessions. See which teams are leading and track problem completion rates.
-                </p>
-                <ul className="text-sm text-gray-400 space-y-1 mb-4">
-                  <li>• Live rankings</li>
-                  <li>• Score tracking</li>
-                  <li>• Problem completion stats</li>
-                </ul>
-                <div className="inline-flex items-center gap-2 text-neon-purple font-medium">
-                  View Leaderboards <span>→</span>
-                </div>
-              </Link>
-
-              <Link href="/hackathon/teams" className="glass rounded-2xl p-8 border-2 border-neon-pink/30 hover:border-neon-pink transition-all group">
-                <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">👥</div>
-                <h3 className="text-2xl font-bold mb-2 text-neon-pink">Browse Teams</h3>
-                <p className="text-gray-400 mb-4">
-                  View all registered teams, their members, and project submissions. Check team status and activity.
-                </p>
-                <ul className="text-sm text-gray-400 space-y-1 mb-4">
-                  <li>• Team rosters</li>
-                  <li>• Project submissions</li>
-                  <li>• Activity history</li>
-                </ul>
-                <div className="inline-flex items-center gap-2 text-neon-pink font-medium">
-                  View Teams <span>→</span>
-                </div>
-              </Link>
-            </div>
-          </>
-        )}
-      </main>
-
-      {/* Scoring Modal */}
-      {selectedTeam && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="glass rounded-2xl p-8 max-w-2xl w-full border border-gray-700 my-8">
-            <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-sm font-bold text-gray-400 mb-3">📋 Scoring Rubric</h3>
+                  
+                  {/* Rubric Criteria */}
+                  <div className="space-y-4">
+                    {RUBRIC_CRITERIA.map((criterion) => (
+                      <div key={criterion.id} className="bg-dark-900 rounded-lg p-3 border border-gray-700">
+                        <div className="flex items-center justify-between mb-2">
               <div>
-                <h2 className="text-2xl font-bold text-gradient">Score: {selectedTeam.name}</h2>
-                {selectedTeam.projectTitle && (
-                  <p className="text-gray-400 mt-1">{selectedTeam.projectTitle}</p>
-                )}
+                            <span className="font-medium text-white">{criterion.name}</span>
+                            <span className="ml-2 text-xs text-neon-purple">({criterion.weight}%)</span>
               </div>
-              <button
-                onClick={() => setSelectedTeam(null)}
-                className="text-gray-400 hover:text-white text-2xl"
-              >
-                ×
-              </button>
+                          <span className={`text-lg font-bold ${
+                            feedbackForm.rubricScores[criterion.id as keyof typeof feedbackForm.rubricScores] >= 75 ? 'text-green-400' :
+                            feedbackForm.rubricScores[criterion.id as keyof typeof feedbackForm.rubricScores] >= 50 ? 'text-yellow-400' :
+                            feedbackForm.rubricScores[criterion.id as keyof typeof feedbackForm.rubricScores] >= 25 ? 'text-orange-400' :
+                            'text-red-400'
+                          }`}>
+                            {feedbackForm.rubricScores[criterion.id as keyof typeof feedbackForm.rubricScores]}%
+                          </span>
             </div>
-
-            {/* Scoring Guidelines */}
-            <div className="mb-6 p-4 bg-neon-blue/10 rounded-lg border border-neon-blue/30">
-              <h3 className="font-semibold mb-2 text-neon-blue">Scoring Guidelines:</h3>
-              <ul className="text-sm text-gray-300 space-y-1">
-                <li><strong>Impact & Usefulness (0-10):</strong> Addresses a real problem; practical value</li>
-                <li><strong>Technical Depth (0-10):</strong> Code quality; architecture; complexity handled</li>
-                <li><strong>Execution Quality (0-10):</strong> Polish; completeness; bug-free experience</li>
-                <li><strong>User Experience (0-10):</strong> Intuitive; accessible; pleasant to use</li>
-                <li><strong>Innovation (0-10):</strong> Novel approach; creativity; unique solution</li>
-              </ul>
-            </div>
-
-            {/* Scoring Sliders */}
-            <div className="space-y-6 mb-6">
-              {Object.entries({
-                impact: 'Impact & Usefulness',
-                technicalDepth: 'Technical Depth',
-                execution: 'Execution Quality',
-                ux: 'User Experience',
-                innovation: 'Innovation',
-              }).map(([key, label]) => (
-                <div key={key}>
-                  <label className="block text-sm font-medium mb-2">{label}</label>
-                  <div className="flex items-center gap-4">
+                        <p className="text-xs text-gray-500 mb-2">{criterion.description}</p>
                     <input
                       type="range"
                       min="0"
-                      max="10"
-                      step="0.5"
-                      value={scores[key as keyof typeof scores]}
-                      onChange={(e) =>
-                        setScores({ ...scores, [key]: parseFloat(e.target.value) })
-                      }
-                      className="flex-1 h-2 bg-dark-600 rounded-lg appearance-none cursor-pointer accent-neon-purple"
-                    />
-                    <span className="text-xl font-bold text-neon-purple w-16 text-right">
-                      {scores[key as keyof typeof scores]}/10
+                          max="100"
+                          step="25"
+                          value={feedbackForm.rubricScores[criterion.id as keyof typeof feedbackForm.rubricScores]}
+                          onChange={(e) => setFeedbackForm(prev => ({
+                            ...prev,
+                            rubricScores: {
+                              ...prev.rubricScores,
+                              [criterion.id]: parseInt(e.target.value),
+                            },
+                          }))}
+                          className="w-full h-2 bg-dark-700 rounded-lg appearance-none cursor-pointer"
+                        />
+                        <div className="flex justify-between text-xs text-gray-600 mt-1">
+                          {criterion.guide.map((g) => (
+                            <span 
+                              key={g.score} 
+                              className={`cursor-pointer hover:text-gray-400 ${
+                                feedbackForm.rubricScores[criterion.id as keyof typeof feedbackForm.rubricScores] === g.score ? 'text-neon-purple font-medium' : ''
+                              }`}
+                              onClick={() => setFeedbackForm(prev => ({
+                                ...prev,
+                                rubricScores: {
+                                  ...prev.rubricScores,
+                                  [criterion.id]: g.score,
+                                },
+                              }))}
+                              title={g.label}
+                            >
+                              {g.score}
                     </span>
+                          ))}
                   </div>
                 </div>
               ))}
-
-              <div className="pt-4 border-t border-gray-700">
-                <p className="text-lg font-bold">
-                  Total Score:{' '}
-                  <span className="text-neon-purple text-2xl">
-                    {Object.values(scores).reduce((sum, val) => sum + val, 0)}/50
-                  </span>
-                </p>
-              </div>
             </div>
 
-            {/* Notes */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium mb-2">Notes (Optional)</label>
+                  {/* Feedback Notes */}
+                  <div className="mt-4">
+                    <label className="text-sm text-gray-400 block mb-2">
+                      💬 Additional Feedback
+                    </label>
               <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={4}
-                className="w-full bg-dark-700 border border-gray-600 rounded-lg p-3 text-white placeholder-gray-500 focus:border-neon-purple focus:outline-none"
-                placeholder="Add any feedback or notes about this project..."
+                      value={feedbackForm.feedback}
+                      onChange={(e) => setFeedbackForm(prev => ({
+                        ...prev,
+                        feedback: e.target.value,
+                      }))}
+                      rows={2}
+                      placeholder="Optional comments on approach, suggestions for improvement..."
+                      className="w-full px-3 py-2 bg-dark-900 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-neon-purple"
               />
             </div>
 
-            {/* Conflict of Interest */}
-            <div className="mb-6">
+                  {/* Flag for Cheating */}
+                  <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={conflictOfInterest}
-                  onChange={(e) => setConflictOfInterest(e.target.checked)}
-                  className="w-4 h-4 accent-neon-purple"
-                />
-                <span className="text-sm">I have a conflict of interest with this team</span>
+                        checked={feedbackForm.flagged}
+                        onChange={(e) => setFeedbackForm(prev => ({
+                          ...prev,
+                          flagged: e.target.checked,
+                        }))}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-red-400 text-sm font-medium">🚩 Flag for Academic Dishonesty</span>
               </label>
+                    {feedbackForm.flagged && (
+                      <input
+                        type="text"
+                        value={feedbackForm.flagReason}
+                        onChange={(e) => setFeedbackForm(prev => ({
+                          ...prev,
+                          flagReason: e.target.value,
+                        }))}
+                        placeholder="Reason for flagging..."
+                        className="w-full mt-2 px-3 py-2 bg-dark-900 border border-red-500/30 rounded-lg text-white text-sm focus:outline-none focus:border-red-500"
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex gap-4">
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-gray-700 bg-dark-900 flex justify-between items-center">
+              <div className="text-sm text-gray-500">
+                {selectedSubmission.judgeFeedback?.reviewedAt && (
+                  <span>Last reviewed: {new Date(selectedSubmission.judgeFeedback.reviewedAt).toLocaleString()}</span>
+                )}
+              </div>
+              <div className="flex gap-3">
               <button
-                onClick={() => setSelectedTeam(null)}
-                className="flex-1 py-3 bg-dark-700 hover:bg-dark-600 border border-gray-600 rounded-lg font-medium transition-all"
+                  onClick={() => setSelectedSubmission(null)}
+                  className="px-4 py-2 bg-dark-700 hover:bg-dark-600 border border-gray-600 rounded-lg transition-colors"
               >
                 Cancel
               </button>
               <button
-                onClick={handleSubmitScore}
-                disabled={scoring || conflictOfInterest}
-                className="flex-1 py-3 bg-neon-purple hover:bg-neon-purple/80 rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {scoring ? 'Submitting...' : 'Submit Score'}
+                  onClick={handleSubmitFeedback}
+                  disabled={submittingFeedback}
+                  className="px-6 py-2 bg-gradient-to-r from-neon-purple to-neon-blue hover:opacity-90 text-white font-medium rounded-lg transition-all disabled:opacity-50"
+                >
+                  {submittingFeedback ? 'Saving...' : 'Save Review'}
               </button>
+              </div>
             </div>
           </div>
         </div>

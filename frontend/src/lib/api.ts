@@ -566,6 +566,28 @@ export const teamSubmissionsAPI = {
     const response = await api.get(`/team-submissions/leaderboard/${sessionId}`);
     return response.data;
   },
+  
+  // Get all submissions for a session (judges/admins)
+  getAllSessionSubmissions: async (sessionId: string) => {
+    const response = await api.get(`/team-submissions/session/${sessionId}/all`);
+    return response.data;
+  },
+  
+  // Add judge feedback to a submission with rubric scoring
+  addJudgeFeedback: async (submissionId: string, feedback: {
+    rubricScores?: {
+      correctness: number; // 0-100
+      codeQuality: number; // 0-100
+      efficiency: number; // 0-100
+      explanation: number; // 0-100
+    };
+    feedback?: string;
+    flagged?: boolean;
+    flagReason?: string;
+  }) => {
+    const response = await api.post(`/team-submissions/${submissionId}/feedback`, feedback);
+    return response.data;
+  },
 };
 
 // Hackathon Sessions API

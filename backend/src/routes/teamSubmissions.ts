@@ -6,6 +6,8 @@ import {
   runTests,
   submitSolution,
   getSessionLeaderboard,
+  getAllSessionSubmissions,
+  addJudgeFeedback,
 } from '../controllers/teamSubmissionController';
 import { authenticate } from '../middleware/auth';
 
@@ -13,6 +15,18 @@ const router = Router();
 
 // All routes require authentication
 router.use(authenticate);
+
+/**
+ * GET /api/team-submissions/session/:sessionId/all
+ * Get all submissions for a session (judges/admins only)
+ */
+router.get('/session/:sessionId/all', getAllSessionSubmissions);
+
+/**
+ * POST /api/team-submissions/:submissionId/feedback
+ * Add judge feedback to a submission
+ */
+router.post('/:submissionId/feedback', addJudgeFeedback);
 
 /**
  * GET /api/team-submissions/:teamId/:sessionId

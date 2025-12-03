@@ -207,6 +207,22 @@ const TeamSubmissionSchema = new Schema<ITeamSubmission>(
     startedAt: {
       type: Date,
     },
+    // Judge feedback with rubric-based scoring
+    judgeFeedback: {
+      judgeId: { type: Schema.Types.ObjectId, ref: 'User' },
+      // Rubric scores (each 0-100% of allocated points for that criterion)
+      rubricScores: {
+        correctness: { type: Number, min: 0, max: 100, default: 0 }, // Does code produce correct output? (40% weight)
+        codeQuality: { type: Number, min: 0, max: 100, default: 0 }, // Clean, readable, well-organized? (20% weight)
+        efficiency: { type: Number, min: 0, max: 100, default: 0 }, // Time/space complexity appropriate? (20% weight)
+        explanation: { type: Number, min: 0, max: 100, default: 0 }, // Clear explanation of approach? (20% weight)
+      },
+      totalJudgeScore: { type: Number, default: 0 }, // Calculated total based on rubric
+      feedback: { type: String }, // Written feedback from judge
+      flagged: { type: Boolean, default: false }, // Flag for suspicious activity
+      flagReason: { type: String }, // Reason for flagging
+      reviewedAt: { type: Date },
+    },
   },
   {
     timestamps: true,
