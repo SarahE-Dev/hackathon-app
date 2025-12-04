@@ -166,10 +166,16 @@ function NewQuestionContent() {
               <p className="text-gray-400 mt-1">Build assessment questions with markdown support</p>
             </div>
             <Link
+              href="/admin"
+              className="px-4 py-2 bg-dark-700 hover:bg-dark-600 border border-gray-600 rounded-lg transition-colors"
+            >
+              ← Dashboard
+            </Link>
+            <Link
               href="/admin/questions"
               className="px-4 py-2 bg-dark-700 hover:bg-dark-600 border border-gray-600 rounded-lg transition-colors"
             >
-              Back to Questions
+              View Questions
             </Link>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
+import { injectOrganization } from '../middleware/organization';
 import {
   createTeam,
   getAllTeams,
@@ -15,6 +16,9 @@ const router = Router();
 
 // All endpoints require authentication
 router.use(authenticate);
+
+// Inject organization for all team routes
+router.use(injectOrganization);
 
 // Get all teams
 router.get('/', getAllTeams);

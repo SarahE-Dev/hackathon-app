@@ -103,8 +103,11 @@ export default function LeaderboardPage() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <Link href="/dashboard" className="text-gray-400 hover:text-white text-sm mb-4 inline-block">
-            ← Back to Dashboard
+          <Link 
+            href={user?.roles?.some(r => r.role === 'judge') ? '/judge' : '/dashboard'} 
+            className="text-gray-400 hover:text-white text-sm mb-4 inline-block"
+          >
+            ← Back to {user?.roles?.some(r => r.role === 'judge') ? 'Judge Dashboard' : 'Dashboard'}
           </Link>
           <h1 className="text-3xl font-bold text-white mb-2">🏆 Hackathon Leaderboard</h1>
           <p className="text-gray-400">Rankings based on judge-reviewed submissions</p>

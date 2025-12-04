@@ -15,10 +15,16 @@ export const createTeam = async (
   next: NextFunction
 ) => {
   try {
-    const { organizationId, name, projectTitle, description, memberIds } = req.body;
+    const { name, projectTitle, description, memberIds } = req.body;
+    // Use organizationId from body, or from middleware (injected)
+    const organizationId = req.body.organizationId || req.organizationId;
 
-    if (!organizationId || !name || !projectTitle || !description) {
-      throw new ApiError(400, 'organizationId, name, projectTitle, and description are required');
+    if (!name) {
+      throw new ApiError(400, 'Team name is required');
+    }
+    
+    if (!organizationId) {
+      throw new ApiError(400, 'Organization ID is required');
     }
 
     // Validate that all member IDs exist
@@ -32,8 +38,8 @@ export const createTeam = async (
     const team = new Team({
       organizationId,
       name,
-      projectTitle,
-      description,
+      projectTitle: projectTitle || name, // Default to team name if not provided
+      description: description || `Hackathon team: ${name}`, // Default description
       memberIds: memberIds || [],
     });
 

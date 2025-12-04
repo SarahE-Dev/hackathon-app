@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { RoleGuard } from '@/components/guards/RoleGuard';
 import { usersAPI } from '@/lib/api';
@@ -20,6 +21,7 @@ interface User {
 }
 
 function UsersManagementContent() {
+  const searchParams = useSearchParams();
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +30,15 @@ function UsersManagementContent() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showRoleModal, setShowRoleModal] = useState(false);
 
-  const roleOptions = ['admin', 'judge', 'proctor', 'grader', 'fellow'];
+  const roleOptions = ['admin', 'judge', 'fellow'];
+
+  // Read filter from URL on mount
+  useEffect(() => {
+    const filterParam = searchParams.get('filter');
+    if (filterParam && roleOptions.includes(filterParam)) {
+      setRoleFilter(filterParam);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     loadUsers();
@@ -41,7 +51,8 @@ function UsersManagementContent() {
   const loadUsers = async () => {
     try {
       const response = await usersAPI.getAllUsers();
-      const userData = Array.isArray(response) ? response : [];
+      // Handle different response formats: { data: { users } } or { users } or array
+      const userData = response?.data?.users || response?.users || (Array.isArray(response) ? response : []);
       setUsers(userData);
       setFilteredUsers(userData);
     } catch (error) {
@@ -140,8 +151,14 @@ function UsersManagementContent() {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gradient">User Management</h1>
-              <p className="text-gray-400 mt-1">Manage users and their roles</p>
+              <h1 className="text-3xl font-bold text-gradient">
+                {roleFilter !== 'all' ? `${roleFilter.charAt(0).toUpperCase() + roleFilter.slice(1)}s` : 'User Management'}
+              </h1>
+              <p className="text-gray-400 mt-1">
+                {roleFilter !== 'all' 
+                  ? `Viewing ${filteredUsers.length} ${roleFilter}${filteredUsers.length !== 1 ? 's' : ''}`
+                  : 'Manage users and their roles'}
+              </p>
             </div>
             <Link
               href="/admin"

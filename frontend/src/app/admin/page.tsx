@@ -69,6 +69,7 @@ function AdminDashboardContent() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [sessions, setSessions] = useState<HackathonSession[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'create' | 'manage' | 'test'>('overview');
   const [startingTest, setStartingTest] = useState<string | null>(null);
@@ -83,11 +84,11 @@ function AdminDashboardContent() {
 
       // Fetch teams
       const teamsResponse = await teamsAPI.getAllTeams();
-      const teamsData = Array.isArray(teamsResponse) ? teamsResponse : [];
+      const teamsData = teamsResponse?.data?.teams || teamsResponse?.teams || (Array.isArray(teamsResponse) ? teamsResponse : []);
 
       // Fetch users
       const usersResponse = await usersAPI.getAllUsers();
-      const usersData = Array.isArray(usersResponse) ? usersResponse : [];
+      const usersData = usersResponse?.data?.users || usersResponse?.users || (Array.isArray(usersResponse) ? usersResponse : []);
 
       // Fetch assessments
       let assessmentsCount = 0;
@@ -120,7 +121,8 @@ function AdminDashboardContent() {
         u.roles?.some(r => r.role === 'judge' || r.role === 'Judge')
       ).length;
 
-      setTeams(teamsData);
+      setAllUsers(usersData);
+      setTeams(Array.isArray(teamsData) ? teamsData : []);
       setStats({
         totalTeams: teamsData.length,
         totalParticipants,
@@ -259,27 +261,27 @@ function AdminDashboardContent() {
 
             {/* Quick Actions */}
             <h2 className="text-xl font-bold mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              <Link href="/admin/assessments/new" className="glass rounded-xl p-5 border border-neon-blue/30 hover:border-neon-blue transition-all group">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-neon-blue/20 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                    📝
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-white">New Assessment</h3>
-                    <p className="text-xs text-gray-400">Create a coding assessment</p>
-                  </div>
-                </div>
-              </Link>
-
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
               <Link href="/admin/sessions" className="glass rounded-xl p-5 border border-neon-purple/30 hover:border-neon-purple transition-all group">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-lg bg-neon-purple/20 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
                     🎯
                   </div>
                   <div>
-                    <h3 className="font-semibold text-white">New Hackathon</h3>
-                    <p className="text-xs text-gray-400">Start a live coding session</p>
+                    <h3 className="font-semibold text-white">Hackathons</h3>
+                    <p className="text-xs text-gray-400">Manage live sessions</p>
+                  </div>
+                </div>
+              </Link>
+
+              <Link href="/admin/questions" className="glass rounded-xl p-5 border border-yellow-500/30 hover:border-yellow-500 transition-all group">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-lg bg-yellow-500/20 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                    📚
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white">Question Bank</h3>
+                    <p className="text-xs text-gray-400">View all problems</p>
                   </div>
                 </div>
               </Link>
@@ -291,7 +293,7 @@ function AdminDashboardContent() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-white">Add Problem</h3>
-                    <p className="text-xs text-gray-400">Create a new coding problem</p>
+                    <p className="text-xs text-gray-400">Create new problem</p>
                   </div>
                 </div>
               </Link>
@@ -303,7 +305,19 @@ function AdminDashboardContent() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-white">Manage Teams</h3>
-                    <p className="text-xs text-gray-400">Assign fellows to teams</p>
+                    <p className="text-xs text-gray-400">Assign fellows</p>
+                  </div>
+                </div>
+              </Link>
+
+              <Link href="/admin/users" className="glass rounded-xl p-5 border border-neon-blue/30 hover:border-neon-blue transition-all group">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-lg bg-neon-blue/20 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                    👤
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white">Users & Roles</h3>
+                    <p className="text-xs text-gray-400">Manage access</p>
                   </div>
                 </div>
               </Link>
@@ -351,21 +365,42 @@ function AdminDashboardContent() {
                   <span className="text-neon-purple">👥</span> People Management
                 </h3>
                 <div className="space-y-2">
-                  <Link href="/admin/users" className="block p-3 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
+                  <Link href="/admin/users?filter=fellow" className="block p-3 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm">Users & Roles</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">Fellows</span>
+                        <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full">
+                          {allUsers.filter(u => u.roles?.some(r => r.role === 'fellow')).length}
+                        </span>
+                      </div>
+                      <span className="text-neon-purple">→</span>
+                    </div>
+                  </Link>
+                  <Link href="/admin/users?filter=judge" className="block p-3 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">Judges</span>
+                        <span className="text-xs px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded-full">
+                          {stats.totalJudges}
+                        </span>
+                      </div>
                       <span className="text-neon-purple">→</span>
                     </div>
                   </Link>
                   <Link href="/admin/teams" className="block p-3 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm">Teams</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">Teams</span>
+                        <span className="text-xs px-2 py-0.5 bg-pink-500/20 text-pink-400 rounded-full">
+                          {teams.length}
+                        </span>
+                      </div>
                       <span className="text-neon-purple">→</span>
                     </div>
                   </Link>
-                  <Link href="/admin/analytics" className="block p-3 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
+                  <Link href="/admin/users" className="block p-3 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm">Analytics</span>
+                      <span className="text-sm">All Users & Roles</span>
                       <span className="text-neon-purple">→</span>
                     </div>
                   </Link>
@@ -703,10 +738,10 @@ function AdminDashboardContent() {
             {/* Test Hackathon Sessions */}
             <div className="glass rounded-xl p-6 border border-gray-700">
               <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                <span className="text-neon-purple">🎯</span> Test Hackathon Sessions
+                <span className="text-neon-purple">🎯</span> Hackathon Sessions
               </h3>
               <p className="text-sm text-gray-400 mb-4">
-                Join hackathon sessions to verify problems, team setup, and live coding features work correctly.
+                Manage your hackathon sessions. To test the live coding experience, view a team's space below.
               </p>
 
               {sessions.length === 0 ? (
@@ -747,16 +782,16 @@ function AdminDashboardContent() {
                         </div>
                         <div className="flex items-center gap-2">
                           <Link
-                            href={`/admin/sessions`}
+                            href={`/admin/hackathons/${session._id}`}
                             className="px-3 py-2 bg-dark-600 hover:bg-dark-500 text-gray-300 rounded text-sm transition-all"
                           >
-                            Manage
+                            Roster
                           </Link>
                           <Link
-                            href={`/hackathon/session/${session._id}`}
-                            className="px-4 py-2 bg-neon-purple hover:bg-neon-purple/80 text-white rounded text-sm font-medium transition-all"
+                            href={`/admin/sessions`}
+                            className="px-4 py-2 bg-neon-purple/20 hover:bg-neon-purple/30 border border-neon-purple/50 text-neon-purple rounded text-sm font-medium transition-all"
                           >
-                            Join Session
+                            Manage Sessions
                           </Link>
                         </div>
                       </div>
@@ -766,14 +801,17 @@ function AdminDashboardContent() {
               )}
             </div>
 
-            {/* Test Teams */}
+            {/* Test Teams - View Team Space */}
             <div className="glass rounded-xl p-6 border border-gray-700">
               <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                <span className="text-neon-green">👥</span> Test Team Setups
+                <span className="text-neon-green">👥</span> Preview Team Spaces
               </h3>
-              <p className="text-sm text-gray-400 mb-4">
-                Review team configurations to ensure members are assigned correctly.
-              </p>
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 mb-4">
+                <p className="text-sm text-yellow-400">
+                  ⚠️ <strong>Note:</strong> Viewing a team space as admin will join you to that team's chat/presence. 
+                  However, problem access is tracked per-user in localStorage, so your actions won't affect the team's actual progress.
+                </p>
+              </div>
 
               {teams.length === 0 ? (
                 <div className="p-8 text-center text-gray-400 bg-dark-800 rounded-lg">
@@ -799,9 +837,9 @@ function AdminDashboardContent() {
                       <p className="text-xs text-gray-400 mb-3">{team.memberIds?.length || 0} members</p>
                       <Link
                         href={`/hackathon/teams/${team._id}`}
-                        className="text-sm text-neon-green hover:underline"
+                        className="inline-block px-3 py-1.5 bg-neon-green/20 hover:bg-neon-green/30 border border-neon-green/50 text-neon-green rounded text-sm transition-all"
                       >
-                        View Team Details →
+                        Preview Team Space →
                       </Link>
                     </div>
                   ))}

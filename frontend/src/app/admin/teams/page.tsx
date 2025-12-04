@@ -28,6 +28,7 @@ function AdminTeamsContent() {
   const [draggedUser, setDraggedUser] = useState<User | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
+  const [newTeamDescription, setNewTeamDescription] = useState('');
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -48,7 +49,7 @@ function AdminTeamsContent() {
       setTeams(Array.isArray(teamsData) ? teamsData : []);
       
       // Filter to only fellow users
-      const usersData = Array.isArray(usersRes) ? usersRes : [];
+      const usersData = usersRes?.data?.users || usersRes?.users || (Array.isArray(usersRes) ? usersRes : []);
       const fellows = usersData.filter((u: User) => 
         u.roles?.some(r => r.role === 'fellow')
       );
@@ -146,8 +147,13 @@ function AdminTeamsContent() {
     
     setSaving(true);
     try {
-      await teamsAPI.createTeam({ name: newTeamName.trim() });
+      await teamsAPI.createTeam({ 
+        name: newTeamName.trim(),
+        projectTitle: newTeamName.trim(), // Use team name as default project title
+        description: newTeamDescription.trim() || `Hackathon team: ${newTeamName.trim()}`,
+      });
       setNewTeamName('');
+      setNewTeamDescription('');
       setShowCreateModal(false);
       await loadData();
     } catch (error: any) {
@@ -379,8 +385,8 @@ function AdminTeamsContent() {
           <div className="glass rounded-2xl p-8 max-w-md w-full border border-gray-700">
             <h2 className="text-2xl font-bold mb-6">Create New Team</h2>
             
-            <div className="mb-6">
-              <label className="block text-sm font-medium mb-2">Team Name</label>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Team Name *</label>
               <input
                 type="text"
                 value={newTeamName}
@@ -391,11 +397,23 @@ function AdminTeamsContent() {
               />
             </div>
             
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-2">Description (optional)</label>
+              <textarea
+                value={newTeamDescription}
+                onChange={(e) => setNewTeamDescription(e.target.value)}
+                placeholder="Brief description of the team..."
+                rows={2}
+                className="w-full px-4 py-3 bg-dark-700 border border-gray-600 rounded-lg focus:border-neon-blue focus:outline-none resize-none"
+              />
+            </div>
+            
             <div className="flex gap-3">
               <button
                 onClick={() => {
                   setShowCreateModal(false);
                   setNewTeamName('');
+                  setNewTeamDescription('');
                 }}
                 className="flex-1 py-3 bg-dark-700 hover:bg-dark-600 border border-gray-600 rounded-lg transition-all"
               >

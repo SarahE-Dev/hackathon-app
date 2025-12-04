@@ -154,7 +154,7 @@ export const teamsAPI = {
     return response.data;
   },
 
-  createTeam: async (data: { name: string; description?: string; track?: string }) => {
+  createTeam: async (data: { name: string; description?: string; projectTitle?: string; track?: string }) => {
     const response = await api.post('/teams', data);
     return response.data;
   },

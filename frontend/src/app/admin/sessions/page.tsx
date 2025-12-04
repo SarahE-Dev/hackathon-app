@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { hackathonSessionsAPI, teamsAPI } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { RoleGuard } from '@/components/guards/RoleGuard';
@@ -209,6 +210,9 @@ export default function AdminSessionsPage() {
     <RoleGuard allowedRoles={['admin', 'proctor']}>
       <div className="min-h-screen bg-dark-900 text-white p-6">
         <div className="max-w-7xl mx-auto">
+          <Link href="/admin" className="text-gray-400 hover:text-white text-sm mb-4 inline-block">
+            ← Back to Admin Dashboard
+          </Link>
           <div className="mb-6 flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold text-gradient mb-2">Hackathon Sessions</h1>
