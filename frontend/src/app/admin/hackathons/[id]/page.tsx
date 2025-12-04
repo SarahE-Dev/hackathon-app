@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { RoleGuard } from '@/components/guards/RoleGuard';
-import { hackathonSessionsAPI, hackathonRosterAPI, teamsAPI } from '@/lib/api';
+import { hackathonSessionsAPI, hackathonRosterAPI, teamsAPI, questionsAPI } from '@/lib/api';
 
 interface RosterEntry {
   _id: string;
@@ -34,6 +34,18 @@ interface HackathonSession {
   status: string;
   startTime?: string;
   endTime?: string;
+  problems?: Array<{
+    problemId: string | { _id: string; title: string; difficulty: string; points: number };
+    points: number;
+  }>;
+}
+
+interface Problem {
+  _id: string;
+  title: string;
+  difficulty: string;
+  points: number;
+  type: string;
 }
 
 interface RosterStats {
@@ -53,7 +65,11 @@ function HackathonManagementContent() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [stats, setStats] = useState<RosterStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'judges' | 'fellows' | 'teams'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'judges' | 'fellows' | 'teams' | 'problems'>('overview');
+  
+  // Problems state
+  const [allProblems, setAllProblems] = useState<Problem[]>([]);
+  const [savingProblems, setSavingProblems] = useState(false);
 
   // Form states
   const [showAddForm, setShowAddForm] = useState(false);
@@ -74,16 +90,18 @@ function HackathonManagementContent() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [sessionRes, rosterRes, teamsRes] = await Promise.all([
+      const [sessionRes, rosterRes, teamsRes, problemsRes] = await Promise.all([
         hackathonSessionsAPI.getById(sessionId),
         hackathonRosterAPI.getRoster(sessionId),
         teamsAPI.getAllTeams(),
+        questionsAPI.getAll({ type: 'Coding', limit: 100 }),
       ]);
 
       setSession(sessionRes.data?.session);
       setRoster(rosterRes.data?.roster || []);
       setStats(rosterRes.data?.stats);
       setTeams(teamsRes || []);
+      setAllProblems(problemsRes.data?.questions || []);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -267,6 +285,7 @@ function HackathonManagementContent() {
           <div className="flex gap-1">
             {[
               { id: 'overview', label: 'Overview', icon: '📊' },
+              { id: 'problems', label: `Problems (${session?.problems?.length || 0})`, icon: '💡' },
               { id: 'judges', label: `Judges (${judges.length})`, icon: '⚖️' },
               { id: 'fellows', label: `Fellows (${fellows.length})`, icon: '👥' },
               { id: 'teams', label: `Team Builder`, icon: '🏗️' },
@@ -381,6 +400,129 @@ function HackathonManagementContent() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Problems Tab */}
+        {activeTab === 'problems' && (
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold">Hackathon Problems</h2>
+              <div className="text-sm text-gray-400">
+                Select problems for teams to solve during the hackathon
+              </div>
+            </div>
+
+            {/* Currently Assigned Problems */}
+            <div className="glass rounded-xl p-6 border border-gray-700 mb-6">
+              <h3 className="font-bold mb-4 text-neon-green">✅ Assigned Problems ({session?.problems?.length || 0})</h3>
+              {(!session?.problems || session.problems.length === 0) ? (
+                <p className="text-gray-500 text-center py-4">No problems assigned yet. Select from the list below.</p>
+              ) : (
+                <div className="space-y-2">
+                  {session.problems.map((p, idx) => {
+                    const problem = typeof p.problemId === 'object' ? p.problemId : allProblems.find(prob => prob._id === p.problemId);
+                    return (
+                      <div key={idx} className="flex items-center justify-between p-3 bg-dark-700 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <span className={`px-2 py-1 text-xs rounded ${
+                            problem?.difficulty === 'easy' ? 'bg-green-500/20 text-green-400' :
+                            problem?.difficulty === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                            'bg-red-500/20 text-red-400'
+                          }`}>
+                            {problem?.difficulty || 'unknown'}
+                          </span>
+                          <span className="font-medium">{problem?.title || 'Unknown Problem'}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-neon-green text-sm">{p.points} pts</span>
+                          <button
+                            onClick={async () => {
+                              if (!confirm('Remove this problem from the hackathon?')) return;
+                              setSavingProblems(true);
+                              try {
+                                const newProblems = session.problems?.filter((_, i) => i !== idx) || [];
+                                await hackathonSessionsAPI.update(sessionId, { problems: newProblems });
+                                await loadData();
+                              } catch (err) {
+                                alert('Failed to remove problem');
+                              } finally {
+                                setSavingProblems(false);
+                              }
+                            }}
+                            disabled={savingProblems}
+                            className="text-red-400 hover:text-red-300 text-sm"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Available Problems to Add */}
+            <div className="glass rounded-xl p-6 border border-gray-700">
+              <h3 className="font-bold mb-4">📋 Available Problems</h3>
+              {allProblems.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-4xl mb-3">💡</div>
+                  <p className="text-gray-400">No coding problems found</p>
+                  <a href="/admin/questions/new" className="text-neon-blue hover:underline text-sm mt-2 inline-block">
+                    Create a problem →
+                  </a>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {allProblems.filter(p => 
+                    !session?.problems?.some(sp => 
+                      (typeof sp.problemId === 'string' ? sp.problemId : sp.problemId._id) === p._id
+                    )
+                  ).map((problem) => (
+                    <div key={problem._id} className="flex items-center justify-between p-3 bg-dark-700 rounded-lg hover:bg-dark-600 transition-all">
+                      <div className="flex items-center gap-3">
+                        <span className={`px-2 py-1 text-xs rounded ${
+                          problem.difficulty === 'easy' ? 'bg-green-500/20 text-green-400' :
+                          problem.difficulty === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                          'bg-red-500/20 text-red-400'
+                        }`}>
+                          {problem.difficulty}
+                        </span>
+                        <span className="font-medium">{problem.title}</span>
+                        <span className="text-gray-500 text-sm">{problem.points} pts</span>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          setSavingProblems(true);
+                          try {
+                            const newProblems = [...(session?.problems || []), { problemId: problem._id, points: problem.points }];
+                            await hackathonSessionsAPI.update(sessionId, { problems: newProblems });
+                            await loadData();
+                          } catch (err) {
+                            alert('Failed to add problem');
+                          } finally {
+                            setSavingProblems(false);
+                          }
+                        }}
+                        disabled={savingProblems}
+                        className="px-3 py-1 bg-neon-green/20 text-neon-green hover:bg-neon-green/30 rounded text-sm transition-all"
+                      >
+                        + Add
+                      </button>
+                    </div>
+                  ))}
+                  {allProblems.filter(p => 
+                    !session?.problems?.some(sp => 
+                      (typeof sp.problemId === 'string' ? sp.problemId : sp.problemId._id) === p._id
+                    )
+                  ).length === 0 && (
+                    <p className="text-gray-500 text-center py-4">All available problems have been assigned!</p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -296,14 +296,14 @@ function AdminDashboardContent() {
                 </div>
               </Link>
 
-              <Link href="/hackathon/teams" className="glass rounded-xl p-5 border border-neon-pink/30 hover:border-neon-pink transition-all group">
+              <Link href="/admin/teams" className="glass rounded-xl p-5 border border-neon-pink/30 hover:border-neon-pink transition-all group">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-lg bg-neon-pink/20 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
                     👥
                   </div>
                   <div>
                     <h3 className="font-semibold text-white">Manage Teams</h3>
-                    <p className="text-xs text-gray-400">View and edit teams</p>
+                    <p className="text-xs text-gray-400">Assign fellows to teams</p>
                   </div>
                 </div>
               </Link>
@@ -357,7 +357,7 @@ function AdminDashboardContent() {
                       <span className="text-neon-purple">→</span>
                     </div>
                   </Link>
-                  <Link href="/hackathon/teams" className="block p-3 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
+                  <Link href="/admin/teams" className="block p-3 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
                     <div className="flex items-center justify-between">
                       <span className="text-sm">Teams</span>
                       <span className="text-neon-purple">→</span>
@@ -372,27 +372,21 @@ function AdminDashboardContent() {
                 </div>
               </div>
 
-              {/* Monitoring & Grading */}
+              {/* Judging & Leaderboard */}
               <div className="glass rounded-xl p-6 border border-gray-700">
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                  <span className="text-neon-green">👁️</span> Monitor & Grade
+                  <span className="text-neon-green">⚖️</span> Judging & Results
                 </h3>
                 <div className="space-y-2">
-                  <Link href="/proctor/monitor" className="block p-3 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Live Proctoring</span>
-                      <span className="text-neon-green">→</span>
-                    </div>
-                  </Link>
                   <Link href="/judge" className="block p-3 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm">Judge Projects</span>
+                      <span className="text-sm">Judge Submissions</span>
                       <span className="text-neon-green">→</span>
                     </div>
                   </Link>
-                  <Link href="/judge/grading" className="block p-3 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
+                  <Link href="/hackathon/leaderboard" className="block p-3 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm">Grade Assessments</span>
+                      <span className="text-sm">Leaderboard</span>
                       <span className="text-neon-green">→</span>
                     </div>
                   </Link>
@@ -407,7 +401,7 @@ function AdminDashboardContent() {
                 <div className="p-8 text-center text-gray-400">
                   <div className="text-4xl mb-3">👥</div>
                   <p>No teams created yet</p>
-                  <Link href="/hackathon/teams" className="text-neon-blue hover:underline text-sm mt-2 inline-block">
+                  <Link href="/admin/teams" className="text-neon-blue hover:underline text-sm mt-2 inline-block">
                     Create a team →
                   </Link>
                 </div>
@@ -439,7 +433,7 @@ function AdminDashboardContent() {
               )}
               {teams.length > 5 && (
                 <div className="p-4 bg-dark-800 text-center">
-                  <Link href="/hackathon/teams" className="text-neon-blue hover:underline text-sm">
+                  <Link href="/admin/teams" className="text-neon-blue hover:underline text-sm">
                     View all {teams.length} teams →
                   </Link>
                 </div>
@@ -505,17 +499,17 @@ function AdminDashboardContent() {
             </Link>
 
             {/* Manage Teams */}
-            <Link href="/hackathon/teams" className="glass rounded-2xl p-8 border-2 border-neon-pink/30 hover:border-neon-pink transition-all group">
+            <Link href="/admin/teams" className="glass rounded-2xl p-8 border-2 border-neon-pink/30 hover:border-neon-pink transition-all group">
               <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">👥</div>
-              <h3 className="text-2xl font-bold mb-2 text-neon-pink">Create Team</h3>
+              <h3 className="text-2xl font-bold mb-2 text-neon-pink">Manage Teams</h3>
               <p className="text-gray-400 mb-4">
-                Organize participants into teams for hackathon competitions.
+                Organize fellows into teams for hackathon competitions.
               </p>
               <ul className="text-sm text-gray-400 space-y-1 mb-4">
                 <li>• Create and name teams</li>
-                <li>• Assign team members</li>
-                <li>• Set team tracks/categories</li>
-                <li>• Manage team projects</li>
+                <li>• Drag-and-drop assignment</li>
+                <li>• Move fellows between teams</li>
+                <li>• Track assignment status</li>
               </ul>
               <div className="inline-flex items-center gap-2 text-neon-pink font-medium">
                 Get Started <span>→</span>
@@ -582,7 +576,7 @@ function AdminDashboardContent() {
                     </div>
                   </div>
                 </Link>
-                <Link href="/hackathon/teams" className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
+                <Link href="/admin/teams" className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center text-xl">👥</div>
                     <div>
@@ -603,43 +597,25 @@ function AdminDashboardContent() {
               </div>
             </div>
 
-            {/* Monitoring & Grading */}
+            {/* Judging & Results */}
             <div className="glass rounded-xl p-6 border border-gray-700">
-              <h3 className="text-lg font-bold mb-4">👁️ Monitoring & Grading</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Link href="/proctor/monitor" className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center text-xl">👁️</div>
-                    <div>
-                      <h4 className="font-semibold">Live Proctoring</h4>
-                      <p className="text-xs text-gray-400">Monitor active sessions</p>
-                    </div>
-                  </div>
-                </Link>
-                <Link href="/proctor/assessments" className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-cyan-500/20 rounded-lg flex items-center justify-center text-xl">📹</div>
-                    <div>
-                      <h4 className="font-semibold">Assessment Monitoring</h4>
-                      <p className="text-xs text-gray-400">Track exam attempts</p>
-                    </div>
-                  </div>
-                </Link>
+              <h3 className="text-lg font-bold mb-4">⚖️ Judging & Results</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Link href="/judge" className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center text-xl">⚖️</div>
                     <div>
-                      <h4 className="font-semibold">Judge Interface</h4>
-                      <p className="text-xs text-gray-400">Score hackathon projects</p>
+                      <h4 className="font-semibold">Judge Submissions</h4>
+                      <p className="text-xs text-gray-400">Review & score team code</p>
                     </div>
                   </div>
                 </Link>
-                <Link href="/judge/grading" className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
+                <Link href="/hackathon/leaderboard" className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-indigo-500/20 rounded-lg flex items-center justify-center text-xl">✏️</div>
+                    <div className="w-10 h-10 bg-yellow-500/20 rounded-lg flex items-center justify-center text-xl">🏆</div>
                     <div>
-                      <h4 className="font-semibold">Grade Assessments</h4>
-                      <p className="text-xs text-gray-400">Review & grade submissions</p>
+                      <h4 className="font-semibold">Leaderboard</h4>
+                      <p className="text-xs text-gray-400">View rankings by team</p>
                     </div>
                   </div>
                 </Link>
@@ -803,7 +779,7 @@ function AdminDashboardContent() {
                 <div className="p-8 text-center text-gray-400 bg-dark-800 rounded-lg">
                   <div className="text-4xl mb-3">👥</div>
                   <p>No teams created yet</p>
-                  <Link href="/hackathon/teams" className="text-neon-green hover:underline text-sm mt-2 inline-block">
+                  <Link href="/admin/teams" className="text-neon-green hover:underline text-sm mt-2 inline-block">
                     Create a team →
                   </Link>
                 </div>
@@ -833,7 +809,7 @@ function AdminDashboardContent() {
               )}
               {teams.length > 6 && (
                 <div className="mt-4 text-center">
-                  <Link href="/hackathon/teams" className="text-neon-green hover:underline text-sm">
+                  <Link href="/admin/teams" className="text-neon-green hover:underline text-sm">
                     View all {teams.length} teams →
                   </Link>
                 </div>
@@ -846,25 +822,25 @@ function AdminDashboardContent() {
                 <span className="text-neon-pink">⚡</span> Quick Test Links
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Link href="/assessments" className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all text-center">
-                  <div className="text-2xl mb-2">📋</div>
-                  <p className="font-medium">Student Assessment View</p>
-                  <p className="text-xs text-gray-400 mt-1">See what students see</p>
-                </Link>
-                <Link href="/hackathon/sessions" className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all text-center">
-                  <div className="text-2xl mb-2">🎯</div>
-                  <p className="font-medium">Session List View</p>
-                  <p className="text-xs text-gray-400 mt-1">Browse all sessions</p>
-                </Link>
-                <Link href="/hackathon/teams" className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all text-center">
+                <Link href="/admin/teams" className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all text-center">
                   <div className="text-2xl mb-2">👥</div>
-                  <p className="font-medium">Team List View</p>
-                  <p className="text-xs text-gray-400 mt-1">Browse all teams</p>
+                  <p className="font-medium">Team Management</p>
+                  <p className="text-xs text-gray-400 mt-1">Assign fellows to teams</p>
                 </Link>
-                <Link href="/proctor/monitor" className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all text-center">
-                  <div className="text-2xl mb-2">👁️</div>
-                  <p className="font-medium">Proctor View</p>
-                  <p className="text-xs text-gray-400 mt-1">Monitor live sessions</p>
+                <Link href="/judge" className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all text-center">
+                  <div className="text-2xl mb-2">⚖️</div>
+                  <p className="font-medium">Judge View</p>
+                  <p className="text-xs text-gray-400 mt-1">Review submissions</p>
+                </Link>
+                <Link href="/hackathon/leaderboard" className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all text-center">
+                  <div className="text-2xl mb-2">🏆</div>
+                  <p className="font-medium">Leaderboard</p>
+                  <p className="text-xs text-gray-400 mt-1">View rankings</p>
+                </Link>
+                <Link href="/dashboard" className="p-4 bg-dark-700 hover:bg-dark-600 rounded-lg transition-all text-center">
+                  <div className="text-2xl mb-2">🎓</div>
+                  <p className="font-medium">Fellow Dashboard</p>
+                  <p className="text-xs text-gray-400 mt-1">See fellow view</p>
                 </Link>
               </div>
             </div>

@@ -28,7 +28,7 @@ function NewQuestionContent() {
   const router = useRouter();
 
   // Basic fields
-  const [type, setType] = useState('Multiple-Choice');
+  const [type, setType] = useState('Coding');
   const [title, setTitle] = useState('');
   const [prompt, setPrompt] = useState('');
   const [points, setPoints] = useState(10);
@@ -198,8 +198,8 @@ function NewQuestionContent() {
                     onChange={(e) => setType(e.target.value)}
                     className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-neon-blue"
                   >
-                    <option value="Multiple-Choice">Multiple Choice</option>
                     <option value="Coding">Coding</option>
+                    <option value="Multiple-Choice">Multiple Choice</option>
                     <option value="True-False">True/False</option>
                     <option value="Short-Answer">Short Answer</option>
                     <option value="Essay">Essay</option>
