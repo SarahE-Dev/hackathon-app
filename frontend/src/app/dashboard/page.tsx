@@ -3,39 +3,23 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { assessmentsAPI, attemptsAPI, teamsAPI, hackathonSessionsAPI } from '@/lib/api';
+import { teamsAPI } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { useNotifications } from '@/contexts/NotificationContext';
 
-interface Assessment {
-  id: string;
-  title: string;
-  description?: string;
-  settings?: {
-    timeLimit?: number;
-    proctoring?: {
-      enabled: boolean;
-    };
-  };
-  totalPoints: number;
-  createdAt: string;
-}
-
-interface Attempt {
-  id: string;
-  assessmentId: string;
-  startedAt: string;
-  submittedAt?: string;
-  score?: number;
-  status: 'in_progress' | 'submitted' | 'graded';
+interface TeamMember {
+  _id: string;
+  firstName?: string;
+  lastName?: string;
+  email: string;
 }
 
 interface Team {
   _id: string;
   name: string;
   organizationId: string;
-  memberIds: string[];
+  memberIds: (string | TeamMember)[];
   projectTitle?: string;
   description?: string;
   track?: string;
@@ -46,20 +30,11 @@ interface Team {
   disqualified: boolean;
 }
 
-interface HackathonSession {
-  _id: string;
-  title: string;
-  status: string;
-  description?: string;
-}
-
 export default function DashboardPage() {
   const router = useRouter();
   const { user: authUser, isAuthenticated, logout } = useAuthStore();
   const { addNotification } = useNotifications();
   const [loading, setLoading] = useState(true);
-  const [assessments, setAssessments] = useState<Assessment[]>([]);
-  const [attempts, setAttempts] = useState<Map<string, Attempt>>(new Map());
   const [userTeam, setUserTeam] = useState<Team | null>(null);
   const [error, setError] = useState<string | null>(null);
   const hasRedirected = useRef(false);
@@ -101,63 +76,28 @@ export default function DashboardPage() {
       }
 
       try {
-        // Fetch assessments
-        const assessmentsData = await assessmentsAPI.getAll();
-        const assessmentsList = assessmentsData.data?.assessments || [];
-        // Map _id to id if needed
-        const mappedAssessments = (Array.isArray(assessmentsList) ? assessmentsList : []).map((a: any) => ({
-          ...a,
-          id: a.id || a._id,
-        }));
-        setAssessments(mappedAssessments);
-
-        // Fetch user's attempts
-        try {
-          const attemptsData = await attemptsAPI.getAll();
-          const attemptsMap = new Map();
-          const attemptsList = attemptsData.data?.attempts || attemptsData.data || [];
-          if (Array.isArray(attemptsList)) {
-            attemptsList.forEach((attempt: Attempt) => {
-              attemptsMap.set(attempt.assessmentId, attempt);
-            });
-          }
-          setAttempts(attemptsMap);
-
-          // Notify about graded assessments
-          const gradedAttempts = attemptsList.filter((a: Attempt) => a.status === 'graded') || [];
-          if (gradedAttempts.length > 0) {
-            gradedAttempts.forEach((attempt: Attempt) => {
-              const assessment = assessmentsList.find((a: Assessment) => a.id === attempt.assessmentId);
-              if (assessment) {
-                addNotification({
-                  type: 'success',
-                  title: 'Assessment Graded',
-                  message: `${assessment.title} has been graded. Click to view results.`,
-                  action: {
-                    label: 'View Results',
-                    onClick: () => router.push(`/assessment/${attempt.id}/results`)
-                  }
-                });
-              }
-            });
-          }
-        } catch (attemptsErr) {
-          console.warn('Could not load attempts:', attemptsErr);
-          setAttempts(new Map());
-        }
-
         // Fetch user's team
         try {
           const teamsData = await teamsAPI.getAllTeams();
           const teams = teamsData.data?.teams || teamsData || [];
           const teamsList = Array.isArray(teams) ? teams : [];
+          
+          // Get user ID in various formats for comparison
+          const userId = authUser.id?.toString() || '';
+          const userIdAlt = (authUser as any)._id?.toString() || '';
+          
           const userTeamData = teamsList.find((team: Team) => {
             // memberIds might be populated objects or just IDs
-            const memberIdStrings = team.memberIds?.map((m: any) =>
-              typeof m === 'string' ? m : m._id?.toString() || m.toString()
-            ) || [];
-            return memberIdStrings.includes(authUser.id?.toString());
+            const memberIdStrings = team.memberIds?.map((m: any) => {
+              if (typeof m === 'string') return m;
+              if (m._id) return m._id.toString();
+              if (m.id) return m.id.toString();
+              return m.toString();
+            }) || [];
+            
+            return memberIdStrings.includes(userId) || memberIdStrings.includes(userIdAlt);
           });
+          
           setUserTeam(userTeamData || null);
         } catch (teamErr) {
           console.warn('Could not load team data:', teamErr);
@@ -185,36 +125,18 @@ export default function DashboardPage() {
     }
   };
 
-  const handleStartAssessment = async (assessmentId: string) => {
-    try {
-      console.log('Starting assessment with ID:', assessmentId);
-      if (!assessmentId) {
-        throw new Error('Assessment ID is required');
+  // Helper to get member display info
+  const getTeamMembers = (): TeamMember[] => {
+    if (!userTeam?.memberIds) return [];
+    return userTeam.memberIds.map((m: any) => {
+      if (typeof m === 'string') {
+        return { _id: m, email: 'Loading...', firstName: '', lastName: '' };
       }
-      const response = await attemptsAPI.start(assessmentId);
-      const attemptId = response.data?.id || response.data?.attempt?._id || response.data?._id;
-      console.log('Start response:', response);
-      if (attemptId) {
-        router.push(`/assessment/${attemptId}`);
-      } else {
-        throw new Error('No attempt ID returned from server');
-      }
-    } catch (err: any) {
-      console.error('Start assessment error:', err);
-      setError(err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Failed to start assessment');
-    }
+      return m as TeamMember;
+    });
   };
 
-  const getAssessmentStatus = (assessmentId: string) => {
-    const attempt = attempts.get(assessmentId);
-    if (!attempt) return 'available';
-    if (attempt.status === 'in_progress') return 'in_progress';
-    return 'completed';
-  };
-
-  const availableCount = assessments.filter(a => getAssessmentStatus(a.id) === 'available').length;
-  const inProgressCount = assessments.filter(a => getAssessmentStatus(a.id) === 'in_progress').length;
-  const completedCount = assessments.filter(a => getAssessmentStatus(a.id) === 'completed').length;
+  const teamMembers = getTeamMembers();
 
   if (loading) {
     return (
@@ -231,14 +153,14 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-dark-900 text-white">
       {/* Header */}
       <header className="glass border-b border-gray-800 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-5xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-3">
-                <span className="text-3xl">🎓</span>
+                <span className="text-3xl">⚡</span>
                 <div>
-                  <h1 className="text-3xl font-bold text-gradient">Fellow Dashboard</h1>
-                  <p className="text-gray-400 text-sm">Welcome back, {authUser?.firstName}! Ready to code?</p>
+                  <h1 className="text-2xl font-bold text-gradient">JTC CodeJam 2025</h1>
+                  <p className="text-gray-400 text-sm">Welcome, {authUser?.firstName} {authUser?.lastName}!</p>
                 </div>
               </div>
             </div>
@@ -255,7 +177,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-5xl mx-auto px-6 py-8">
         {/* Error Message */}
         {error && (
           <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400">
@@ -264,266 +186,170 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Welcome Banner - Action-oriented */}
-        {inProgressCount > 0 && (
-          <div className="glass rounded-xl p-5 border border-neon-green/30 bg-neon-green/5 mb-6">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">⏳</span>
-                <div>
-                  <p className="font-semibold text-neon-green">You have {inProgressCount} assessment{inProgressCount !== 1 ? 's' : ''} in progress</p>
-                  <p className="text-sm text-gray-400">Continue where you left off</p>
+        {userTeam ? (
+          <div className="space-y-6">
+            {/* Team Card */}
+            <div className="glass rounded-2xl p-8 border border-neon-purple/30 bg-gradient-to-br from-neon-purple/5 to-neon-blue/5">
+              {/* Team Header */}
+              <div className="flex items-center gap-5 mb-6">
+                <div className="w-20 h-20 bg-gradient-to-br from-neon-purple to-neon-blue rounded-2xl flex items-center justify-center text-4xl shadow-lg shadow-neon-purple/20">
+                  🏆
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-3xl font-bold text-white">{userTeam.name}</h2>
+                  {userTeam.track && (
+                    <span className="inline-block mt-2 px-3 py-1 bg-neon-blue/20 text-neon-blue text-sm rounded-full">
+                      {userTeam.track}
+                    </span>
+                  )}
                 </div>
               </div>
+
+              {/* Main Action */}
               <Link
-                href="/assessments"
-                className="px-4 py-2 bg-neon-green hover:bg-neon-green/80 text-white rounded-lg font-medium transition-all text-sm"
+                href={`/hackathon/teams/${userTeam._id}`}
+                className="block w-full py-5 bg-gradient-to-r from-neon-purple to-neon-blue text-white text-center rounded-xl font-bold text-xl transition-all hover:shadow-lg hover:shadow-neon-purple/30 hover:scale-[1.01]"
               >
-                Continue Assessment
+                🚀 Enter Team Space
               </Link>
             </div>
-          </div>
-        )}
 
-        {/* Progress Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="glass rounded-xl p-5 border border-neon-blue/20 hover:border-neon-blue/40 transition-all">
-            <div className="text-2xl mb-2">📋</div>
-            <p className="text-3xl font-bold text-neon-blue">{availableCount}</p>
-            <p className="text-sm text-gray-400">Available Assessments</p>
-          </div>
-          <div className="glass rounded-xl p-5 border border-neon-purple/20 hover:border-neon-purple/40 transition-all">
-            <div className="text-2xl mb-2">⏳</div>
-            <p className="text-3xl font-bold text-neon-purple">{inProgressCount}</p>
-            <p className="text-sm text-gray-400">In Progress</p>
-          </div>
-          <div className="glass rounded-xl p-5 border border-neon-green/20 hover:border-neon-green/40 transition-all">
-            <div className="text-2xl mb-2">✅</div>
-            <p className="text-3xl font-bold text-neon-green">{completedCount}</p>
-            <p className="text-sm text-gray-400">Completed</p>
-          </div>
-          <div className="glass rounded-xl p-5 border border-orange-500/20 hover:border-orange-500/40 transition-all">
-            <div className="text-2xl mb-2">🏆</div>
-            <p className="text-3xl font-bold text-orange-400">{userTeam ? 1 : 0}</p>
-            <p className="text-sm text-gray-400">Team{userTeam ? '' : 's'}</p>
-          </div>
-        </div>
-
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Assessments & Team */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Your Team */}
-            <div className="glass rounded-xl p-6 border border-gray-700">
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <span>👥</span> Your Team
-              </h2>
-              {userTeam ? (
-                <div className="p-5 bg-gradient-to-r from-neon-purple/10 to-neon-blue/10 rounded-xl border border-neon-purple/40">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 bg-neon-purple/20 rounded-xl flex items-center justify-center text-2xl">
-                        🏆
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-white">{userTeam.name}</h3>
-                        <p className="text-sm text-gray-400">
-                          {userTeam.memberIds?.length || 0} team member{userTeam.memberIds?.length !== 1 ? 's' : ''}
-                        </p>
-                      </div>
-                    </div>
-                    <Link
-                      href={`/hackathon/teams/${userTeam._id}`}
-                      className="inline-flex items-center gap-2 px-5 py-3 bg-neon-purple hover:bg-neon-purple/80 text-white rounded-lg font-medium transition-all shadow-lg shadow-neon-purple/20"
-                    >
-                      <span>🚀</span> Join Team Space
-                    </Link>
-                  </div>
-                  
-                  {/* Quick Links */}
-                  <div className="flex gap-3 pt-3 border-t border-neon-purple/20">
-                    <Link
-                      href={`/hackathon/teams/${userTeam._id}/reviews`}
-                      className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-dark-800/50 hover:bg-dark-700/50 text-gray-300 hover:text-white rounded-lg text-sm transition-all border border-gray-700 hover:border-gray-600"
-                    >
-                      <span>📋</span> View Reviews
-                    </Link>
-                    <Link
-                      href="/hackathon/leaderboard"
-                      className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-dark-800/50 hover:bg-dark-700/50 text-gray-300 hover:text-white rounded-lg text-sm transition-all border border-gray-700 hover:border-gray-600"
-                    >
-                      <span>🏆</span> Leaderboard
-                    </Link>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-6 bg-dark-700/30 rounded-lg border border-gray-600 text-center">
-                  <div className="text-4xl mb-3">👥</div>
-                  <h3 className="text-lg font-bold text-gray-300 mb-2">No Team Yet</h3>
-                  <p className="text-sm text-gray-400">
-                    You'll be assigned to a team when the hackathon begins. Stay tuned!
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Available Assessments */}
-            <div className="glass rounded-xl p-6 border border-gray-700">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold flex items-center gap-2">
-                  <span>📝</span> Your Assessments
-                </h2>
-                <span className="text-sm text-gray-500">{assessments.length} total</span>
-              </div>
-
-              {assessments.length === 0 ? (
-                <div className="p-6 text-center text-gray-400">
-                  <div className="text-4xl mb-3">📋</div>
-                  <p>No assessments available yet</p>
-                </div>
-              ) : (
+            {/* Two Column Layout */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Team Members */}
+              <div className="glass rounded-xl p-6 border border-gray-700">
+                <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                  <span>👥</span> Your Teammates
+                </h3>
                 <div className="space-y-3">
-                  {assessments.slice(0, 5).map((assessment) => {
-                    const status = getAssessmentStatus(assessment.id);
-                    const attempt = attempts.get(assessment.id);
-
+                  {teamMembers.map((member, index) => {
+                    const isCurrentUser = member._id === authUser?.id || member._id === (authUser as any)?._id;
+                    const displayName = member.firstName && member.lastName 
+                      ? `${member.firstName} ${member.lastName}`
+                      : member.email?.split('@')[0] || 'Team Member';
+                    
                     return (
                       <div
-                        key={assessment.id}
-                        className={`p-4 rounded-lg border transition-all ${
-                          status === 'completed'
-                            ? 'bg-green-500/5 border-green-500/30'
-                            : status === 'in_progress'
-                            ? 'bg-purple-500/5 border-purple-500/30'
-                            : 'bg-dark-700 border-gray-600 hover:border-neon-blue/50'
+                        key={member._id || index}
+                        className={`flex items-center gap-3 p-3 rounded-lg ${
+                          isCurrentUser 
+                            ? 'bg-neon-green/10 border border-neon-green/30' 
+                            : 'bg-dark-700/50'
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <h3 className="font-semibold">{assessment.title}</h3>
-                            <div className="flex items-center gap-4 mt-1 text-xs text-gray-400">
-                              {assessment.settings?.timeLimit && (
-                                <span>⏱️ {assessment.settings.timeLimit} min</span>
-                              )}
-                              <span>📊 {assessment.totalPoints} pts</span>
-                              {assessment.settings?.proctoring?.enabled && (
-                                <span className="text-yellow-400">📹 Proctored</span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {status === 'completed' && (
-                              <>
-                                <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full">
-                                  {attempt?.score !== undefined ? `${attempt.score}/${assessment.totalPoints}` : 'Completed'}
-                                </span>
-                                {attempt && (
-                                  <Link
-                                    href={`/assessment/${attempt.id}/results`}
-                                    className="px-3 py-1 bg-neon-blue/20 text-neon-blue hover:bg-neon-blue/30 rounded text-sm transition-all"
-                                  >
-                                    Results
-                                  </Link>
-                                )}
-                              </>
-                            )}
-                            {status === 'in_progress' && attempt && (
-                              <>
-                                <span className="px-2 py-1 bg-purple-500/20 text-purple-400 text-xs rounded-full">
-                                  In Progress
-                                </span>
-                                <Link
-                                  href={`/assessment/${attempt.id}`}
-                                  className="px-3 py-1 bg-neon-purple hover:bg-neon-purple/80 text-white rounded text-sm transition-all"
-                                >
-                                  Continue
-                                </Link>
-                              </>
-                            )}
-                            {status === 'available' && (
-                              <button
-                                onClick={() => handleStartAssessment(assessment.id)}
-                                className="px-3 py-1 bg-neon-green hover:bg-neon-green/80 text-white rounded text-sm transition-all"
-                              >
-                                Start
-                              </button>
-                            )}
-                          </div>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${
+                          isCurrentUser
+                            ? 'bg-neon-green/20 text-neon-green'
+                            : 'bg-neon-purple/20 text-neon-purple'
+                        }`}>
+                          {displayName.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-white truncate">
+                            {displayName}
+                            {isCurrentUser && <span className="ml-2 text-xs text-neon-green">(You)</span>}
+                          </p>
+                          {member.email && member.email !== 'Loading...' && (
+                            <p className="text-xs text-gray-500 truncate">{member.email}</p>
+                          )}
                         </div>
                       </div>
                     );
                   })}
+                  {teamMembers.length === 0 && (
+                    <p className="text-gray-500 text-center py-4">No team members found</p>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
+              </div>
 
-          {/* Right Column - Progress & Resources */}
-          <div className="space-y-6">
-            {/* Progress Summary */}
-            <div className="glass rounded-xl p-6 border border-gray-700">
-              <h2 className="text-xl font-bold mb-4">Your Progress</h2>
-              <div className="space-y-4">
-                <div className="p-4 bg-neon-blue/10 rounded-lg border border-neon-blue/30">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-400">Assessments</span>
-                    <span className="text-xl font-bold text-neon-blue">{completedCount}/{assessments.length}</span>
-                  </div>
-                  <div className="w-full bg-dark-700 rounded-full h-2">
-                    <div
-                      className="bg-neon-blue h-2 rounded-full transition-all"
-                      style={{ width: `${assessments.length > 0 ? (completedCount / assessments.length) * 100 : 0}%` }}
-                    ></div>
-                  </div>
-                </div>
-
-                {inProgressCount > 0 && (
-                  <div className="p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-sm text-gray-400">In Progress</span>
-                        <p className="font-semibold text-yellow-400 mt-1">{inProgressCount} assessment{inProgressCount !== 1 ? 's' : ''}</p>
-                      </div>
-                      <span className="text-2xl">⏱️</span>
+              {/* Quick Actions & Info */}
+              <div className="space-y-6">
+                {/* Leaderboard Link */}
+                <Link
+                  href="/hackathon/leaderboard"
+                  className="block glass rounded-xl p-6 border border-yellow-500/30 hover:border-yellow-500/50 transition-all group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 bg-yellow-500/20 rounded-xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+                      🏆
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg text-white group-hover:text-yellow-400 transition-colors">
+                        Leaderboard
+                      </h3>
+                      <p className="text-sm text-gray-400">See how your team ranks</p>
+                    </div>
+                    <div className="ml-auto text-gray-500 group-hover:text-yellow-400 transition-colors">
+                      →
                     </div>
                   </div>
-                )}
+                </Link>
+
+                {/* Tips Card */}
+                <div className="glass rounded-xl p-6 border border-gray-700">
+                  <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                    <span>💡</span> How It Works
+                  </h3>
+                  <ul className="text-sm text-gray-400 space-y-3">
+                    <li className="flex items-start gap-2">
+                      <span className="text-neon-green mt-0.5">▶</span>
+                      <span><strong className="text-gray-300">Run Code</strong> - Test visible cases (unlimited)</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-neon-blue mt-0.5">🔬</span>
+                      <span><strong className="text-gray-300">Run All Tests</strong> - Hidden tests (5 team runs)</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-neon-purple mt-0.5">📝</span>
+                      <span><strong className="text-gray-300">Submit</strong> - Lock in your solution + explanation</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-yellow-400 mt-0.5">⚠️</span>
+                      <span><strong className="text-gray-300">One shot</strong> - Each problem can only be submitted once!</span>
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
 
-            {/* Tips & Info */}
-            <div className="glass rounded-xl p-6 border border-gray-700">
-              <h2 className="text-xl font-bold mb-4">Tips for Success</h2>
-              <div className="space-y-3 text-sm">
-                <div className="p-3 bg-neon-blue/10 rounded-lg border border-neon-blue/20">
-                  <p className="flex items-start gap-2">
-                    <span>💡</span>
-                    <span className="text-gray-300">Read each question carefully before coding. Plan your approach first!</span>
-                  </p>
-                </div>
-                <div className="p-3 bg-neon-purple/10 rounded-lg border border-neon-purple/20">
-                  <p className="flex items-start gap-2">
-                    <span>⏱️</span>
-                    <span className="text-gray-300">Remember: you can only view each problem once. Choose wisely!</span>
-                  </p>
-                </div>
-                <div className="p-3 bg-neon-green/10 rounded-lg border border-neon-green/20">
-                  <p className="flex items-start gap-2">
-                    <span>🧪</span>
-                    <span className="text-gray-300">Test your code with edge cases before submitting.</span>
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Contact Support */}
-            <div className="glass rounded-xl p-5 border border-gray-700 bg-dark-800/50">
-              <p className="text-sm text-gray-400 text-center">
-                Need help? Contact your instructor or program admin for assistance.
+            {/* Motivational Footer */}
+            <div className="text-center py-6">
+              <p className="text-gray-500 text-sm">
+                💪 Good luck, <span className="text-neon-purple font-medium">{userTeam.name}</span>! Show them what you've got!
               </p>
             </div>
           </div>
-        </div>
+        ) : (
+          /* No Team State */
+          <div className="max-w-lg mx-auto">
+            <div className="glass rounded-2xl p-12 border border-gray-700 text-center">
+              <div className="text-6xl mb-4">👥</div>
+              <h2 className="text-2xl font-bold text-gray-300 mb-3">No Team Assigned Yet</h2>
+              <p className="text-gray-400 mb-6">
+                You'll be assigned to a team when the hackathon begins. Check back soon or contact an admin if you think this is a mistake.
+              </p>
+              <Link
+                href="/hackathon/leaderboard"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-dark-700 hover:bg-dark-600 border border-gray-600 text-gray-300 rounded-xl transition-all"
+              >
+                🏆 View Leaderboard
+              </Link>
+            </div>
+
+            {/* Still show tips */}
+            <div className="mt-6 glass rounded-xl p-6 border border-gray-700">
+              <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                <span>💡</span> What to Expect
+              </h3>
+              <ul className="text-sm text-gray-400 space-y-2">
+                <li>• You'll be assigned to a team of fellow coders</li>
+                <li>• Work together to solve coding challenges</li>
+                <li>• Each problem can only be submitted once per team</li>
+                <li>• Judges will review your solutions and explanations</li>
+              </ul>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

@@ -207,8 +207,9 @@ export const runTests = async (
 ) => {
   try {
     const { teamId, sessionId, problemId } = req.params;
-    const { code } = req.body;
+    const { code, runAllTests: isRunAllTests } = req.body;
     const userId = req.user!.userId;
+    const MAX_TEST_RUN_ATTEMPTS = 5;
 
     // Verify user is a member of the team
     const team = await Team.findById(teamId);
@@ -221,6 +222,16 @@ export const runTests = async (
     );
     if (!isMember) {
       throw new ApiError(403, 'You are not a member of this team');
+    }
+
+    // Check test run attempts if this is a "Run All Tests" call
+    if (isRunAllTests) {
+      const existingSubmission = await TeamSubmission.findOne({ teamId, sessionId, problemId });
+      const currentAttempts = existingSubmission?.testRunAttempts || 0;
+      
+      if (currentAttempts >= MAX_TEST_RUN_ATTEMPTS) {
+        throw new ApiError(400, `Maximum "Run All Tests" attempts reached (${MAX_TEST_RUN_ATTEMPTS}/${MAX_TEST_RUN_ATTEMPTS}). You can still use "Run Code" for visible tests.`);
+      }
     }
 
     // Get the problem with test cases
@@ -253,38 +264,46 @@ export const runTests = async (
     const score = totalTests > 0 ? Math.round((passedTests / totalTests) * 100) : 0;
     const pointsEarned = allTestsPassed ? problem.points : 0;
 
+    // Build update query - increment testRunAttempts only for "Run All Tests"
+    const updateQuery: any = {
+      $set: {
+        code,
+        language,
+        testResults: results.map((r) => ({
+          testCaseId: r.id,
+          passed: r.passed,
+          actualOutput: r.actualOutput,
+          expectedOutput: r.expectedOutput,
+          executionTime: r.executionTime,
+          error: r.error,
+        })),
+        passedTests,
+        totalTests,
+        score,
+        pointsEarned,
+        maxPoints: problem.points,
+        allTestsPassed,
+        status: allTestsPassed ? 'passed' : 'in_progress',
+        submittedBy: userId,
+      },
+      $setOnInsert: {
+        createdAt: new Date(),
+      },
+    };
+
+    // Increment testRunAttempts only for "Run All Tests" calls
+    if (isRunAllTests) {
+      updateQuery.$inc = { testRunAttempts: 1 };
+    }
+
     // Update submission
     const submission = await TeamSubmission.findOneAndUpdate(
       { teamId, sessionId, problemId },
-      {
-        $set: {
-          code,
-          language,
-          testResults: results.map((r) => ({
-            testCaseId: r.id,
-            passed: r.passed,
-            actualOutput: r.actualOutput,
-            expectedOutput: r.expectedOutput,
-            executionTime: r.executionTime,
-            error: r.error,
-          })),
-          passedTests,
-          totalTests,
-          score,
-          pointsEarned,
-          maxPoints: problem.points,
-          allTestsPassed,
-          status: allTestsPassed ? 'passed' : 'in_progress',
-          submittedBy: userId,
-        },
-        $setOnInsert: {
-          createdAt: new Date(),
-        },
-      },
+      updateQuery,
       { upsert: true, new: true }
     );
 
-    logger.info(`Team ${teamId} ran tests for problem ${problemId}: ${passedTests}/${totalTests} passed`);
+    logger.info(`Team ${teamId} ran tests for problem ${problemId}: ${passedTests}/${totalTests} passed${isRunAllTests ? ` (attempt ${submission.testRunAttempts}/${MAX_TEST_RUN_ATTEMPTS})` : ''}`);
 
     res.json({
       success: true,
@@ -299,6 +318,8 @@ export const runTests = async (
           maxPoints: problem.points,
         },
         submission,
+        testRunAttempts: submission.testRunAttempts || 0,
+        maxTestRunAttempts: MAX_TEST_RUN_ATTEMPTS,
       },
     });
   } catch (error) {

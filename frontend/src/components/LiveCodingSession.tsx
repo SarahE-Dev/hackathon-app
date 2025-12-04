@@ -213,7 +213,6 @@ Output: [0,1]
   const sessionStartRef = useRef<Date>(new Date());
   const [testAttempts, setTestAttempts] = useState(0);
   const MAX_TEST_ATTEMPTS = 5;
-  const [submissionCount, setSubmissionCount] = useState(0);
 
   // Proctoring hook - tracks copy/paste, tab switches, etc.
   const proctoring = useProctoring({
@@ -254,10 +253,9 @@ Output: [0,1]
           if (submission.explanation) {
             setExplanation(submission.explanation);
           }
-          // Note: testAttempts is tracked locally per session, not persisted
-          // submissionCount is loaded from backend for judge review
-          if (submission.attempts) {
-            setSubmissionCount(submission.attempts);
+          // Load team's shared test run attempts from backend
+          if (typeof submission.testRunAttempts === 'number') {
+            setTestAttempts(submission.testRunAttempts);
           }
           // Load test results if available
           if (submission.testResults?.length > 0) {
@@ -673,19 +671,24 @@ Output: [0,1]
     }
 
     if (testAttempts >= MAX_TEST_ATTEMPTS) {
-      setOutput(`❌ Maximum attempts reached (${MAX_TEST_ATTEMPTS}/${MAX_TEST_ATTEMPTS})\n\nYou've used all "Run All Tests" attempts.\n\n✅ You can still:\n   • Use "▶ Run Code" to test visible cases (unlimited)\n   • Submit your solution when ready`);
+      setOutput(`❌ Maximum attempts reached (${MAX_TEST_ATTEMPTS}/${MAX_TEST_ATTEMPTS})\n\nYour team has used all "Run All Tests" attempts.\n\n✅ You can still:\n   • Use "▶ Run Code" to test visible cases (unlimited)\n   • Submit your solution when ready`);
       return;
     }
     
     setRunningAll(true);
-    setTestAttempts(prev => prev + 1);
     setOutput('Running ALL tests (visible + hidden)...\n');
 
     try {
-      const response = await teamSubmissionsAPI.runTests(teamId, sessionId, problem._id, code);
+      // Pass runAllTests=true to increment the team's shared attempt counter
+      const response = await teamSubmissionsAPI.runTests(teamId, sessionId, problem._id, code, true);
 
       if (response.success) {
-        const { results, summary } = response.data;
+        const { results, summary, testRunAttempts: newAttempts } = response.data;
+
+        // Update the team's shared test run attempts from backend
+        if (typeof newAttempts === 'number') {
+          setTestAttempts(newAttempts);
+        }
 
         // Update ALL test results
         const updatedResults: {[key: string]: 'pending' | 'passed' | 'failed'} = {};
@@ -704,11 +707,12 @@ Output: [0,1]
           return tc?.isHidden;
         });
 
-        // Build output
+        // Build output - use newAttempts from backend for accurate count
+        const currentAttempt = newAttempts || testAttempts + 1;
         const outputLines: string[] = [];
         outputLines.push('═══════════════════════════════════════════════════════════');
-        outputLines.push('           🔬 RUN ALL TESTS (Official Attempt)');
-        outputLines.push(`                  Attempt ${testAttempts}/${MAX_TEST_ATTEMPTS}`);
+        outputLines.push('           🔬 RUN ALL TESTS (Team Attempt)');
+        outputLines.push(`                  Attempt ${currentAttempt}/${MAX_TEST_ATTEMPTS}`);
         outputLines.push('═══════════════════════════════════════════════════════════');
         outputLines.push('');
 
@@ -791,7 +795,6 @@ Output: [0,1]
 
       if (response.success) {
         setSubmitSuccess(true);
-        setSubmissionCount(prev => prev + 1);
         
         // Always mark problem as completed on submission (regardless of test results)
         // The user has submitted their answer - that's final for this problem
@@ -1017,6 +1020,10 @@ Output: [0,1]
           </div>
 
           {/* Action Buttons */}
+          <div className="text-xs text-gray-500 mb-2 text-center">
+            <span className="mr-4">▶ Run Code = visible tests (unlimited)</span>
+            <span>🔬 Run All = includes hidden ({MAX_TEST_ATTEMPTS - testAttempts}/{MAX_TEST_ATTEMPTS} team runs)</span>
+          </div>
           <div className="flex gap-3 mb-4">
             <button
               onClick={runVisibleTests}
@@ -1034,7 +1041,7 @@ Output: [0,1]
                   : 'bg-gradient-to-r from-neon-blue to-blue-600 text-white hover:shadow-lg hover:shadow-neon-blue/50'
               }`}
             >
-              {runningAll ? 'Testing...' : `🔬 Run All Tests (${MAX_TEST_ATTEMPTS - testAttempts} left)`}
+              {runningAll ? 'Testing...' : `🔬 Run All Tests (${MAX_TEST_ATTEMPTS - testAttempts} team runs left)`}
             </button>
           </div>
 
@@ -1100,15 +1107,6 @@ STEPS:
               )
             )}
           </div>
-
-          {/* Submission Counter */}
-          {submissionCount > 0 && (
-            <div className="mb-2 text-center">
-              <span className={`text-sm ${submissionCount === 1 ? 'text-green-400' : submissionCount <= 3 ? 'text-yellow-400' : 'text-red-400'}`}>
-                📊 Submissions: {submissionCount} {submissionCount === 1 ? '(first try!)' : submissionCount <= 3 ? '' : '(many attempts)'}
-              </span>
-            </div>
-          )}
 
           {/* Submit Button */}
           <div className="mb-4">

@@ -327,12 +327,22 @@ export default function LoginPage() {
               </button>
             </form>
 
-            {selectedRole && (
+            {selectedRole ? (
               <div className="mt-6 pt-6 border-t border-gray-700 relative z-10">
                 <p className="text-xs text-gray-400 mb-3">Demo credentials pre-filled:</p>
                 <div className="p-3 bg-dark-700 rounded-lg text-xs">
                   <p className="text-gray-400">Email: <span className="text-white">{roleInfo[selectedRole].email}</span></p>
                   <p className="text-gray-400">Password: <span className="text-white">{roleInfo[selectedRole].password}</span></p>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-6 pt-6 border-t border-gray-700 relative z-10">
+                <p className="text-xs text-gray-400 mb-3">💡 Demo accounts available:</p>
+                <div className="p-3 bg-dark-700 rounded-lg text-xs space-y-1">
+                  <p className="text-gray-400">• <span className="text-neon-blue">admin@codearena.edu</span></p>
+                  <p className="text-gray-400">• <span className="text-neon-green">fellow@codearena.edu</span></p>
+                  <p className="text-gray-400">• <span className="text-neon-purple">judge@codearena.edu</span></p>
+                  <p className="text-gray-500 mt-2">Password for all: <span className="text-white">Demo@123456</span></p>
                 </div>
               </div>
             )}

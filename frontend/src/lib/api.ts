@@ -539,8 +539,8 @@ export const teamSubmissionsAPI = {
   },
 
   // Run tests for a submission
-  runTests: async (teamId: string, sessionId: string, problemId: string, code: string) => {
-    const response = await api.post(`/team-submissions/${teamId}/${sessionId}/${problemId}/run`, { code });
+  runTests: async (teamId: string, sessionId: string, problemId: string, code: string, runAllTests: boolean = false) => {
+    const response = await api.post(`/team-submissions/${teamId}/${sessionId}/${problemId}/run`, { code, runAllTests });
     return response.data;
   },
 

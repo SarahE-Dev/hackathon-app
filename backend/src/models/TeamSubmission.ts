@@ -67,6 +67,7 @@ export interface ITeamSubmission extends Document {
   submittedBy: mongoose.Types.ObjectId; // Which team member submitted
   submittedAt?: Date;
   attempts: number;
+  testRunAttempts: number; // Shared "Run All Tests" attempts across team (max 5)
   
   // Proctoring / Anti-cheating
   proctoringEvents: IProctoringEvent[];
@@ -181,6 +182,10 @@ const TeamSubmissionSchema = new Schema<ITeamSubmission>(
     attempts: {
       type: Number,
       default: 1,
+    },
+    testRunAttempts: {
+      type: Number,
+      default: 0, // Shared "Run All Tests" attempts across team (max 5)
     },
     // Proctoring fields
     proctoringEvents: [{

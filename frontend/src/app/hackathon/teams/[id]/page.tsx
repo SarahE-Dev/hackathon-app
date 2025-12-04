@@ -101,89 +101,127 @@ export default function TeamDetailPage() {
     selectedProblemRef.current = selectedProblem;
   }, [selectedProblem]);
   
-  // Problem progress tracking: 'not-started' | 'in-progress' | 'completed'
+  // Problem progress tracking at TEAM level (fetched from backend)
+  // 'not-started' | 'in-progress' | 'completed'
   const [problemProgress, setProblemProgress] = useState<Map<string, 'not-started' | 'in-progress' | 'completed'>>(new Map());
+  const [loadingProgress, setLoadingProgress] = useState(true);
+  
+  // Team can only work on ONE problem at a time - track the active problem ID
+  const [teamActiveProblemId, setTeamActiveProblemId] = useState<string | null>(null);
 
-  // Load problem progress from localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem(`team-${teamId}-problem-progress`);
-    if (stored) {
-      setProblemProgress(new Map(JSON.parse(stored)));
+  // Fetch team's problem progress from backend submissions
+  const loadTeamProgress = useCallback(async () => {
+    if (!teamId || !activeSessionId) return;
+    
+    try {
+      const response = await teamSubmissionsAPI.getTeamSubmissions(teamId, activeSessionId);
+      const submissions = response?.data?.submissions || [];
+      
+      const progressMap = new Map<string, 'not-started' | 'in-progress' | 'completed'>();
+      let activeProblem: string | null = null;
+      
+      submissions.forEach((sub: any) => {
+        const problemId = typeof sub.problemId === 'string' ? sub.problemId : sub.problemId?._id;
+        if (!problemId) return;
+        
+        // Determine status from submission
+        if (sub.status === 'submitted' || sub.status === 'passed' || sub.explanation) {
+          // Has explanation or final submission = completed
+          progressMap.set(problemId, 'completed');
+        } else if (sub.code || sub.status === 'in-progress') {
+          // Has code saved but not submitted = in-progress (this is the active problem)
+          progressMap.set(problemId, 'in-progress');
+          activeProblem = problemId; // Track the active problem
+        }
+      });
+      
+      setProblemProgress(progressMap);
+      setTeamActiveProblemId(activeProblem);
+      
+      // If there's an active problem, auto-select it for this user
+      if (activeProblem && problems.length > 0) {
+        const activeProblemObj = problems.find(p => p._id === activeProblem);
+        if (activeProblemObj && !selectedProblem) {
+          setSelectedProblem(activeProblemObj);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading team progress:', error);
+    } finally {
+      setLoadingProgress(false);
     }
-  }, [teamId]);
+  }, [teamId, activeSessionId, problems, selectedProblem]);
 
-  // Save problem progress to localStorage
-  const updateProblemProgress = useCallback((problemId: string, status: 'not-started' | 'in-progress' | 'completed') => {
-    setProblemProgress(prev => {
-      const updated = new Map(prev);
-      updated.set(problemId, status);
-      localStorage.setItem(`team-${teamId}-problem-progress`, JSON.stringify([...updated]));
-      return updated;
-    });
-  }, [teamId]);
+  // Load progress when session is available
+  useEffect(() => {
+    if (activeSessionId) {
+      loadTeamProgress();
+    }
+  }, [activeSessionId, loadTeamProgress]);
 
-  // Mark problem as started (in-progress)
+  // Mark problem as in-progress (called when team member opens it)
   const markProblemAsStarted = useCallback((problemId: string) => {
     const currentStatus = problemProgress.get(problemId);
     // Only update if not already completed
     if (currentStatus !== 'completed') {
-      updateProblemProgress(problemId, 'in-progress');
+      setProblemProgress(prev => {
+        const updated = new Map(prev);
+        updated.set(problemId, 'in-progress');
+        return updated;
+      });
+      setTeamActiveProblemId(problemId); // This is now the team's active problem
     }
-  }, [problemProgress, updateProblemProgress]);
+  }, [problemProgress]);
 
-  // Mark problem as completed
+  // Mark problem as completed (called after successful submission)
   const markProblemAsCompleted = useCallback((problemId: string) => {
-    updateProblemProgress(problemId, 'completed');
-  }, [updateProblemProgress]);
+    setProblemProgress(prev => {
+      const updated = new Map(prev);
+      updated.set(problemId, 'completed');
+      return updated;
+    });
+    setTeamActiveProblemId(null); // No more active problem - team can pick a new one
+    setSelectedProblem(null);
+  }, []);
 
-  // Dev reset function - clears local state AND backend submissions
+  // Dev reset function - clears backend submissions and reloads progress
   const handleDevReset = async () => {
-    if (!confirm('DEV RESET: This will clear all problem progress AND all saved submissions. Continue?')) {
+    if (!confirm('DEV RESET: This will clear all team submissions for this session. Continue?')) {
       return;
     }
-    
-    // Clear local state
-    localStorage.removeItem(`team-${teamId}-problem-progress`);
-    setProblemProgress(new Map());
-    setSelectedProblem(null);
-    setConfirmProblem(null);
-    setActiveTab('problems');
     
     // Clear backend submissions if we have an active session
     if (activeSessionId) {
       try {
         const result = await teamSubmissionsAPI.devReset(teamId, activeSessionId);
         console.log('DEV RESET: Cleared submissions:', result);
-        alert(`DEV RESET complete! Cleared ${result.deletedCount} submissions.`);
+        
+        // Clear local state and reload
+        setProblemProgress(new Map());
+        setTeamActiveProblemId(null); // Reset active problem
+        setSelectedProblem(null);
+        setConfirmProblem(null);
+        setActiveTab('problems');
+        
+        alert(`DEV RESET complete! Cleared ${result.deletedCount} team submissions.`);
       } catch (error) {
         console.error('Failed to clear backend submissions:', error);
-        alert('Local progress cleared, but failed to clear backend submissions.');
+        alert('Failed to clear team submissions.');
       }
     } else {
-      alert('DEV RESET: Local progress cleared (no active session for backend reset).');
+      alert('No active session found.');
     }
   };
 
-  // Handle tab change with protection for active problems
+  // Handle tab change - team collaboration mode allows free navigation
   const handleTabChange = (newTab: 'overview' | 'problems' | 'code') => {
-    // If user is in code tab with an in-progress problem and trying to leave
-    if (activeTab === 'code' && selectedProblem && newTab !== 'code') {
-      const problemStatus = problemProgress.get(selectedProblem._id);
-      // Only warn if problem is in-progress (not already completed)
-      if (problemStatus === 'in-progress') {
-        setConfirmLeaveTab(newTab);
-        return;
-      }
-    }
     setActiveTab(newTab);
+    // Don't clear selected problem when switching tabs - allows returning to it
   };
 
-  // Confirm leaving the code tab (loses access to current problem)
+  // Legacy: confirmLeaveCodeTab (no longer needed in team mode, but keep for compatibility)
   const confirmLeaveCodeTab = () => {
-    if (confirmLeaveTab && selectedProblem) {
-      // Mark the problem as completed (locked out - they didn't submit)
-      markProblemAsCompleted(selectedProblem._id);
-      setSelectedProblem(null);
+    if (confirmLeaveTab) {
       setActiveTab(confirmLeaveTab);
       setConfirmLeaveTab(null);
     }
@@ -394,26 +432,47 @@ export default function TeamDetailPage() {
     initializePage();
   }, [teamId, router]);
 
-  // Handle problem selection with confirmation
+  // Handle problem selection - team can only work on ONE problem at a time
   const handleProblemClick = (problem: Problem) => {
     const status = problemProgress.get(problem._id) || 'not-started';
     
-    if (status !== 'not-started') {
-      // If already started or completed, just select it
-      setSelectedProblem(problem);
-      setActiveTab('code');
-    } else {
-      // Show confirmation dialog for new problems
+    // Block completed problems - team already submitted
+    if (status === 'completed') {
+      return;
+    }
+    
+    // Check if team already has an active problem
+    if (teamActiveProblemId && teamActiveProblemId !== problem._id) {
+      // Team is already working on a different problem - show the confirmation
       setConfirmProblem(problem);
+      return;
+    }
+    
+    // Either no active problem, or clicking on the currently active problem
+    markProblemAsStarted(problem._id);
+    setSelectedProblem(problem);
+    setActiveTab('code');
+    
+    // Emit status update via socket
+    if (presenceSocket?.connected) {
+      presenceSocket.emit('update-status', {
+        status: 'live-coding',
+        problemTitle: problem.title,
+      });
     }
   };
 
+  // Get the currently active problem object
+  const getActiveProblem = useCallback(() => {
+    if (!teamActiveProblemId) return null;
+    return problems.find(p => p._id === teamActiveProblemId) || null;
+  }, [teamActiveProblemId, problems]);
+
+  // Confirm switching to a different problem (not normally used - just for edge cases)
   const confirmProblemSelection = () => {
     if (confirmProblem) {
-      markProblemAsStarted(confirmProblem._id);
-      setSelectedProblem(confirmProblem);
+      // This shouldn't normally happen since team must submit first
       setConfirmProblem(null);
-      setActiveTab('code');
     }
   };
 
@@ -478,33 +537,20 @@ export default function TeamDetailPage() {
 
   return (
     <div className="min-h-screen bg-dark-900 text-white">
-      {/* Confirmation Modal - Start Problem */}
-      {confirmProblem && (
+      {/* Modal: Team already has an active problem */}
+      {confirmProblem && teamActiveProblemId && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="glass rounded-2xl p-8 border border-yellow-500/50 max-w-md w-full">
             <div className="text-center">
-              <div className="text-5xl mb-4">⚠️</div>
-              <h3 className="text-xl font-bold text-yellow-400 mb-2">Start This Problem?</h3>
+              <div className="text-5xl mb-4">🔒</div>
+              <h3 className="text-xl font-bold text-yellow-400 mb-2">Problem Already Active</h3>
               <p className="text-gray-300 mb-4">
-                You're about to start <span className="font-bold text-white">"{confirmProblem.title}"</span>
+                Your team is currently working on <span className="font-bold text-neon-blue">"{getActiveProblem()?.title || 'another problem'}"</span>
               </p>
               <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6">
                 <p className="text-sm text-yellow-300">
-                  <strong>⚠️ Warning:</strong> Once you view this problem, you cannot view it again. 
-                  Make sure you're ready to work on it!
+                  <strong>One problem at a time:</strong> Your team must submit the current problem before starting a new one.
                 </p>
-              </div>
-              <div className="flex items-center justify-center gap-2 mb-6">
-                <span className={`text-sm font-medium px-3 py-1 rounded ${
-                  confirmProblem.difficulty === 'easy' ? 'bg-green-500/20 text-green-400' :
-                  confirmProblem.difficulty === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
-                  'bg-red-500/20 text-red-400'
-                }`}>
-                  {confirmProblem.difficulty.toUpperCase()}
-                </span>
-                <span className="text-sm bg-neon-blue/20 text-neon-blue px-3 py-1 rounded">
-                  {confirmProblem.points} points
-                </span>
               </div>
               <div className="flex gap-3">
                 <button
@@ -514,45 +560,18 @@ export default function TeamDetailPage() {
                   Cancel
                 </button>
                 <button
-                  onClick={confirmProblemSelection}
-                  className="flex-1 px-4 py-3 bg-neon-green hover:bg-neon-green/80 text-white rounded-lg font-medium transition-all"
+                  onClick={() => {
+                    // Go to the active problem
+                    const activeProblem = getActiveProblem();
+                    if (activeProblem) {
+                      setSelectedProblem(activeProblem);
+                      setActiveTab('code');
+                    }
+                    setConfirmProblem(null);
+                  }}
+                  className="flex-1 px-4 py-3 bg-neon-blue hover:bg-neon-blue/80 text-white rounded-lg font-medium transition-all"
                 >
-                  Start Problem →
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Confirmation Modal - Leave Code Tab */}
-      {confirmLeaveTab && selectedProblem && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="glass rounded-2xl p-8 border border-red-500/50 max-w-md w-full">
-            <div className="text-center">
-              <div className="text-5xl mb-4">🚨</div>
-              <h3 className="text-xl font-bold text-red-400 mb-2">Leave This Problem?</h3>
-              <p className="text-gray-300 mb-4">
-                You're working on <span className="font-bold text-white">"{selectedProblem.title}"</span>
-              </p>
-              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6">
-                <p className="text-sm text-red-300">
-                  <strong>⚠️ Warning:</strong> If you leave this tab without submitting, you will 
-                  <strong> lose access</strong> to this problem permanently. Your work will NOT be saved.
-                </p>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setConfirmLeaveTab(null)}
-                  className="flex-1 px-4 py-3 bg-neon-green hover:bg-neon-green/80 text-white rounded-lg font-medium transition-all"
-                >
-                  ← Stay & Continue
-                </button>
-                <button
-                  onClick={confirmLeaveCodeTab}
-                  className="flex-1 px-4 py-3 bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 text-red-400 rounded-lg transition-all"
-                >
-                  Leave Anyway
+                  Go to Active Problem →
                 </button>
               </div>
             </div>
