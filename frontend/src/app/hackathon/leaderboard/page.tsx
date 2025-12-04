@@ -47,7 +47,6 @@ export default function LeaderboardPage() {
         if (activeSessions.length > 0) {
           setSelectedSession(activeSessions[0]._id);
         } else {
-          // No active sessions, stop loading
           setLoading(false);
         }
       } catch (error) {
@@ -68,7 +67,6 @@ export default function LeaderboardPage() {
         setLeaderboard(response.data.leaderboard);
         setSessionTitle(response.data.sessionTitle);
         
-        // Find user's team from localStorage
         const storedTeamId = localStorage.getItem('myTeamId');
         if (storedTeamId) {
           setMyTeamId(storedTeamId);
@@ -83,6 +81,18 @@ export default function LeaderboardPage() {
     
     loadLeaderboard();
   }, [selectedSession]);
+
+  // Split into ranked (has judge points) and not yet ranked
+  const rankedTeams = leaderboard
+    .filter(t => t.reviewedSubmissions > 0 && t.totalJudgePoints > 0)
+    .sort((a, b) => b.totalJudgePoints - a.totalJudgePoints)
+    .map((t, idx) => ({ ...t, rank: idx + 1 }));
+  
+  const pendingReviewTeams = leaderboard.filter(
+    t => t.totalSubmissions > 0 && (t.reviewedSubmissions === 0 || t.totalJudgePoints === 0)
+  );
+  
+  const noSubmissionsTeams = leaderboard.filter(t => t.totalSubmissions === 0);
 
   const getRankStyle = (rank: number) => {
     if (rank === 1) return 'bg-gradient-to-r from-yellow-500/30 to-yellow-600/10 border-yellow-500/50';
@@ -136,111 +146,178 @@ export default function LeaderboardPage() {
           </div>
         ) : leaderboard.length === 0 ? (
           <div className="text-center py-20 text-gray-400">
-            <p className="text-xl mb-2">No submissions yet</p>
-            <p>Teams will appear here once they submit solutions</p>
+            <p className="text-xl mb-2">No teams yet</p>
+            <p>Teams will appear here once they're added to the session</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {leaderboard.map((entry) => (
-              <div
-                key={entry.teamId}
-                className={`p-4 rounded-xl border transition-all ${getRankStyle(entry.rank)} ${
-                  entry.teamId === myTeamId ? 'ring-2 ring-neon-purple' : ''
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  {/* Rank */}
-                  <div className="w-16 text-center">
-                    <div className={`text-3xl ${entry.rank <= 3 ? '' : 'text-gray-500 font-bold'}`}>
-                      {getRankIcon(entry.rank)}
-                    </div>
-                  </div>
+          <div className="space-y-8">
+            {/* Main Leaderboard - Ranked Teams */}
+            {rankedTeams.length > 0 ? (
+              <div>
+                <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                  <span>🏅</span> Rankings
+                </h2>
+                <div className="space-y-3">
+                  {rankedTeams.map((entry) => (
+                    <div
+                      key={entry.teamId}
+                      className={`p-4 rounded-xl border transition-all ${getRankStyle(entry.rank)} ${
+                        entry.teamId === myTeamId ? 'ring-2 ring-neon-purple' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        {/* Rank */}
+                        <div className="w-16 text-center">
+                          <div className={`text-3xl ${entry.rank <= 3 ? '' : 'text-gray-500 font-bold'}`}>
+                            {getRankIcon(entry.rank)}
+                          </div>
+                        </div>
 
-                  {/* Team Info */}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-xl font-bold text-white">{entry.teamName}</h3>
-                      {entry.teamId === myTeamId && (
-                        <span className="px-2 py-0.5 text-xs bg-neon-purple/20 text-neon-purple rounded-full">
-                          Your Team
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-400">
-                      {entry.memberCount} member{entry.memberCount !== 1 ? 's' : ''} • {entry.totalSubmissions} submission{entry.totalSubmissions !== 1 ? 's' : ''}
-                    </p>
-                  </div>
+                        {/* Team Info */}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-xl font-bold text-white">{entry.teamName}</h3>
+                            {entry.teamId === myTeamId && (
+                              <span className="px-2 py-0.5 text-xs bg-neon-purple/20 text-neon-purple rounded-full">
+                                Your Team
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-400">
+                            {entry.memberCount} member{entry.memberCount !== 1 ? 's' : ''} • {entry.reviewedSubmissions} reviewed
+                          </p>
+                        </div>
 
-                  {/* Stats */}
-                  <div className="flex items-center gap-6">
-                    {/* Test Pass Rate */}
-                    <div className="text-center">
-                      <div className="text-sm text-gray-400">Tests</div>
-                      <div className={`text-lg font-bold ${
-                        entry.passRate >= 80 ? 'text-green-400' :
-                        entry.passRate >= 50 ? 'text-yellow-400' : 'text-red-400'
-                      }`}>
-                        {entry.passRate}%
+                        {/* Stats */}
+                        <div className="flex items-center gap-6">
+                          {/* Test Pass Rate */}
+                          <div className="text-center hidden sm:block">
+                            <div className="text-sm text-gray-400">Tests</div>
+                            <div className={`text-lg font-bold ${
+                              entry.passRate >= 80 ? 'text-green-400' :
+                              entry.passRate >= 50 ? 'text-yellow-400' : 'text-red-400'
+                            }`}>
+                              {entry.passRate}%
+                            </div>
+                          </div>
+
+                          {/* Avg Judge Score */}
+                          <div className="text-center hidden md:block">
+                            <div className="text-sm text-gray-400">Avg Score</div>
+                            <div className={`text-lg font-bold ${
+                              entry.avgJudgeScore === null ? 'text-gray-500' :
+                              entry.avgJudgeScore >= 75 ? 'text-green-400' :
+                              entry.avgJudgeScore >= 50 ? 'text-yellow-400' : 'text-orange-400'
+                            }`}>
+                              {entry.avgJudgeScore !== null ? `${entry.avgJudgeScore}%` : '-'}
+                            </div>
+                          </div>
+
+                          {/* Total Points */}
+                          <div className="text-center min-w-[100px]">
+                            <div className="text-sm text-gray-400">Points</div>
+                            <div className="text-2xl font-bold text-neon-green">
+                              {Math.round(entry.totalJudgePoints)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div className="mt-3 bg-dark-900 rounded-full h-2 overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-neon-purple to-neon-blue transition-all"
+                          style={{ 
+                            width: entry.maxPossiblePoints > 0 
+                              ? `${(entry.totalJudgePoints / entry.maxPossiblePoints) * 100}%`
+                              : '0%'
+                          }}
+                        />
                       </div>
                     </div>
-
-                    {/* Avg Judge Score */}
-                    <div className="text-center">
-                      <div className="text-sm text-gray-400">Avg Score</div>
-                      <div className={`text-lg font-bold ${
-                        entry.avgJudgeScore === null ? 'text-gray-500' :
-                        entry.avgJudgeScore >= 75 ? 'text-green-400' :
-                        entry.avgJudgeScore >= 50 ? 'text-yellow-400' : 'text-orange-400'
-                      }`}>
-                        {entry.avgJudgeScore !== null ? `${entry.avgJudgeScore}%` : '-'}
-                      </div>
-                    </div>
-
-                    {/* Reviewed */}
-                    <div className="text-center">
-                      <div className="text-sm text-gray-400">Reviewed</div>
-                      <div className="text-lg font-bold text-gray-300">
-                        {entry.reviewedSubmissions}/{entry.totalSubmissions}
-                      </div>
-                    </div>
-
-                    {/* Total Points */}
-                    <div className="text-center min-w-[100px]">
-                      <div className="text-sm text-gray-400">Points</div>
-                      <div className="text-2xl font-bold text-neon-green">
-                        {entry.totalJudgePoints}
-                        <span className="text-sm text-gray-500">/{entry.maxPossiblePoints}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="mt-3 bg-dark-900 rounded-full h-2 overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-neon-purple to-neon-blue transition-all"
-                    style={{ 
-                      width: entry.maxPossiblePoints > 0 
-                        ? `${(entry.totalJudgePoints / entry.maxPossiblePoints) * 100}%`
-                        : '0%'
-                    }}
-                  />
+                  ))}
                 </div>
               </div>
-            ))}
+            ) : (
+              <div className="text-center py-12 glass rounded-xl border border-gray-700">
+                <div className="text-5xl mb-4">🏆</div>
+                <h3 className="text-xl font-bold text-gray-300 mb-2">No Rankings Yet</h3>
+                <p className="text-gray-500">Teams will appear here once judges review their submissions</p>
+              </div>
+            )}
+
+            {/* Pending Review Section */}
+            {pendingReviewTeams.length > 0 && (
+              <div>
+                <h2 className="text-lg font-bold text-gray-400 mb-3 flex items-center gap-2">
+                  <span>⏳</span> Awaiting Review ({pendingReviewTeams.length})
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {pendingReviewTeams.map((entry) => (
+                    <div
+                      key={entry.teamId}
+                      className={`p-4 rounded-xl bg-dark-800/30 border border-gray-700 ${
+                        entry.teamId === myTeamId ? 'ring-2 ring-neon-purple' : ''
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-bold text-white">{entry.teamName}</h3>
+                        {entry.teamId === myTeamId && (
+                          <span className="px-2 py-0.5 text-xs bg-neon-purple/20 text-neon-purple rounded-full">
+                            You
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-400">
+                        {entry.totalSubmissions} submission{entry.totalSubmissions !== 1 ? 's' : ''} • {entry.passRate}% tests passed
+                      </p>
+                      <div className="mt-2 text-xs text-yellow-400">
+                        ⏳ Waiting for judge review...
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* No Submissions Section */}
+            {noSubmissionsTeams.length > 0 && (
+              <div>
+                <h2 className="text-lg font-bold text-gray-500 mb-3 flex items-center gap-2">
+                  <span>📭</span> No Submissions Yet ({noSubmissionsTeams.length})
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {noSubmissionsTeams.map((entry) => (
+                    <div
+                      key={entry.teamId}
+                      className={`px-4 py-2 rounded-lg bg-dark-800/20 border border-gray-800 text-gray-500 ${
+                        entry.teamId === myTeamId ? 'ring-2 ring-neon-purple' : ''
+                      }`}
+                    >
+                      {entry.teamName}
+                      {entry.teamId === myTeamId && (
+                        <span className="ml-2 text-xs text-neon-purple">(You)</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {/* Legend */}
         <div className="mt-8 p-4 bg-dark-800/50 rounded-lg border border-gray-700">
           <h3 className="text-sm font-bold text-gray-400 mb-2">📊 How Points Work</h3>
-          <p className="text-sm text-gray-500">
-            Each problem has a max point value. Judges score submissions using a rubric (Correctness 40%, 
-            Code Quality 20%, Efficiency 20%, Explanation 20%). Your final points = Judge Score % × Problem Points.
-          </p>
+          <ul className="text-sm text-gray-500 space-y-1">
+            <li>• <strong className="text-gray-400">Easy problems:</strong> 100 pts max</li>
+            <li>• <strong className="text-gray-400">Medium problems:</strong> 200 pts max</li>
+            <li>• <strong className="text-gray-400">Hard problems:</strong> 300 pts max</li>
+            <li>• Judges score using a rubric (Correctness 40%, Code Quality 20%, Efficiency 20%, Explanation 20%)</li>
+            <li>• Your points = Judge Score % × Problem Max Points</li>
+          </ul>
         </div>
       </div>
     </div>
   );
 }
-

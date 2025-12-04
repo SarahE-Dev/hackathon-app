@@ -9,30 +9,48 @@ import { Timer } from '@/components/assessment/Timer';
 
 interface Question {
   _id: string;
-  type: 'multiple-choice' | 'short-answer' | 'long-answer' | 'coding' | 'file-upload' | 'multi-select';
+  type: 'multiple-choice' | 'short-answer' | 'long-answer' | 'coding' | 'file-upload' | 'multi-select' | 'mcq-single' | 'mcq-multiple';
   title: string;
   description: string;
   points: number;
   content: any;
 }
 
-interface Assessment {
+interface AssessmentSection {
   id: string;
   title: string;
+  description?: string;
+  questionIds: Question[]; // Populated question objects
+  timeLimit?: number;
+  randomizeQuestions: boolean;
+  randomizeOptions: boolean;
+}
+
+interface Assessment {
+  id: string;
+  _id?: string;
+  title: string;
   description: string;
+  sections: AssessmentSection[];
   settings: {
-    timeLimit?: number;
-    proctoring: {
+    totalTimeLimit?: number;
+    proctoring?: {
       enabled: boolean;
-      requireWebcam: boolean;
+      requireIdCheck?: boolean;
       detectTabSwitch: boolean;
-      preventCopyPaste: boolean;
+      detectCopyPaste?: boolean;
+      enableWebcam?: boolean;
     };
   };
-  questions: Question[];
   totalPoints: number;
-  status: 'draft' | 'published';
+  status: 'draft' | 'published' | 'archived';
 }
+
+// Helper to extract all questions from sections
+const getQuestionsFromSections = (sections: AssessmentSection[] | undefined): Question[] => {
+  if (!sections) return [];
+  return sections.flatMap(section => section.questionIds || []);
+};
 
 function AssessmentBuilderContent() {
   const params = useParams();
@@ -55,7 +73,25 @@ function AssessmentBuilderContent() {
   const loadAssessment = async () => {
     try {
       const response = await assessmentsAPI.getById(assessmentId);
-      setAssessment(response.data.assessment);
+      const assessmentData = response.data.assessment;
+      // Ensure all required fields have defaults
+      setAssessment({
+        ...assessmentData,
+        id: assessmentData.id || assessmentData._id,
+        sections: assessmentData.sections || [],
+        settings: {
+          totalTimeLimit: assessmentData.settings?.totalTimeLimit,
+          proctoring: {
+            enabled: assessmentData.settings?.proctoring?.enabled || false,
+            requireIdCheck: assessmentData.settings?.proctoring?.requireIdCheck || false,
+            detectTabSwitch: assessmentData.settings?.proctoring?.detectTabSwitch || false,
+            detectCopyPaste: assessmentData.settings?.proctoring?.detectCopyPaste || false,
+            enableWebcam: assessmentData.settings?.proctoring?.enableWebcam || false,
+          },
+        },
+        totalPoints: assessmentData.totalPoints || 0,
+        status: assessmentData.status || 'draft',
+      });
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Failed to load assessment');
     } finally {
@@ -91,8 +127,27 @@ function AssessmentBuilderContent() {
       const question = availableQuestions.find(q => q._id === questionId);
       if (!question) return;
 
-      const updatedQuestions = [...assessment.questions, question];
-      await saveAssessment({ questions: updatedQuestions });
+      // Get current sections or create a default one
+      let updatedSections = [...(assessment.sections || [])];
+      
+      if (updatedSections.length === 0) {
+        // Create a default section if none exists
+        updatedSections = [{
+          id: 'section1',
+          title: 'Questions',
+          questionIds: [],
+          randomizeQuestions: false,
+          randomizeOptions: false,
+        }];
+      }
+      
+      // Add question to the first section
+      updatedSections[0] = {
+        ...updatedSections[0],
+        questionIds: [...(updatedSections[0].questionIds || []), question],
+      };
+      
+      await saveAssessment({ sections: updatedSections });
     } catch (err: any) {
       alert('Failed to add question to assessment');
     }
@@ -101,8 +156,13 @@ function AssessmentBuilderContent() {
   const removeQuestionFromAssessment = async (questionId: string) => {
     if (!assessment) return;
 
-    const updatedQuestions = assessment.questions.filter(q => q._id !== questionId);
-    await saveAssessment({ questions: updatedQuestions });
+    // Remove question from all sections
+    const updatedSections = (assessment.sections || []).map(section => ({
+      ...section,
+      questionIds: (section.questionIds || []).filter(q => q._id !== questionId),
+    }));
+    
+    await saveAssessment({ sections: updatedSections });
   };
 
   const updateSettings = async (settings: Partial<Assessment['settings']>) => {
@@ -180,7 +240,7 @@ function AssessmentBuilderContent() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex gap-2">
             {[
-              { key: 'questions', label: 'Questions', count: assessment.questions.length },
+              { key: 'questions', label: 'Questions', count: getQuestionsFromSections(assessment.sections).length },
               { key: 'settings', label: 'Settings' },
               { key: 'preview', label: 'Preview' },
             ].map((tab) => (
@@ -220,7 +280,7 @@ function AssessmentBuilderContent() {
               </button>
             </div>
 
-            {assessment.questions.length === 0 ? (
+            {getQuestionsFromSections(assessment.sections).length === 0 ? (
               <div className="glass rounded-xl p-8 border border-gray-800 text-center">
                 <div className="text-4xl mb-3 opacity-50">📋</div>
                 <p className="text-gray-400 mb-4">No questions added yet</p>
@@ -233,7 +293,7 @@ function AssessmentBuilderContent() {
               </div>
             ) : (
               <div className="space-y-4">
-                {assessment.questions.map((question, index) => (
+                {getQuestionsFromSections(assessment.sections).map((question, index) => (
                   <div
                     key={question._id}
                     className="glass rounded-xl p-6 border border-gray-800"
@@ -283,16 +343,16 @@ function AssessmentBuilderContent() {
                 </label>
                 <input
                   type="number"
-                  value={assessment.settings.timeLimit || ''}
-                  onChange={(e) => updateSettings({ timeLimit: parseInt(e.target.value) || undefined })}
+                  value={assessment.settings?.totalTimeLimit || ''}
+                  onChange={(e) => updateSettings({ totalTimeLimit: parseInt(e.target.value) || undefined })}
                   className="w-full px-4 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white focus:border-neon-blue transition-all"
                   placeholder="No time limit"
                 />
-                {assessment.settings.timeLimit && (
+                {assessment.settings?.totalTimeLimit && (
                   <div className="mt-3 p-4 bg-dark-800 rounded-lg border border-gray-700">
                     <p className="text-sm text-gray-400 mb-2">Timer Preview:</p>
                     <Timer
-                      secondsRemaining={assessment.settings.timeLimit * 60}
+                      secondsRemaining={assessment.settings.totalTimeLimit * 60}
                       onTimeUp={() => {}}
                       warningAt={300}
                     />
@@ -307,10 +367,10 @@ function AssessmentBuilderContent() {
                   <label className="flex items-center">
                     <input
                       type="checkbox"
-                      checked={assessment.settings.proctoring.enabled}
+                      checked={assessment.settings?.proctoring?.enabled || false}
                       onChange={(e) => updateSettings({
                         proctoring: {
-                          ...assessment.settings.proctoring,
+                          ...(assessment.settings?.proctoring || {}),
                           enabled: e.target.checked
                         }
                       })}
@@ -319,16 +379,16 @@ function AssessmentBuilderContent() {
                     <span className="ml-2 text-sm text-gray-300">Enable Proctoring</span>
                   </label>
 
-                  {assessment.settings.proctoring.enabled && (
+                  {assessment.settings?.proctoring?.enabled && (
                     <>
                       <label className="flex items-center ml-6">
                         <input
                           type="checkbox"
-                          checked={assessment.settings.proctoring.requireWebcam}
+                          checked={assessment.settings?.proctoring?.enableWebcam || false}
                           onChange={(e) => updateSettings({
                             proctoring: {
-                              ...assessment.settings.proctoring,
-                              requireWebcam: e.target.checked
+                              ...(assessment.settings?.proctoring || {}),
+                              enableWebcam: e.target.checked
                             }
                           })}
                           className="h-4 w-4 text-neon-blue focus:ring-neon-blue border-gray-600 rounded bg-dark-700"
@@ -338,10 +398,10 @@ function AssessmentBuilderContent() {
                       <label className="flex items-center ml-6">
                         <input
                           type="checkbox"
-                          checked={assessment.settings.proctoring.detectTabSwitch}
+                          checked={assessment.settings?.proctoring?.detectTabSwitch || false}
                           onChange={(e) => updateSettings({
                             proctoring: {
-                              ...assessment.settings.proctoring,
+                              ...(assessment.settings?.proctoring || {}),
                               detectTabSwitch: e.target.checked
                             }
                           })}
@@ -352,16 +412,16 @@ function AssessmentBuilderContent() {
                       <label className="flex items-center ml-6">
                         <input
                           type="checkbox"
-                          checked={assessment.settings.proctoring.preventCopyPaste}
+                          checked={assessment.settings?.proctoring?.detectCopyPaste || false}
                           onChange={(e) => updateSettings({
                             proctoring: {
-                              ...assessment.settings.proctoring,
-                              preventCopyPaste: e.target.checked
+                              ...(assessment.settings?.proctoring || {}),
+                              detectCopyPaste: e.target.checked
                             }
                           })}
                           className="h-4 w-4 text-neon-blue focus:ring-neon-blue border-gray-600 rounded bg-dark-700"
                         />
-                        <span className="ml-2 text-sm text-gray-300">Prevent Copy/Paste</span>
+                        <span className="ml-2 text-sm text-gray-300">Detect Copy/Paste</span>
                       </label>
                     </>
                   )}
@@ -384,23 +444,23 @@ function AssessmentBuilderContent() {
 
               <div className="space-y-4">
                 <div className="flex items-center gap-4 text-sm text-gray-500">
-                  <span>{assessment.questions.length} questions</span>
+                  <span>{getQuestionsFromSections(assessment.sections).length} questions</span>
                   <span>{assessment.totalPoints} total points</span>
-                  {assessment.settings.timeLimit && (
-                    <span>{assessment.settings.timeLimit} minutes</span>
+                  {assessment.settings?.totalTimeLimit && (
+                    <span>{assessment.settings.totalTimeLimit} minutes</span>
                   )}
                 </div>
 
-                {assessment.questions.length === 0 ? (
+                {getQuestionsFromSections(assessment.sections).length === 0 ? (
                   <p className="text-gray-400 text-center py-8">Add questions to see preview</p>
                 ) : (
                   <div className="space-y-3">
-                    {assessment.questions.map((question, index) => (
+                    {getQuestionsFromSections(assessment.sections).map((question, index) => (
                       <div key={question._id} className="p-4 bg-dark-800 rounded-lg">
                         <div className="flex items-center gap-3 mb-2">
                           <span className="text-neon-blue font-medium">Q{index + 1}</span>
                           <span className="text-sm text-gray-400 capitalize">
-                            {question.type.replace('-', ' ')}
+                            {question.type?.replace('-', ' ') || 'unknown'}
                           </span>
                           <span className="text-sm text-neon-green">{question.points} pts</span>
                         </div>
@@ -437,7 +497,7 @@ function AssessmentBuilderContent() {
               ) : (
                 <div className="grid gap-4">
                   {availableQuestions.map((question) => {
-                    const isAdded = assessment.questions.some(q => q._id === question._id);
+                    const isAdded = getQuestionsFromSections(assessment.sections).some(q => q._id === question._id);
                     return (
                       <div
                         key={question._id}

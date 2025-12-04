@@ -19,11 +19,33 @@ const router = Router();
 // All routes require authentication
 router.use(authenticate);
 
+// ===== STATIC ROUTES FIRST (before parameterized routes) =====
+
 /**
  * GET /api/team-submissions/session/:sessionId/all
  * Get all submissions for a session (judges/admins only)
  */
 router.get('/session/:sessionId/all', getAllSessionSubmissions);
+
+/**
+ * GET /api/team-submissions/leaderboard/:sessionId
+ * Get leaderboard for a session (old endpoint)
+ */
+router.get('/leaderboard/:sessionId', getSessionLeaderboard);
+
+/**
+ * GET /api/team-submissions/hackathon-leaderboard/:sessionId
+ * Get hackathon leaderboard with judge scores
+ */
+router.get('/hackathon-leaderboard/:sessionId', getLeaderboard);
+
+/**
+ * GET /api/team-submissions/my-reviews/:teamId
+ * Get a team's own submissions with judge feedback
+ */
+router.get('/my-reviews/:teamId', getMyTeamReviews);
+
+// ===== PARAMETERIZED ROUTES =====
 
 /**
  * POST /api/team-submissions/:submissionId/feedback
@@ -36,6 +58,12 @@ router.post('/:submissionId/feedback', addJudgeFeedback);
  * Get all submissions for a team in a session
  */
 router.get('/:teamId/:sessionId', getTeamSubmissions);
+
+/**
+ * DELETE /api/team-submissions/:teamId/:sessionId/dev-reset
+ * Clear all submissions for a team (DEV ONLY)
+ */
+router.delete('/:teamId/:sessionId/dev-reset', clearTeamSubmissions);
 
 /**
  * GET /api/team-submissions/:teamId/:sessionId/:problemId
@@ -61,29 +89,4 @@ router.post('/:teamId/:sessionId/:problemId/run', runTests);
  */
 router.post('/:teamId/:sessionId/:problemId/submit', submitSolution);
 
-/**
- * GET /api/team-submissions/leaderboard/:sessionId
- * Get leaderboard for a session (old endpoint)
- */
-router.get('/leaderboard/:sessionId', getSessionLeaderboard);
-
-/**
- * GET /api/team-submissions/hackathon-leaderboard/:sessionId
- * Get hackathon leaderboard with judge scores
- */
-router.get('/hackathon-leaderboard/:sessionId', getLeaderboard);
-
-/**
- * GET /api/team-submissions/my-reviews/:teamId
- * Get a team's own submissions with judge feedback
- */
-router.get('/my-reviews/:teamId', getMyTeamReviews);
-
-/**
- * DELETE /api/team-submissions/:teamId/:sessionId/dev-reset
- * Clear all submissions for a team (DEV ONLY)
- */
-router.delete('/:teamId/:sessionId/dev-reset', clearTeamSubmissions);
-
 export default router;
-

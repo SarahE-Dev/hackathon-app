@@ -262,7 +262,8 @@ export const runTests = async (
     const totalTests = results.length;
     const allTestsPassed = passedTests === totalTests;
     const score = totalTests > 0 ? Math.round((passedTests / totalTests) * 100) : 0;
-    const pointsEarned = allTestsPassed ? problem.points : 0;
+    // Points are ONLY awarded by judges, not automatically on submission
+    const pointsEarned = 0;
 
     // Build update query - increment testRunAttempts only for "Run All Tests"
     const updateQuery: any = {
@@ -378,7 +379,8 @@ export const submitSolution = async (
     const totalTests = results.length;
     const allTestsPassed = passedTests === totalTests;
     const score = totalTests > 0 ? Math.round((passedTests / totalTests) * 100) : 0;
-    const pointsEarned = allTestsPassed ? problem.points : 0;
+    // Points are ONLY awarded by judges, not automatically on submission
+    const pointsEarned = 0;
 
     // Build update object with proctoring data
     const updateSet: any = {
@@ -597,7 +599,15 @@ export const getAllSessionSubmissions = async (
       
       teamData.stats.totalSubmissions++;
       if (sub.allTestsPassed) teamData.stats.passedSubmissions++;
-      teamData.stats.totalPoints += sub.pointsEarned;
+      
+      // Calculate points from judge review (not auto-awarded)
+      const problem = sub.problemId as any;
+      const judgeFeedback = (sub as any).judgeFeedback;
+      if (judgeFeedback?.totalJudgeScore && problem?.points) {
+        const judgePoints = Math.round((judgeFeedback.totalJudgeScore / 100) * problem.points);
+        teamData.stats.totalPoints += judgePoints;
+      }
+      
       if (sub.proctoringStats?.riskScore) {
         teamData.stats.avgRiskScore += sub.proctoringStats.riskScore;
       }

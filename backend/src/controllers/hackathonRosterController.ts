@@ -254,6 +254,7 @@ export const updateRosterEntry = async (
 
 /**
  * Remove from roster
+ * Also removes the user from their team if they were assigned to one
  */
 export const removeFromRoster = async (
   req: AuthRequest,
@@ -263,14 +264,25 @@ export const removeFromRoster = async (
   try {
     const { id } = req.params;
 
-    const entry = await HackathonRoster.findByIdAndDelete(id);
+    // First get the entry to check if they have a team assignment
+    const entry = await HackathonRoster.findById(id);
     if (!entry) {
       throw new ApiError(404, 'Roster entry not found');
     }
 
+    // If the user is assigned to a team, remove them from the team
+    if (entry.teamId && entry.userId) {
+      await Team.findByIdAndUpdate(entry.teamId, {
+        $pull: { memberIds: entry.userId }
+      });
+    }
+
+    // Now delete the roster entry
+    await HackathonRoster.findByIdAndDelete(id);
+
     res.json({
       success: true,
-      message: 'Removed from roster',
+      message: 'Removed from roster and team',
     });
   } catch (error) {
     next(error);

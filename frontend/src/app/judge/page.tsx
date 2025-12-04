@@ -575,7 +575,14 @@ function JudgeDashboardContent() {
                                 {sub.passedTests}/{sub.totalTests} tests
                             </span>
                           )}
-                            <span className="text-neon-green text-sm">{sub.pointsEarned}/{sub.maxPoints} pts</span>
+                            {/* Points: Show judge-awarded points if reviewed, otherwise max points */}
+                            {sub.judgeFeedback?.reviewedAt ? (
+                              <span className="text-neon-green text-sm font-medium">
+                                {Math.round((sub.judgeFeedback.totalJudgeScore / 100) * (sub.problem?.points || sub.maxPoints))}/{sub.problem?.points || sub.maxPoints} pts
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 text-sm">{sub.problem?.points || sub.maxPoints} pts max</span>
+                            )}
                         </div>
                           <div className="flex items-center gap-3">
                             {/* Proctoring indicators */}
@@ -596,11 +603,18 @@ function JudgeDashboardContent() {
                               {sub.proctoringStats?.riskScore || 0}% risk
                             </span>
                             {sub.judgeFeedback?.flagged && (
-                              <span className="text-red-400">🚩</span>
+                              <span className="px-2 py-1 text-xs bg-red-500/30 text-red-400 rounded font-bold border border-red-500/50">
+                                🚩 Flagged
+                              </span>
                             )}
                             {sub.judgeFeedback?.reviewedAt && !sub.judgeFeedback?.flagged && (
-                              <span className="px-2 py-0.5 text-xs bg-green-500/20 text-green-400 rounded font-medium">
-                                ✓ {sub.judgeFeedback?.totalJudgeScore}%
+                              <span className="px-3 py-1 text-xs bg-green-500/30 text-green-400 rounded font-bold border border-green-500/50">
+                                ✓ Reviewed ({sub.judgeFeedback?.totalJudgeScore}%)
+                              </span>
+                            )}
+                            {!sub.judgeFeedback?.reviewedAt && (
+                              <span className="px-2 py-1 text-xs bg-gray-700/50 text-gray-400 rounded border border-gray-600">
+                                Needs Review
                               </span>
                             )}
                             </div>
@@ -637,6 +651,11 @@ function JudgeDashboardContent() {
             {/* Modal Header */}
             <div className="p-4 border-b border-gray-700 flex items-center justify-between bg-dark-900">
               <div className="flex items-center gap-4">
+                {selectedSubmission.judgeFeedback?.reviewedAt && (
+                  <div className="px-3 py-1 rounded bg-green-500/20 border border-green-500/50 text-green-400 text-sm font-medium">
+                    ✏️ Editing Review
+                  </div>
+                )}
                 <div className={`px-3 py-1 rounded border ${getDifficultyColor(selectedSubmission.problem?.difficulty)}`}>
                   {selectedSubmission.problem?.difficulty}
                 </div>
@@ -645,7 +664,12 @@ function JudgeDashboardContent() {
                   <p className="text-gray-400 text-sm">
                     {selectedSubmission.submittedBy?.firstName} {selectedSubmission.submittedBy?.lastName} • 
                     {selectedSubmission.passedTests}/{selectedSubmission.totalTests} tests passed •
-                    {selectedSubmission.pointsEarned}/{selectedSubmission.maxPoints} points
+                    {selectedSubmission.problem?.points || selectedSubmission.maxPoints} pts max
+                    {selectedSubmission.judgeFeedback?.reviewedAt && (
+                      <span className="text-green-400 ml-2">
+                        (Current: {Math.round((selectedSubmission.judgeFeedback.totalJudgeScore / 100) * (selectedSubmission.problem?.points || selectedSubmission.maxPoints))} pts)
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>
@@ -903,7 +927,9 @@ function JudgeDashboardContent() {
                   disabled={submittingFeedback}
                   className="px-6 py-2 bg-gradient-to-r from-neon-purple to-neon-blue hover:opacity-90 text-white font-medium rounded-lg transition-all disabled:opacity-50"
                 >
-                  {submittingFeedback ? 'Saving...' : 'Save Review'}
+                  {submittingFeedback 
+                    ? (selectedSubmission.judgeFeedback?.reviewedAt ? 'Updating...' : 'Submitting...') 
+                    : (selectedSubmission.judgeFeedback?.reviewedAt ? '✏️ Update Review' : '📝 Submit Review')}
               </button>
               </div>
             </div>

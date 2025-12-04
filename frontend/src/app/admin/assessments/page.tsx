@@ -66,7 +66,12 @@ function AdminAssessmentsContent() {
       const assessmentsData = Array.isArray(response.data?.assessments)
         ? response.data.assessments
         : [];
-      setAssessments(assessmentsData);
+      // Map _id to id for consistency
+      const mappedAssessments = assessmentsData.map((a: any) => ({
+        ...a,
+        id: a.id || a._id,
+      }));
+      setAssessments(mappedAssessments);
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Failed to load assessments');
     } finally {

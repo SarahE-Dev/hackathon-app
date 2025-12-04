@@ -134,15 +134,29 @@ export const updateAssessment = async (
       throw new ApiError(404, 'Assessment not found');
     }
 
-    if (assessment.status === AssessmentStatus.PUBLISHED) {
-      throw new ApiError(400, 'Cannot update published assessment');
+    // Allow status changes (archive/unarchive) even for published assessments
+    // But block other updates to published assessments
+    const isOnlyStatusUpdate = Object.keys(updates).length === 1 && updates.status !== undefined;
+    
+    if (assessment.status === AssessmentStatus.PUBLISHED && !isOnlyStatusUpdate) {
+      throw new ApiError(400, 'Cannot update published assessment (except status)');
     }
 
-    // Update allowed fields
-    const allowedUpdates = ['title', 'description', 'sections', 'settings'];
+    // Update allowed fields - include status for archiving
+    const allowedUpdates = ['title', 'description', 'sections', 'settings', 'status'];
     allowedUpdates.forEach((field) => {
       if (updates[field] !== undefined) {
-        (assessment as any)[field] = updates[field];
+        // Special handling for sections - convert populated question objects back to ObjectIds
+        if (field === 'sections' && Array.isArray(updates[field])) {
+          (assessment as any)[field] = updates[field].map((section: any) => ({
+            ...section,
+            questionIds: (section.questionIds || []).map((q: any) => 
+              typeof q === 'object' ? (q._id || q.id) : q
+            ),
+          }));
+        } else {
+          (assessment as any)[field] = updates[field];
+        }
       }
     });
 

@@ -493,11 +493,6 @@ function UsersManagementContent() {
                           Inactive
                         </span>
                       )}
-                      {!user.emailVerified && (
-                        <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-full border border-yellow-500/50">
-                          Unverified
-                        </span>
-                      )}
                     </div>
                     <p className="text-gray-400 mb-4">{user.email}</p>
 

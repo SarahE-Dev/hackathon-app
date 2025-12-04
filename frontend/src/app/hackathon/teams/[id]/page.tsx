@@ -736,10 +736,6 @@ export default function TeamDetailPage() {
               const notStartedCount = problems.filter(p => !problemProgress.has(p._id) || problemProgress.get(p._id) === 'not-started').length;
               const inProgressCount = problems.filter(p => problemProgress.get(p._id) === 'in-progress').length;
               const completedCount = problems.filter(p => problemProgress.get(p._id) === 'completed').length;
-              const totalPoints = problems.reduce((sum, p) => sum + (p.points || 0), 0);
-              const earnedPoints = problems
-                .filter(p => problemProgress.get(p._id) === 'completed')
-                .reduce((sum, p) => sum + (p.points || 0), 0);
 
               return (
               <div className="space-y-6">
@@ -766,7 +762,7 @@ export default function TeamDetailPage() {
                           style={{ width: `${problems.length > 0 ? (inProgressCount / problems.length) * 100 : 0}%` }}
                         ></div>
                       </div>
-                      <div className="flex justify-between text-xs mt-2">
+                      <div className="flex text-xs mt-2">
                         <div className="flex items-center gap-4">
                           <span className="flex items-center gap-1">
                             <div className="w-2 h-2 rounded-full bg-neon-green"></div>
@@ -781,7 +777,6 @@ export default function TeamDetailPage() {
                             <span className="text-gray-400">Not Started</span>
                           </span>
                         </div>
-                        <span className="text-neon-blue font-medium">{earnedPoints}/{totalPoints} pts</span>
                       </div>
                     </div>
 
@@ -795,7 +790,7 @@ export default function TeamDetailPage() {
                   </div>
 
                   {/* Quick Stats */}
-                  <div className="grid grid-cols-4 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div className="glass rounded-xl p-4 border border-gray-800 text-center">
                       <p className="text-3xl font-bold text-gray-400">{notStartedCount}</p>
                       <p className="text-xs text-gray-500 mt-1">Not Started</p>
@@ -808,10 +803,13 @@ export default function TeamDetailPage() {
                       <p className="text-3xl font-bold text-neon-green">{completedCount}</p>
                       <p className="text-xs text-gray-400 mt-1">Completed</p>
                     </div>
-                    <div className="glass rounded-xl p-4 border border-neon-blue/30 text-center">
-                      <p className="text-3xl font-bold text-neon-blue">{earnedPoints}</p>
-                      <p className="text-xs text-gray-400 mt-1">Points Earned</p>
-                    </div>
+                  </div>
+
+                  {/* Info about points */}
+                  <div className="glass rounded-xl p-4 border border-gray-700 text-center">
+                    <p className="text-sm text-gray-400">
+                      📝 Points will be awarded by judges after reviewing your submissions
+                    </p>
                   </div>
                 </div>
               );
@@ -891,8 +889,8 @@ export default function TeamDetailPage() {
                                 {problem.difficulty.toUpperCase()}
                               </span>
                                   <span className="text-xs text-gray-500">•</span>
-                                  <span className={`text-xs ${isCompleted ? 'text-neon-green' : 'text-neon-blue'}`}>
-                                    {isCompleted ? `+${problem.points}` : problem.points} pts
+                                  <span className="text-xs text-gray-400">
+                                    {problem.points} pts max
                               </span>
                             </div>
                           </div>
