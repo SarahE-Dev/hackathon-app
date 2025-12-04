@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { teamsAPI } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
-import { NotificationCenter } from '@/components/notifications/NotificationCenter';
-import { useNotifications } from '@/contexts/NotificationContext';
 
 interface TeamMember {
   _id: string;
@@ -33,7 +31,6 @@ interface Team {
 export default function DashboardPage() {
   const router = useRouter();
   const { user: authUser, isAuthenticated, logout } = useAuthStore();
-  const { addNotification } = useNotifications();
   const [loading, setLoading] = useState(true);
   const [userTeam, setUserTeam] = useState<Team | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -165,7 +162,6 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <NotificationCenter />
               <button
                 onClick={handleLogout}
                 className="px-4 py-2 bg-dark-700 border border-gray-600 text-gray-400 rounded-lg hover:bg-dark-600 hover:text-white transition-all text-sm"
