@@ -167,6 +167,7 @@ function JudgeDashboardContent() {
   };
   const [filterRisk, setFilterRisk] = useState<'all' | 'high' | 'medium' | 'low'>('all');
   const [sortBy, setSortBy] = useState<'points' | 'risk' | 'submissions'>('points');
+  const [showAllSubmissions, setShowAllSubmissions] = useState(false); // Include in-progress/no explanation
 
   // Load sessions on mount
   useEffect(() => {
@@ -192,14 +193,14 @@ function JudgeDashboardContent() {
     loadSessions();
   }, []);
 
-  // Load submissions when session changes
+  // Load submissions when session changes or filter changes
   useEffect(() => {
     if (!selectedSession) return;
     
     const loadSubmissions = async () => {
       setLoading(true);
       try {
-        const response = await teamSubmissionsAPI.getAllSessionSubmissions(selectedSession);
+        const response = await teamSubmissionsAPI.getAllSessionSubmissions(selectedSession, showAllSubmissions);
         setTeamsData(response.data?.teams || []);
     } catch (error) {
         console.error('Error loading submissions:', error);
@@ -209,7 +210,7 @@ function JudgeDashboardContent() {
   };
 
     loadSubmissions();
-  }, [selectedSession]);
+  }, [selectedSession, showAllSubmissions]);
 
   const handleSubmitFeedback = async () => {
     if (!selectedSubmission) return;
@@ -434,22 +435,45 @@ function JudgeDashboardContent() {
                 <option value="risk">Risk Score (High to Low)</option>
                 <option value="submissions">Submissions (Most)</option>
               </select>
-                    </div>
-          </div>
-                </div>
               </div>
+
+            {/* Show incomplete submissions toggle */}
+            <div className="flex items-center gap-2 ml-auto">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showAllSubmissions}
+                  onChange={(e) => setShowAllSubmissions(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-600 bg-dark-700 text-neon-purple focus:ring-neon-purple focus:ring-offset-dark-800"
+                />
+                <span className="text-gray-400 text-sm">
+                  Show incomplete submissions
+                </span>
+                <span className="text-xs text-gray-500" title="Include in-progress work without explanations (e.g., teams that ran out of time)">
+                  ℹ️
+                </span>
+              </label>
+                        </div>
+                      </div>
+                    </div>
+                        </div>
 
       {/* Teams Grid */}
       <div className="max-w-7xl mx-auto px-6 pb-8">
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-neon-purple"></div>
-                        </div>
+                      </div>
         ) : filteredTeams.length === 0 ? (
           <div className="bg-dark-800 border border-gray-700 rounded-xl p-12 text-center">
             <div className="text-5xl mb-4">📭</div>
             <p className="text-gray-400 text-lg">No submissions found</p>
-                      </div>
+            {!showAllSubmissions && (
+              <p className="text-gray-500 text-sm mt-2">
+                Try enabling "Show incomplete submissions" to see in-progress work
+              </p>
+            )}
+                    </div>
         ) : (
           <div className="grid gap-4">
             {filteredTeams.map((teamData) => (
@@ -468,27 +492,27 @@ function JudgeDashboardContent() {
                         <h3 className="text-lg font-bold text-white">{teamData.team.name}</h3>
                         <p className="text-gray-400 text-sm">{teamData.team.memberCount} members</p>
                         </div>
-                      </div>
+                        </div>
                     <div className="flex items-center gap-6">
                       <div className="text-center">
                         <div className="text-xl font-bold text-neon-green">{teamData.stats.totalPoints}</div>
                         <div className="text-xs text-gray-400">Points</div>
-                    </div>
+                      </div>
                       <div className="text-center">
                         <div className="text-xl font-bold text-neon-blue">
                           {teamData.stats.passedSubmissions}/{teamData.stats.totalSubmissions}
                 </div>
                         <div className="text-xs text-gray-400">Passed</div>
-              </div>
+                </div>
                       <div className={`px-4 py-2 rounded-lg border ${getRiskBg(teamData.stats.avgRiskScore)}`}>
                         <div className={`text-lg font-bold ${getRiskColor(teamData.stats.avgRiskScore)}`}>
                           {teamData.stats.avgRiskScore}%
             </div>
                         <div className="text-xs text-gray-400">Risk</div>
-                </div>
-                        </div>
-                        </div>
-                      </div>
+              </div>
+              </div>
+              </div>
+            </div>
 
                 {/* Submissions */}
                 <div className="p-4">
@@ -539,15 +563,25 @@ function JudgeDashboardContent() {
                               {sub.problem?.difficulty}
                             </span>
                             <span className="font-medium text-white">{sub.problem?.title}</span>
-                            <span className={`px-2 py-0.5 text-xs rounded ${
-                              sub.allTestsPassed ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                            }`}>
-                              {sub.passedTests}/{sub.totalTests} tests
+                            {/* Status badge */}
+                            {sub.status === 'in_progress' || !sub.explanation ? (
+                              <span className="px-2 py-0.5 text-xs bg-orange-500/20 text-orange-400 rounded border border-orange-500/30" title="Incomplete - no final submission or explanation">
+                                ⏳ Incomplete
+                              </span>
+                            ) : (
+                              <span className={`px-2 py-0.5 text-xs rounded ${
+                                sub.allTestsPassed ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                              }`}>
+                                {sub.passedTests}/{sub.totalTests} tests
                             </span>
+                          )}
                             <span className="text-neon-green text-sm">{sub.pointsEarned}/{sub.maxPoints} pts</span>
                         </div>
                           <div className="flex items-center gap-3">
                             {/* Proctoring indicators */}
+                            <span className={`px-2 py-0.5 text-xs rounded ${sub.attempts === 1 ? 'bg-green-500/20 text-green-400' : sub.attempts > 3 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-gray-500/20 text-gray-400'}`} title="Submission attempts">
+                              🔁 {sub.attempts || 1}
+                            </span>
                             {(sub.proctoringStats?.externalPasteCount || 0) > 0 && (
                               <span className="px-2 py-0.5 text-xs bg-red-500/20 text-red-400 rounded" title="External pastes detected">
                                 📋 {sub.proctoringStats?.externalPasteCount}
@@ -669,34 +703,40 @@ function JudgeDashboardContent() {
                     <div className="bg-dark-900 rounded-lg p-3 text-center">
                       <div className="text-lg font-bold text-white">
                         {(selectedSubmission.proctoringStats?.copyCount || 0) + (selectedSubmission.proctoringStats?.pasteCount || 0)}
-                                          </div>
+                              </div>
                       <div className="text-xs text-gray-500">Copy/Paste</div>
-                                      </div>
+                          </div>
+                    <div className={`bg-dark-900 rounded-lg p-3 text-center ${selectedSubmission.attempts > 3 ? 'ring-1 ring-yellow-500/50' : selectedSubmission.attempts === 1 ? 'ring-1 ring-green-500/50' : ''}`}>
+                      <div className={`text-lg font-bold ${selectedSubmission.attempts > 3 ? 'text-yellow-400' : selectedSubmission.attempts === 1 ? 'text-green-400' : 'text-white'}`}>
+                        {selectedSubmission.attempts || 1}
+                    </div>
+                      <div className="text-xs text-gray-500">Submissions</div>
+                  </div>
                     <div className={`bg-dark-900 rounded-lg p-3 text-center ${(selectedSubmission.proctoringStats?.externalPasteCount || 0) > 0 ? 'ring-1 ring-red-500/50' : ''}`}>
                       <div className={`text-lg font-bold ${(selectedSubmission.proctoringStats?.externalPasteCount || 0) > 0 ? 'text-red-400' : 'text-white'}`}>
                         {selectedSubmission.proctoringStats?.externalPasteCount || 0}
-                              </div>
+                                          </div>
                       <div className="text-xs text-gray-500">External Paste</div>
-                          </div>
+                                      </div>
                     <div className={`bg-dark-900 rounded-lg p-3 text-center ${(selectedSubmission.proctoringStats?.tabSwitchCount || 0) > 10 ? 'ring-1 ring-yellow-500/50' : ''}`}>
                       <div className={`text-lg font-bold ${(selectedSubmission.proctoringStats?.tabSwitchCount || 0) > 10 ? 'text-yellow-400' : 'text-white'}`}>
                         {selectedSubmission.proctoringStats?.tabSwitchCount || 0}
-                    </div>
+                              </div>
                       <div className="text-xs text-gray-500">Tab Switches</div>
-                  </div>
+                          </div>
                     <div className="bg-dark-900 rounded-lg p-3 text-center">
                       <div className="text-lg font-bold text-white">
                         {selectedSubmission.proctoringStats?.windowBlurCount || 0}
-                              </div>
+                    </div>
                       <div className="text-xs text-gray-500">Window Blur</div>
-                          </div>
+                  </div>
                     <div className="bg-dark-900 rounded-lg p-3 text-center col-span-2">
                       <div className="text-lg font-bold text-white">
                         {selectedSubmission.proctoringStats?.largestPaste || 0} chars
-                    </div>
-                      <div className="text-xs text-gray-500">Largest Paste</div>
-                  </div>
                               </div>
+                      <div className="text-xs text-gray-500">Largest Paste</div>
+                          </div>
+                    </div>
 
                   {selectedSubmission.proctoringStats?.suspiciousPatterns && 
                    selectedSubmission.proctoringStats.suspiciousPatterns.length > 0 && (

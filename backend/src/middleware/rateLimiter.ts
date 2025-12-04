@@ -1,19 +1,12 @@
-import rateLimit from 'express-rate-limit';
+import { Request, Response, NextFunction } from 'express';
 
-const windowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'); // 15 minutes
-const maxRequests = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100');
+// Rate limiting disabled for small hackathon (~20 users)
+// Can be re-enabled with express-rate-limit if needed for larger deployments
 
-export const rateLimiter = rateLimit({
-  windowMs,
-  max: maxRequests,
-  message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+export const rateLimiter = (req: Request, res: Response, next: NextFunction) => {
+  next(); // No-op - just pass through
+};
 
-export const authRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 login attempts per window
-  message: 'Too many login attempts, please try again later.',
-  skipSuccessfulRequests: true,
-});
+export const authRateLimiter = (req: Request, res: Response, next: NextFunction) => {
+  next(); // No-op - just pass through
+};

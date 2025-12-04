@@ -10,6 +10,7 @@ import {
   addJudgeFeedback,
   getLeaderboard,
   getMyTeamReviews,
+  clearTeamSubmissions,
 } from '../controllers/teamSubmissionController';
 import { authenticate } from '../middleware/auth';
 
@@ -77,6 +78,12 @@ router.get('/hackathon-leaderboard/:sessionId', getLeaderboard);
  * Get a team's own submissions with judge feedback
  */
 router.get('/my-reviews/:teamId', getMyTeamReviews);
+
+/**
+ * DELETE /api/team-submissions/:teamId/:sessionId/dev-reset
+ * Clear all submissions for a team (DEV ONLY)
+ */
+router.delete('/:teamId/:sessionId/dev-reset', clearTeamSubmissions);
 
 export default router;
 

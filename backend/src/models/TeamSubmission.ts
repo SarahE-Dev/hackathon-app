@@ -78,6 +78,22 @@ export interface ITeamSubmission extends Document {
   }>;
   startedAt?: Date; // When they first opened the problem
   
+  // Judge feedback
+  judgeFeedback?: {
+    judgeId: mongoose.Types.ObjectId;
+    rubricScores: {
+      correctness: number;
+      codeQuality: number;
+      efficiency: number;
+      explanation: number;
+    };
+    totalJudgeScore: number;
+    feedback?: string;
+    flagged: boolean;
+    flagReason?: string;
+    reviewedAt: Date;
+  };
+  
   // Timestamps
   createdAt: Date;
   updatedAt: Date;

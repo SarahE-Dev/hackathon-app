@@ -203,13 +203,17 @@ Output: [0,1]
   const [code, setCode] = useState(currentProblem.starterCode);
   const [output, setOutput] = useState('');
   const [testResults, setTestResults] = useState<{[key: string]: 'pending' | 'passed' | 'failed'}>({});
-  const [running, setRunning] = useState(false);
+  const [runningVisible, setRunningVisible] = useState(false);
+  const [runningAll, setRunningAll] = useState(false);
   const [explanation, setExplanation] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [showExplanationModal, setShowExplanationModal] = useState(false);
   const [sessionTimer, setSessionTimer] = useState(0);
   const sessionStartRef = useRef<Date>(new Date());
+  const [testAttempts, setTestAttempts] = useState(0);
+  const MAX_TEST_ATTEMPTS = 5;
+  const [submissionCount, setSubmissionCount] = useState(0);
 
   // Proctoring hook - tracks copy/paste, tab switches, etc.
   const proctoring = useProctoring({
@@ -221,7 +225,6 @@ Output: [0,1]
   
   // Ref to track events that need to be synced to backend
   const pendingProctoringEvents = useRef<any[]>([]);
-  const lastSnapshotTime = useRef<number>(Date.now());
 
   // Team collaboration state
   const [collaborationSocket, setCollaborationSocket] = useState<Socket | null>(null);
@@ -250,6 +253,11 @@ Output: [0,1]
           }
           if (submission.explanation) {
             setExplanation(submission.explanation);
+          }
+          // Note: testAttempts is tracked locally per session, not persisted
+          // submissionCount is loaded from backend for judge review
+          if (submission.attempts) {
+            setSubmissionCount(submission.attempts);
           }
           // Load test results if available
           if (submission.testResults?.length > 0) {
@@ -368,7 +376,7 @@ Output: [0,1]
       sharedSocket.on('code-updated', handleCodeUpdated);
       sharedSocket.on('chat-message', handleChatMessage);
 
-      return () => {
+    return () => {
         sharedSocket.off('connect', handleConnect);
         sharedSocket.off('disconnect', handleDisconnect);
         sharedSocket.off('user-joined', handleUserJoined);
@@ -544,50 +552,19 @@ Output: [0,1]
     editorRef.current.deltaDecorations([], [decoration]);
   };
 
-  // Auto-save debounce ref
-  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
   const handleCodeChange = (value: string | undefined) => {
     if (value !== undefined) {
       setCode(value);
 
-      // Send code update to team
+      // Send code update to team (real-time collaboration)
       if (collaborationSocket && isConnected) {
         collaborationSocket.emit('code-update', {
           code: value,
         });
       }
-
-      // Auto-save to backend (debounced)
-      if (problem?._id) {
-        if (autoSaveTimeoutRef.current) {
-          clearTimeout(autoSaveTimeoutRef.current);
-        }
-        autoSaveTimeoutRef.current = setTimeout(async () => {
-          try {
-            // Get any pending proctoring events
-            const eventsToSend = [...pendingProctoringEvents.current];
-            pendingProctoringEvents.current = [];
-            
-            // Take snapshot every 60 seconds
-            const shouldSnapshot = Date.now() - lastSnapshotTime.current > 60000;
-            if (shouldSnapshot) {
-              proctoring.takeSnapshot(value);
-              lastSnapshotTime.current = Date.now();
-            }
-            
-            await teamSubmissionsAPI.saveSubmission(teamId, sessionId, problem._id, {
-              code: value,
-              explanation,
-              proctoringEvents: eventsToSend.length > 0 ? eventsToSend : undefined,
-              codeSnapshot: shouldSnapshot ? { code: value } : undefined,
-            });
-            console.log('Auto-saved code with proctoring data');
-          } catch (error) {
-            console.error('Auto-save failed:', error);
-          }
-        }, 2000); // Save after 2 seconds of inactivity
-      }
+      
+      // Track code change for proctoring
+      proctoring.trackCodeChange(value);
     }
   };
 
@@ -617,40 +594,107 @@ Output: [0,1]
       .padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const runCode = async () => {
+  // Run only VISIBLE test cases (unlimited attempts)
+  const runVisibleTests = async () => {
     if (!problem?._id) {
-      setOutput('Error: Problem ID not available.');
+      setOutput('⚠️ Problem ID not available.');
+      return;
+    }
+    
+    setRunningVisible(true);
+    setOutput('Running visible tests...\n');
+
+    try {
+      const response = await teamSubmissionsAPI.runTests(teamId, sessionId, problem._id, code);
+
+      if (response.success) {
+        const { results } = response.data;
+
+        // Filter to only visible tests
+        const visibleResults = results.filter((r: any) => {
+          const tc = currentProblem.testCases.find(t => t.id === r.id);
+          return !tc?.isHidden;
+        });
+
+        // Update test results (only visible)
+        const updatedResults: {[key: string]: 'pending' | 'passed' | 'failed'} = {};
+        visibleResults.forEach((result: any) => {
+          updatedResults[result.id] = result.passed ? 'passed' : 'failed';
+        });
+        setTestResults(updatedResults);
+
+        const passedVisible = visibleResults.filter((r: any) => r.passed).length;
+
+        // Build output
+        const outputLines: string[] = [];
+        outputLines.push('═══════════════════════════════════════════════════════════');
+        outputLines.push('              ▶ RUN CODE (Visible Tests Only)');
+        outputLines.push('═══════════════════════════════════════════════════════════');
+        outputLines.push('');
+        
+        visibleResults.forEach((result: any, index: number) => {
+          const icon = result.passed ? '✅' : '❌';
+          outputLines.push(`${icon} Test ${index + 1}: ${result.passed ? 'PASSED' : 'FAILED'} (${result.executionTime}ms)`);
+          outputLines.push(`   📥 Input:    ${result.input?.replace(/\n/g, ' | ') || ''}`);
+          outputLines.push(`   📤 Expected: ${result.expectedOutput}`);
+          outputLines.push(`   📝 Output:   ${result.actualOutput || '(no output)'}`);
+          if (result.error) {
+            outputLines.push(`   ⚠️  Error:    ${result.error}`);
+          }
+          outputLines.push('');
+        });
+
+        outputLines.push('═══════════════════════════════════════════════════════════');
+        outputLines.push(`📊 VISIBLE TESTS: ${passedVisible}/${visibleResults.length} passed`);
+        outputLines.push('');
+        outputLines.push('💡 Use "🔬 Run All Tests" to test against hidden cases.');
+        outputLines.push('═══════════════════════════════════════════════════════════');
+
+        setOutput(outputLines.join('\n'));
+      } else {
+        setOutput('❌ Code execution failed.');
+      }
+
+    } catch (error: any) {
+      console.error('Code execution error:', error);
+      const errorMessage = error?.response?.data?.message || error.message || 'Unknown error';
+      setOutput(`❌ EXECUTION ERROR\n\n${errorMessage}\n\n💡 Check for syntax errors.`);
+      setTestResults({});
+    } finally {
+      setRunningVisible(false);
+    }
+  };
+
+  // Run ALL test cases (limited to 5 attempts)
+  const runAllTests = async () => {
+    if (!problem?._id) {
+      setOutput('⚠️ Problem ID not available.');
       return;
     }
 
-    setRunning(true);
-    setOutput('Running code against test cases...\n');
-
-    // Initialize test results
-    const newTestResults: {[key: string]: 'pending' | 'passed' | 'failed'} = {};
-    currentProblem.testCases.forEach(tc => {
-      newTestResults[tc.id] = 'pending';
-    });
-    setTestResults(newTestResults);
+    if (testAttempts >= MAX_TEST_ATTEMPTS) {
+      setOutput(`❌ Maximum attempts reached (${MAX_TEST_ATTEMPTS}/${MAX_TEST_ATTEMPTS})\n\nYou've used all "Run All Tests" attempts.\n\n✅ You can still:\n   • Use "▶ Run Code" to test visible cases (unlimited)\n   • Submit your solution when ready`);
+      return;
+    }
+    
+    setRunningAll(true);
+    setTestAttempts(prev => prev + 1);
+    setOutput('Running ALL tests (visible + hidden)...\n');
 
     try {
-      // Use the team submissions API to run tests (includes hidden tests on backend)
       const response = await teamSubmissionsAPI.runTests(teamId, sessionId, problem._id, code);
 
       if (response.success) {
         const { results, summary } = response.data;
 
-        // Update test results
+        // Update ALL test results
         const updatedResults: {[key: string]: 'pending' | 'passed' | 'failed'} = {};
-        
-        // Process all test results
         results.forEach((result: any) => {
           updatedResults[result.id] = result.passed ? 'passed' : 'failed';
         });
-
         setTestResults(updatedResults);
 
-        // Format output
+        // Separate visible and hidden
         const visibleResults = results.filter((r: any) => {
           const tc = currentProblem.testCases.find(t => t.id === r.id);
           return !tc?.isHidden;
@@ -660,107 +704,61 @@ Output: [0,1]
           return tc?.isHidden;
         });
 
-        // Build detailed output
+        // Build output
         const outputLines: string[] = [];
-        
-        // Header
         outputLines.push('═══════════════════════════════════════════════════════════');
-        outputLines.push('                    TEST RESULTS');
+        outputLines.push('           🔬 RUN ALL TESTS (Official Attempt)');
+        outputLines.push(`                  Attempt ${testAttempts}/${MAX_TEST_ATTEMPTS}`);
         outputLines.push('═══════════════════════════════════════════════════════════');
         outputLines.push('');
 
-        // Visible test results with full details
+        // Visible tests
         outputLines.push('📋 VISIBLE TESTS:');
         outputLines.push('───────────────────────────────────────────────────────────');
-        
         visibleResults.forEach((result: any, index: number) => {
           const icon = result.passed ? '✅' : '❌';
-          const status = result.passed ? 'PASSED' : 'FAILED';
-          
-          outputLines.push(`${icon} Test ${index + 1}: ${status} (${result.executionTime}ms)`);
-          outputLines.push(`   📥 Input:    ${result.input.replace(/\n/g, ' | ')}`);
+          outputLines.push(`${icon} Test ${index + 1}: ${result.passed ? 'PASSED' : 'FAILED'}`);
+          outputLines.push(`   📥 Input:    ${result.input?.replace(/\n/g, ' | ') || ''}`);
           outputLines.push(`   📤 Expected: ${result.expectedOutput}`);
           outputLines.push(`   📝 Output:   ${result.actualOutput || '(no output)'}`);
-          
-          // Show error if there was one
-          if (result.error) {
-            outputLines.push(`   ⚠️  Error:    ${result.error}`);
-          }
+          if (result.error) outputLines.push(`   ⚠️  Error:    ${result.error}`);
           outputLines.push('');
         });
 
-        // Hidden test results (just pass/fail)
+        // Hidden tests
         if (hiddenResults.length > 0) {
           outputLines.push('🔒 HIDDEN TESTS:');
           outputLines.push('───────────────────────────────────────────────────────────');
-          
           hiddenResults.forEach((result: any, index: number) => {
             const icon = result.passed ? '✅' : '❌';
-            const status = result.passed ? 'PASSED' : 'FAILED';
-            // Show error for hidden tests too (helps debugging)
-            if (result.error) {
-              outputLines.push(`${icon} Hidden Test ${index + 1}: ${status} - Error: ${result.error}`);
-            } else {
-              outputLines.push(`${icon} Hidden Test ${index + 1}: ${status}`);
-            }
+            outputLines.push(`${icon} Hidden Test ${index + 1}: ${result.passed ? 'PASSED' : 'FAILED'}${result.error ? ` - ${result.error}` : ''}`);
           });
           outputLines.push('');
         }
 
         // Summary
         outputLines.push('═══════════════════════════════════════════════════════════');
-        outputLines.push(`📊 SUMMARY: ${summary.passedTests}/${summary.totalTests} tests passed (${summary.score})`);
+        outputLines.push(`📊 TOTAL: ${summary.passedTests}/${summary.totalTests} tests passed`);
         
         if (summary.allTestsPassed) {
           outputLines.push('');
-          outputLines.push('🎉 ALL TESTS PASSED! You can now submit your solution.');
-        } else {
-          outputLines.push('');
-          outputLines.push('💡 Some tests failed. Review the output above and try again.');
+          outputLines.push('🎉 ALL TESTS PASSED! Submit your solution with explanation.');
         }
+        outputLines.push('');
         outputLines.push('═══════════════════════════════════════════════════════════');
 
         setOutput(outputLines.join('\n'));
       } else {
-        setOutput('❌ Code execution failed. Please check your code and try again.');
+        setOutput('❌ Code execution failed.');
       }
 
     } catch (error: any) {
       console.error('Code execution error:', error);
-      
-      // Build detailed error output
-      const errorLines: string[] = [];
-      errorLines.push('═══════════════════════════════════════════════════════════');
-      errorLines.push('                    ❌ EXECUTION ERROR');
-      errorLines.push('═══════════════════════════════════════════════════════════');
-      errorLines.push('');
-      
-      const errorMessage = error?.response?.data?.message || error?.response?.data?.error?.message || error.message || 'Unknown error';
-      errorLines.push(`Error: ${errorMessage}`);
-      
-      // If there's additional error data, show it
-      if (error?.response?.data?.data?.results) {
-        errorLines.push('');
-        errorLines.push('Test Results with Errors:');
-        error.response.data.data.results.forEach((r: any, i: number) => {
-          if (r.error) {
-            errorLines.push(`  Test ${i + 1}: ${r.error}`);
-          }
-        });
-      }
-      
-      errorLines.push('');
-      errorLines.push('═══════════════════════════════════════════════════════════');
-      errorLines.push('💡 Tips:');
-      errorLines.push('   • Check for syntax errors in your code');
-      errorLines.push('   • Make sure you\'re reading input correctly');
-      errorLines.push('   • Ensure your output format matches expected');
-      errorLines.push('═══════════════════════════════════════════════════════════');
-      
-      setOutput(errorLines.join('\n'));
+      const errorMessage = error?.response?.data?.message || error.message || 'Unknown error';
+      setOutput(`❌ EXECUTION ERROR\n\n${errorMessage}`);
       setTestResults({});
     } finally {
-      setRunning(false);
+      setRunningAll(false);
     }
   };
 
@@ -793,6 +791,7 @@ Output: [0,1]
 
       if (response.success) {
         setSubmitSuccess(true);
+        setSubmissionCount(prev => prev + 1);
         
         // Always mark problem as completed on submission (regardless of test results)
         // The user has submitted their answer - that's final for this problem
@@ -833,7 +832,7 @@ Output: [0,1]
       : riskLevel === 'medium'
       ? 'text-yellow-500'
       : 'text-green-500';
-  
+
   // Convenience variables from proctoring stats for UI
   const copyPasteAttempts = proctoring.stats.copyCount + proctoring.stats.pasteCount;
   const tabSwitches = proctoring.stats.tabSwitchCount;
@@ -1020,16 +1019,34 @@ Output: [0,1]
           {/* Action Buttons */}
           <div className="flex gap-3 mb-4">
             <button
-              onClick={runCode}
-              disabled={running}
+              onClick={runVisibleTests}
+              disabled={runningVisible || runningAll}
               className="flex-1 py-3 bg-gradient-to-r from-neon-green to-green-600 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-neon-green/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {running ? 'Running...' : '▶ Run Code'}
+              {runningVisible ? 'Running...' : '▶ Run Code'}
             </button>
-            <button className="flex-1 py-3 bg-dark-700 border border-gray-600 text-white rounded-lg font-medium hover:border-neon-blue transition-all">
-              💾 Save Progress
+            <button
+              onClick={runAllTests}
+              disabled={runningVisible || runningAll || testAttempts >= MAX_TEST_ATTEMPTS}
+              className={`flex-1 py-3 rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                testAttempts >= MAX_TEST_ATTEMPTS
+                  ? 'bg-dark-600 border border-gray-600 text-gray-500'
+                  : 'bg-gradient-to-r from-neon-blue to-blue-600 text-white hover:shadow-lg hover:shadow-neon-blue/50'
+              }`}
+            >
+              {runningAll ? 'Testing...' : `🔬 Run All Tests (${MAX_TEST_ATTEMPTS - testAttempts} left)`}
             </button>
           </div>
+
+          {/* Test Results Output - Moved up for better visibility */}
+          {output && (
+            <div className="bg-dark-800 rounded-lg border border-gray-700 p-4 mb-4 max-h-64 overflow-y-auto">
+              <h4 className="text-sm font-bold text-gray-400 mb-2">📋 Test Results</h4>
+              <pre className="text-sm text-gray-300 font-mono whitespace-pre-wrap bg-dark-900 p-3 rounded">
+                {output}
+              </pre>
+            </div>
+          )}
 
           {/* Explanation */}
           <div className={`mb-4 ${!explanation.trim() ? 'animate-pulse-subtle' : ''}`}>
@@ -1084,6 +1101,15 @@ STEPS:
             )}
           </div>
 
+          {/* Submission Counter */}
+          {submissionCount > 0 && (
+            <div className="mb-2 text-center">
+              <span className={`text-sm ${submissionCount === 1 ? 'text-green-400' : submissionCount <= 3 ? 'text-yellow-400' : 'text-red-400'}`}>
+                📊 Submissions: {submissionCount} {submissionCount === 1 ? '(first try!)' : submissionCount <= 3 ? '' : '(many attempts)'}
+              </span>
+            </div>
+          )}
+
           {/* Submit Button */}
           <div className="mb-4">
             {isAlreadySubmitted ? (
@@ -1108,8 +1134,8 @@ STEPS:
                 </span>
               </div>
             ) : (
-              <button
-                onClick={submitSolution}
+            <button
+              onClick={submitSolution}
                 disabled={submitting}
                 className={`w-full py-3 rounded-lg font-medium transition-all ${
                   explanation.trim()
@@ -1127,19 +1153,10 @@ STEPS:
                 ) : (
                   '📝 Add Explanation to Submit'
                 )}
-              </button>
+            </button>
             )}
           </div>
 
-          {/* Test Results */}
-          {output && (
-            <div className="bg-dark-800 rounded-lg border border-gray-700 p-4 max-h-96 overflow-y-auto">
-              <h4 className="text-sm font-bold text-gray-400 mb-2">Execution Results</h4>
-              <pre className="text-sm text-gray-300 font-mono whitespace-pre-wrap bg-dark-900 p-3 rounded">
-                {output}
-              </pre>
-            </div>
-          )}
         </div>
       </div>
 
@@ -1266,7 +1283,7 @@ STEPS:
               <span className="text-xs text-gray-300">👁️ Window Blur</span>
               <span className={`text-sm font-bold ${windowBlurCount > 10 ? 'text-red-500' : 'text-gray-400'}`}>
                 {windowBlurCount}
-              </span>
+            </span>
             </div>
           </div>
         </div>

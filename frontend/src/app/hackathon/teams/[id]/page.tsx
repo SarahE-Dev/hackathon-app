@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { io, Socket } from 'socket.io-client';
 import LiveCodingSession from '@/components/LiveCodingSession';
-import { teamsAPI, hackathonSessionsAPI, questionsAPI } from '@/lib/api';
+import { teamsAPI, hackathonSessionsAPI, questionsAPI, teamSubmissionsAPI } from '@/lib/api';
 
 interface TeamMember {
   _id: string;
@@ -83,6 +83,7 @@ export default function TeamDetailPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'problems' | 'code'>('overview');
   const [memberStatuses, setMemberStatuses] = useState<Map<string, MemberStatus>>(new Map());
   const [confirmProblem, setConfirmProblem] = useState<Problem | null>(null);
+  const [confirmLeaveTab, setConfirmLeaveTab] = useState<'overview' | 'problems' | 'code' | null>(null);
   const [presenceSocket, setPresenceSocket] = useState<Socket | null>(null);
   const currentUserIdRef = useRef<string | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -135,13 +136,57 @@ export default function TeamDetailPage() {
     updateProblemProgress(problemId, 'completed');
   }, [updateProblemProgress]);
 
-  // Dev reset function
-  const handleDevReset = () => {
+  // Dev reset function - clears local state AND backend submissions
+  const handleDevReset = async () => {
+    if (!confirm('DEV RESET: This will clear all problem progress AND all saved submissions. Continue?')) {
+      return;
+    }
+    
+    // Clear local state
     localStorage.removeItem(`team-${teamId}-problem-progress`);
     setProblemProgress(new Map());
     setSelectedProblem(null);
     setConfirmProblem(null);
     setActiveTab('problems');
+    
+    // Clear backend submissions if we have an active session
+    if (activeSessionId) {
+      try {
+        const result = await teamSubmissionsAPI.devReset(teamId, activeSessionId);
+        console.log('DEV RESET: Cleared submissions:', result);
+        alert(`DEV RESET complete! Cleared ${result.deletedCount} submissions.`);
+      } catch (error) {
+        console.error('Failed to clear backend submissions:', error);
+        alert('Local progress cleared, but failed to clear backend submissions.');
+      }
+    } else {
+      alert('DEV RESET: Local progress cleared (no active session for backend reset).');
+    }
+  };
+
+  // Handle tab change with protection for active problems
+  const handleTabChange = (newTab: 'overview' | 'problems' | 'code') => {
+    // If user is in code tab with an in-progress problem and trying to leave
+    if (activeTab === 'code' && selectedProblem && newTab !== 'code') {
+      const problemStatus = problemProgress.get(selectedProblem._id);
+      // Only warn if problem is in-progress (not already completed)
+      if (problemStatus === 'in-progress') {
+        setConfirmLeaveTab(newTab);
+        return;
+      }
+    }
+    setActiveTab(newTab);
+  };
+
+  // Confirm leaving the code tab (loses access to current problem)
+  const confirmLeaveCodeTab = () => {
+    if (confirmLeaveTab && selectedProblem) {
+      // Mark the problem as completed (locked out - they didn't submit)
+      markProblemAsCompleted(selectedProblem._id);
+      setSelectedProblem(null);
+      setActiveTab(confirmLeaveTab);
+      setConfirmLeaveTab(null);
+    }
   };
 
   // Handle member status updates from LiveCodingSession (for live-coding status)
@@ -433,7 +478,7 @@ export default function TeamDetailPage() {
 
   return (
     <div className="min-h-screen bg-dark-900 text-white">
-      {/* Confirmation Modal */}
+      {/* Confirmation Modal - Start Problem */}
       {confirmProblem && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="glass rounded-2xl p-8 border border-yellow-500/50 max-w-md w-full">
@@ -473,6 +518,41 @@ export default function TeamDetailPage() {
                   className="flex-1 px-4 py-3 bg-neon-green hover:bg-neon-green/80 text-white rounded-lg font-medium transition-all"
                 >
                   Start Problem →
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal - Leave Code Tab */}
+      {confirmLeaveTab && selectedProblem && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="glass rounded-2xl p-8 border border-red-500/50 max-w-md w-full">
+            <div className="text-center">
+              <div className="text-5xl mb-4">🚨</div>
+              <h3 className="text-xl font-bold text-red-400 mb-2">Leave This Problem?</h3>
+              <p className="text-gray-300 mb-4">
+                You're working on <span className="font-bold text-white">"{selectedProblem.title}"</span>
+              </p>
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6">
+                <p className="text-sm text-red-300">
+                  <strong>⚠️ Warning:</strong> If you leave this tab without submitting, you will 
+                  <strong> lose access</strong> to this problem permanently. Your work will NOT be saved.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmLeaveTab(null)}
+                  className="flex-1 px-4 py-3 bg-neon-green hover:bg-neon-green/80 text-white rounded-lg font-medium transition-all"
+                >
+                  ← Stay & Continue
+                </button>
+                <button
+                  onClick={confirmLeaveCodeTab}
+                  className="flex-1 px-4 py-3 bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 text-red-400 rounded-lg transition-all"
+                >
+                  Leave Anyway
                 </button>
               </div>
             </div>
@@ -616,7 +696,7 @@ export default function TeamDetailPage() {
               {(['overview', 'problems', 'code'] as const).map((tab) => (
                 <button
                   key={tab}
-                  onClick={() => setActiveTab(tab)}
+                  onClick={() => handleTabChange(tab)}
                   className={`flex-1 px-4 py-2.5 rounded-lg font-medium transition-all text-sm ${
                     activeTab === tab
                       ? 'bg-neon-blue text-white'

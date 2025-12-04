@@ -568,8 +568,11 @@ export const teamSubmissionsAPI = {
   },
   
   // Get all submissions for a session (judges/admins)
-  getAllSessionSubmissions: async (sessionId: string) => {
-    const response = await api.get(`/team-submissions/session/${sessionId}/all`);
+  // showAll: include in-progress submissions without explanations
+  getAllSessionSubmissions: async (sessionId: string, showAll: boolean = false) => {
+    const response = await api.get(`/team-submissions/session/${sessionId}/all`, {
+      params: { showAll: showAll ? 'true' : 'false' }
+    });
     return response.data;
   },
   
@@ -598,6 +601,12 @@ export const teamSubmissionsAPI = {
   // Get my team's reviews (for fellows to view their feedback)
   getMyTeamReviews: async (teamId: string) => {
     const response = await api.get(`/team-submissions/my-reviews/${teamId}`);
+    return response.data;
+  },
+
+  // DEV ONLY: Clear all submissions for a team
+  devReset: async (teamId: string, sessionId: string) => {
+    const response = await api.delete(`/team-submissions/${teamId}/${sessionId}/dev-reset`);
     return response.data;
   },
 };

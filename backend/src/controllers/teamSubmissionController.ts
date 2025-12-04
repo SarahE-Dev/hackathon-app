@@ -277,7 +277,6 @@ export const runTests = async (
           status: allTestsPassed ? 'passed' : 'in_progress',
           submittedBy: userId,
         },
-        $inc: { attempts: 1 },
         $setOnInsert: {
           createdAt: new Date(),
         },
@@ -447,9 +446,14 @@ export const getSessionLeaderboard = async (
   try {
     const { sessionId } = req.params;
 
-    // Aggregate team scores
+    // Aggregate team scores (only final submissions)
     const leaderboard = await TeamSubmission.aggregate([
-      { $match: { sessionId: new (require('mongoose').Types.ObjectId)(sessionId) } },
+      { 
+        $match: { 
+          sessionId: new (require('mongoose').Types.ObjectId)(sessionId),
+          status: { $in: ['submitted', 'passed'] }  // Only count final submissions
+        } 
+      },
       {
         $group: {
           _id: '$teamId',
@@ -507,8 +511,18 @@ export const getAllSessionSubmissions = async (
       throw new ApiError(403, 'Only judges and admins can view all submissions');
     }
 
-    // Get all submissions for the session, grouped by team
-    const submissions = await TeamSubmission.find({ sessionId })
+    // Check if judges want to see all submissions (including in-progress)
+    const showAll = req.query.showAll === 'true';
+    
+    // Build query based on filter
+    const query: any = { sessionId };
+    if (!showAll) {
+      // Default: only show final submissions with explanations
+      query.status = { $in: ['submitted', 'passed'] };
+      query.explanation = { $exists: true, $ne: '' };
+    }
+    
+    const submissions = await TeamSubmission.find(query)
       .populate('teamId', 'name memberIds')
       .populate('problemId', 'title difficulty points')
       .populate('submittedBy', 'firstName lastName email')
@@ -838,7 +852,7 @@ export const getMyTeamReviews = async (
     }
     
     // Get all submissions for this team
-    const submissions = await TeamSubmission.find({ teamId })
+    const submissions: any[] = await TeamSubmission.find({ teamId })
       .populate('problemId', 'title difficulty points')
       .populate('submittedBy', 'firstName lastName')
       .sort({ submittedAt: -1 });
@@ -891,6 +905,51 @@ export const getMyTeamReviews = async (
           } : null,
         })),
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Clear all submissions for a team (DEV ONLY)
+ */
+export const clearTeamSubmissions = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // Only allow in development
+    if (process.env.NODE_ENV === 'production') {
+      throw new ApiError(403, 'This endpoint is only available in development');
+    }
+
+    const { teamId, sessionId } = req.params;
+    const userId = req.user!.userId;
+
+    // Verify user is a member of the team
+    const team = await Team.findById(teamId);
+    if (!team) {
+      throw new ApiError(404, 'Team not found');
+    }
+
+    const isMember = team.memberIds.some(
+      (m) => m.toString() === userId
+    );
+    if (!isMember) {
+      throw new ApiError(403, 'You are not a member of this team');
+    }
+
+    // Delete all submissions for this team in this session
+    const result = await TeamSubmission.deleteMany({ teamId, sessionId });
+
+    logger.info(`DEV RESET: Cleared ${result.deletedCount} submissions for team ${teamId} in session ${sessionId}`);
+
+    res.json({
+      success: true,
+      message: `Cleared ${result.deletedCount} submissions`,
+      deletedCount: result.deletedCount,
     });
   } catch (error) {
     next(error);
