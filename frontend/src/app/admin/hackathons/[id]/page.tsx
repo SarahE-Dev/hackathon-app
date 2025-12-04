@@ -34,6 +34,7 @@ interface HackathonSession {
   status: string;
   startTime?: string;
   endTime?: string;
+  teams?: (string | { _id: string; name: string })[];
   problems?: Array<{
     problemId: string | { _id: string; title: string; difficulty: string; points: number };
     points: number;
@@ -63,6 +64,7 @@ function HackathonManagementContent() {
   const [session, setSession] = useState<HackathonSession | null>(null);
   const [roster, setRoster] = useState<RosterEntry[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [allTeams, setAllTeams] = useState<Team[]>([]);
   const [stats, setStats] = useState<RosterStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'judges' | 'fellows' | 'teams' | 'problems'>('overview');
@@ -97,10 +99,23 @@ function HackathonManagementContent() {
         questionsAPI.getAll({ type: 'Coding', limit: 100 }),
       ]);
 
-      setSession(sessionRes.data?.session);
+      const sessionData = sessionRes.data?.session;
+      setSession(sessionData);
       setRoster(rosterRes.data?.roster || []);
       setStats(rosterRes.data?.stats);
-      setTeams(teamsRes || []);
+      
+      // Handle different team response formats
+      const allTeamsData = teamsRes?.data?.teams || teamsRes?.teams || (Array.isArray(teamsRes) ? teamsRes : []);
+      const teamsArray = Array.isArray(allTeamsData) ? allTeamsData : [];
+      setAllTeams(teamsArray);
+      
+      // Filter to only teams that belong to this session
+      const sessionTeamIds = (sessionData?.teams || []).map((t: any) => 
+        typeof t === 'string' ? t : t?._id
+      );
+      const sessionTeams = teamsArray.filter((t: Team) => sessionTeamIds.includes(t._id));
+      setTeams(sessionTeams);
+      
       setAllProblems(problemsRes.data?.questions || []);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -217,10 +232,43 @@ function HackathonManagementContent() {
     const name = prompt('Enter team name:');
     if (!name) return;
     try {
-      await teamsAPI.createTeam({ name });
+      const response = await teamsAPI.createTeam({ name });
+      const newTeamId = response?.data?.team?._id || response?.team?._id || response?._id;
+      
+      // Add the new team to this session
+      if (newTeamId && session) {
+        const currentTeams = (session.teams || []).map((t: any) => typeof t === 'string' ? t : t?._id);
+        await hackathonSessionsAPI.update(sessionId, { teams: [...currentTeams, newTeamId] });
+      }
+      
       await loadData();
     } catch (error) {
       alert('Failed to create team');
+    }
+  };
+
+  // Add existing team to this session
+  const handleAddExistingTeam = async (teamId: string) => {
+    try {
+      const currentTeams = (session?.teams || []).map((t: any) => typeof t === 'string' ? t : t?._id);
+      if (!currentTeams.includes(teamId)) {
+        await hackathonSessionsAPI.update(sessionId, { teams: [...currentTeams, teamId] });
+        await loadData();
+      }
+    } catch (error) {
+      alert('Failed to add team to session');
+    }
+  };
+
+  // Remove team from this session
+  const handleRemoveTeamFromSession = async (teamId: string) => {
+    try {
+      const currentTeams = (session?.teams || []).map((t: any) => typeof t === 'string' ? t : t?._id);
+      const updatedTeams = currentTeams.filter((id: string) => id !== teamId);
+      await hackathonSessionsAPI.update(sessionId, { teams: updatedTeams });
+      await loadData();
+    } catch (error) {
+      alert('Failed to remove team from session');
     }
   };
 
@@ -689,11 +737,32 @@ function HackathonManagementContent() {
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold">Team Builder</h2>
               <div className="flex gap-3">
+                {/* Add existing team dropdown */}
+                {allTeams.filter(t => !teams.some(st => st._id === t._id)).length > 0 && (
+                  <select
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        handleAddExistingTeam(e.target.value);
+                        e.target.value = '';
+                      }
+                    }}
+                    className="px-3 py-2 bg-dark-700 border border-gray-600 rounded-lg text-sm"
+                    defaultValue=""
+                  >
+                    <option value="">+ Add existing team...</option>
+                    {allTeams
+                      .filter(t => !teams.some(st => st._id === t._id))
+                      .map(t => (
+                        <option key={t._id} value={t._id}>{t.name}</option>
+                      ))
+                    }
+                  </select>
+                )}
                 <button
                   onClick={handleCreateSingleTeam}
                   className="px-4 py-2 bg-dark-700 hover:bg-dark-600 border border-gray-600 rounded-lg font-medium transition-all"
                 >
-                  + Create Empty Team
+                  + Create New Team
                 </button>
                 {unassignedFellows.length > 0 && (
                   <button
@@ -705,6 +774,11 @@ function HackathonManagementContent() {
                 )}
               </div>
             </div>
+
+            <p className="text-sm text-gray-400 mb-4 bg-dark-700/50 p-3 rounded-lg">
+              💡 <strong>Setup flow:</strong> Add fellows to roster → Create teams → Drag fellows to teams. 
+              When fellows sign up with their email, they'll automatically be assigned to their team.
+            </p>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Unassigned Fellows */}
@@ -737,16 +811,31 @@ function HackathonManagementContent() {
                           : fellow.email}
                       </p>
                       <p className="text-xs text-gray-400">{fellow.email}</p>
-                      <span className={`text-xs ${
-                        fellow.status === 'registered' ? 'text-green-400' : 'text-yellow-400'
-                      }`}>
-                        {fellow.status}
-                      </span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${
+                          fellow.status === 'registered' 
+                            ? 'bg-green-500/20 text-green-400' 
+                            : 'bg-yellow-500/20 text-yellow-400'
+                        }`}>
+                          {fellow.status === 'registered' ? '✓ Signed up' : '⏳ Pending signup'}
+                        </span>
+                      </div>
                     </div>
                   ))}
-                  {unassignedFellows.length === 0 && (
+                  {unassignedFellows.length === 0 && fellows.length === 0 && (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500 mb-3">No fellows on roster yet</p>
+                      <button
+                        onClick={() => { setAddFormRole('fellow'); setShowAddForm(true); }}
+                        className="text-sm text-neon-blue hover:underline"
+                      >
+                        + Add fellows to roster
+                      </button>
+                    </div>
+                  )}
+                  {unassignedFellows.length === 0 && fellows.length > 0 && (
                     <p className="text-gray-500 text-center py-8">
-                      All fellows assigned to teams
+                      ✓ All fellows assigned to teams
                     </p>
                   )}
                 </div>
@@ -765,14 +854,25 @@ function HackathonManagementContent() {
                       onDragOver={handleDragOver}
                       onDrop={() => handleDropOnTeam(team._id)}
                     >
-                      <h4 className="font-bold mb-3 text-neon-blue">{team.name}</h4>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-bold text-neon-blue">{team.name}</h4>
+                        <button
+                          onClick={() => handleRemoveTeamFromSession(team._id)}
+                          className="text-xs text-red-400 hover:text-red-300"
+                          title="Remove from session"
+                        >
+                          ✕
+                        </button>
+                      </div>
                       <div className="space-y-2">
                         {teamFellows.map((fellow) => (
                           <div
                             key={fellow._id}
                             draggable
                             onDragStart={() => handleDragStart(fellow)}
-                            className="p-2 bg-dark-700 rounded cursor-grab hover:bg-dark-600 transition-all"
+                            className={`p-2 bg-dark-700 rounded cursor-grab hover:bg-dark-600 transition-all border-l-2 ${
+                              fellow.status === 'registered' ? 'border-l-green-500' : 'border-l-yellow-500'
+                            }`}
                           >
                             <p className="font-medium text-sm">
                               {fellow.userId
@@ -782,6 +882,11 @@ function HackathonManagementContent() {
                                 : fellow.email}
                             </p>
                             <p className="text-xs text-gray-400">{fellow.email}</p>
+                            <span className={`text-xs ${
+                              fellow.status === 'registered' ? 'text-green-400' : 'text-yellow-400'
+                            }`}>
+                              {fellow.status === 'registered' ? '✓ Active' : '⏳ Pending'}
+                            </span>
                           </div>
                         ))}
                         {teamFellows.length === 0 && (

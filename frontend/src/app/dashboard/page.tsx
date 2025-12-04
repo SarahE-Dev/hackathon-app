@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { assessmentsAPI, attemptsAPI, teamsAPI, hackathonSessionsAPI } from '@/lib/api';
@@ -55,32 +55,48 @@ interface HackathonSession {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user: authUser, isAdmin, isProctor, isJudge, isAuthenticated, logout } = useAuthStore();
+  const { user: authUser, isAuthenticated, logout } = useAuthStore();
   const { addNotification } = useNotifications();
   const [loading, setLoading] = useState(true);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [attempts, setAttempts] = useState<Map<string, Attempt>>(new Map());
   const [userTeam, setUserTeam] = useState<Team | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const hasRedirected = useRef(false);
+
+  // Compute roles without function calls to avoid dependency issues
+  const userRoles = authUser?.roles?.map(r => r.role) || [];
+  const userIsAdmin = userRoles.includes('admin');
+  const userIsProctor = userRoles.includes('proctor');
+  const userIsJudge = userRoles.includes('judge');
 
   useEffect(() => {
+    if (hasRedirected.current) return;
+
     const initializeDashboard = async () => {
+      // Small delay to let Zustand rehydrate
+      await new Promise(resolve => setTimeout(resolve, 150));
+      
       if (!isAuthenticated || !authUser) {
-        router.push('/auth/login');
+        hasRedirected.current = true;
+        router.replace('/auth/login');
         return;
       }
 
       // Role-based redirect for admin/proctor/judge
-      if (isAdmin()) {
-        router.push('/admin');
+      if (userIsAdmin) {
+        hasRedirected.current = true;
+        router.replace('/admin');
         return;
       }
-      if (isProctor()) {
-        router.push('/proctor');
+      if (userIsProctor) {
+        hasRedirected.current = true;
+        router.replace('/proctor');
         return;
       }
-      if (isJudge()) {
-        router.push('/judge');
+      if (userIsJudge) {
+        hasRedirected.current = true;
+        router.replace('/judge');
         return;
       }
 
@@ -157,7 +173,7 @@ export default function DashboardPage() {
     };
 
     initializeDashboard();
-  }, [router, isAuthenticated, authUser, addNotification, isAdmin, isJudge, isProctor]);
+  }, [router, isAuthenticated, authUser, userIsAdmin, userIsProctor, userIsJudge]);
 
   const handleLogout = async () => {
     try {

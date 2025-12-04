@@ -6,6 +6,7 @@ import Assessment from '../models/Assessment';
 import Question from '../models/Question';
 import Team from '../models/Team';
 import HackathonSession from '../models/HackathonSession';
+import HackathonRoster from '../models/HackathonRoster';
 import { logger } from '../utils/logger';
 
 export async function seedComprehensive() {
@@ -17,6 +18,7 @@ export async function seedComprehensive() {
     await Question.deleteMany({});
     await Team.deleteMany({});
     await HackathonSession.deleteMany({});
+    await HackathonRoster.deleteMany({});
 
     logger.info('Cleared existing data');
 
@@ -791,8 +793,8 @@ print(result)`,
     // Create hackathon session with coding problems
     const now = new Date();
     const hackathonSession = await HackathonSession.create({
-      title: 'Justice Through Code - Hackathon Challenge',
-      description: 'Live coding hackathon event - Currently Active',
+      title: 'JTC CodeJam 2025',
+      description: 'Justice Through Code - Live Coding Hackathon. Solve coding challenges with your team!',
       organizationId: organization._id,
       startTime: new Date(now.getTime() - 60 * 60 * 1000), // Started 1 hour ago
       endTime: new Date(now.getTime() + 3 * 60 * 60 * 1000), // Ends in 3 hours
@@ -827,6 +829,52 @@ print(result)`,
     });
 
     logger.info(`Created hackathon session: ${hackathonSession.title}`);
+
+    // Create HackathonRoster entries for fellows and judges
+    // This allows them to show up on the roster page
+    const rosterEntries = [];
+    
+    // Add judges to roster
+    for (const judge of [judge1, judge2, judge3]) {
+      rosterEntries.push({
+        hackathonSessionId: hackathonSession._id,
+        organizationId: organization._id,
+        email: judge.email,
+        firstName: judge.firstName,
+        lastName: judge.lastName,
+        role: 'judge',
+        status: 'registered', // Already signed up
+        userId: judge._id,
+        registeredAt: new Date(),
+        invitedBy: admin._id,
+      });
+    }
+    
+    // Add fellows to roster with team assignments
+    for (let i = 0; i < fellows.length; i++) {
+      const fellow = fellows[i];
+      // Find which team this fellow belongs to
+      const team = teams.find(t => 
+        t.memberIds.some((memberId: any) => memberId.toString() === fellow._id.toString())
+      );
+      
+      rosterEntries.push({
+        hackathonSessionId: hackathonSession._id,
+        organizationId: organization._id,
+        email: fellow.email,
+        firstName: fellow.firstName,
+        lastName: fellow.lastName,
+        role: 'fellow',
+        status: 'registered', // Already signed up
+        userId: fellow._id,
+        teamId: team?._id,
+        registeredAt: new Date(),
+        invitedBy: admin._id,
+      });
+    }
+    
+    await HackathonRoster.create(rosterEntries);
+    logger.info(`Created ${rosterEntries.length} roster entries`);
 
     logger.info('✅ Database seeding completed successfully!');
 

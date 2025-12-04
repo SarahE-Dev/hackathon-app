@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { RoleGuard } from '@/components/guards/RoleGuard';
-import { teamsAPI, usersAPI } from '@/lib/api';
+import { teamsAPI, usersAPI, hackathonSessionsAPI } from '@/lib/api';
 
 interface User {
   _id: string;
@@ -21,14 +21,23 @@ interface Team {
   track?: string;
 }
 
+interface HackathonSession {
+  _id: string;
+  title: string;
+  status: string;
+  teams: (string | { _id: string })[];
+}
+
 function AdminTeamsContent() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [sessions, setSessions] = useState<HackathonSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [draggedUser, setDraggedUser] = useState<User | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamDescription, setNewTeamDescription] = useState('');
+  const [selectedSessionId, setSelectedSessionId] = useState('');
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -39,9 +48,10 @@ function AdminTeamsContent() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [teamsRes, usersRes] = await Promise.all([
+      const [teamsRes, usersRes, sessionsRes] = await Promise.all([
         teamsAPI.getAllTeams(),
         usersAPI.getAllUsers(),
+        hackathonSessionsAPI.getAllSessions(),
       ]);
       
       // Teams come back in response.data.teams format
@@ -54,6 +64,18 @@ function AdminTeamsContent() {
         u.roles?.some(r => r.role === 'fellow')
       );
       setAllUsers(fellows);
+
+      // Load sessions
+      const sessionsData = sessionsRes?.data?.sessions || sessionsRes?.sessions || [];
+      setSessions(sessionsData);
+      
+      // Auto-select first active session
+      const activeSession = sessionsData.find((s: HackathonSession) => s.status === 'active');
+      if (activeSession && !selectedSessionId) {
+        setSelectedSessionId(activeSession._id);
+      } else if (sessionsData.length > 0 && !selectedSessionId) {
+        setSelectedSessionId(sessionsData[0]._id);
+      }
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -80,6 +102,59 @@ function AdminTeamsContent() {
       user.email?.toLowerCase().includes(search)
     );
   });
+
+  // Helper to find which session(s) a team belongs to
+  const getTeamSessions = (teamId: string) => {
+    return sessions.filter(s => {
+      if (!s.teams || !Array.isArray(s.teams)) return false;
+      return s.teams.some(t => {
+        // Handle both string IDs and populated team objects
+        const tId = typeof t === 'string' ? t : (t as any)?._id;
+        return tId === teamId;
+      });
+    });
+  };
+
+  // Helper to check if a team is in a session
+  const isTeamInSession = (session: HackathonSession, teamId: string) => {
+    if (!session.teams || !Array.isArray(session.teams)) return false;
+    return session.teams.some(t => {
+      const tId = typeof t === 'string' ? t : (t as any)?._id;
+      return tId === teamId;
+    });
+  };
+
+  // Change which session a team belongs to
+  const handleChangeTeamSession = async (teamId: string, newSessionId: string) => {
+    setSaving(true);
+    try {
+      // Remove from all current sessions
+      for (const session of sessions) {
+        if (isTeamInSession(session, teamId)) {
+          const updatedTeams = session.teams.filter(t => {
+            const tId = typeof t === 'string' ? t : (t as any)?._id;
+            return tId !== teamId;
+          });
+          await hackathonSessionsAPI.update(session._id, { teams: updatedTeams });
+        }
+      }
+      
+      // Add to new session if one is selected
+      if (newSessionId) {
+        const newSession = sessions.find(s => s._id === newSessionId);
+        if (newSession) {
+          const updatedTeams = [...(newSession.teams || []), teamId];
+          await hackathonSessionsAPI.update(newSessionId, { teams: updatedTeams });
+        }
+      }
+      
+      await loadData();
+    } catch (error: any) {
+      alert(error.response?.data?.error?.message || 'Failed to update team session');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleDragStart = (user: User) => {
     setDraggedUser(user);
@@ -147,11 +222,24 @@ function AdminTeamsContent() {
     
     setSaving(true);
     try {
-      await teamsAPI.createTeam({ 
+      // Create the team
+      const response = await teamsAPI.createTeam({ 
         name: newTeamName.trim(),
         projectTitle: newTeamName.trim(), // Use team name as default project title
         description: newTeamDescription.trim() || `Hackathon team: ${newTeamName.trim()}`,
       });
+      
+      const newTeamId = response?.data?.team?._id || response?.team?._id || response?._id;
+      
+      // Add team to session if one is selected
+      if (selectedSessionId && newTeamId) {
+        const session = sessions.find(s => s._id === selectedSessionId);
+        if (session) {
+          const updatedTeams = [...(session.teams || []), newTeamId];
+          await hackathonSessionsAPI.update(selectedSessionId, { teams: updatedTeams });
+        }
+      }
+      
       setNewTeamName('');
       setNewTeamDescription('');
       setShowCreateModal(false);
@@ -311,6 +399,23 @@ function AdminTeamsContent() {
                       </button>
                     </div>
                     
+                    {/* Session assignment */}
+                    <div className="mb-3">
+                      <select
+                        value={getTeamSessions(team._id)[0]?._id || ''}
+                        onChange={(e) => handleChangeTeamSession(team._id, e.target.value)}
+                        className="w-full px-2 py-1 bg-dark-700 border border-gray-600 rounded text-xs focus:border-neon-blue focus:outline-none"
+                        disabled={saving}
+                      >
+                        <option value="">No session assigned</option>
+                        {sessions.map(session => (
+                          <option key={session._id} value={session._id}>
+                            {session.title} {session.status === 'active' ? '🟢' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
                     {team.track && (
                       <span className="inline-block px-2 py-0.5 bg-neon-purple/20 text-neon-purple text-xs rounded-full mb-3">
                         {team.track}
@@ -397,7 +502,7 @@ function AdminTeamsContent() {
               />
             </div>
             
-            <div className="mb-6">
+            <div className="mb-4">
               <label className="block text-sm font-medium mb-2">Description (optional)</label>
               <textarea
                 value={newTeamDescription}
@@ -406,6 +511,25 @@ function AdminTeamsContent() {
                 rows={2}
                 className="w-full px-4 py-3 bg-dark-700 border border-gray-600 rounded-lg focus:border-neon-blue focus:outline-none resize-none"
               />
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-2">Hackathon Session *</label>
+              <select
+                value={selectedSessionId}
+                onChange={(e) => setSelectedSessionId(e.target.value)}
+                className="w-full px-4 py-3 bg-dark-700 border border-gray-600 rounded-lg focus:border-neon-blue focus:outline-none"
+              >
+                <option value="">-- Select a session --</option>
+                {sessions.map(session => (
+                  <option key={session._id} value={session._id}>
+                    {session.title} {session.status === 'active' ? '(Active)' : `(${session.status})`}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-400 mt-1">
+                Team will get access to problems assigned to this session
+              </p>
             </div>
             
             <div className="flex gap-3">

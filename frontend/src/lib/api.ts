@@ -619,6 +619,12 @@ export const hackathonSessionsAPI = {
     return response.data;
   },
 
+  // Alias for getAll
+  getAllSessions: async (params?: any) => {
+    const response = await api.get('/hackathon-sessions', { params });
+    return response.data;
+  },
+
   // Get session by ID
   getById: async (id: string) => {
     const response = await api.get(`/hackathon-sessions/${id}`);

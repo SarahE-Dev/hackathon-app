@@ -57,7 +57,7 @@ interface User {
 
 function AdminDashboardContent() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const [stats, setStats] = useState<DashboardStats>({
     totalTeams: 0,
     totalParticipants: 0,
@@ -77,6 +77,16 @@ function AdminDashboardContent() {
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push('/auth/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      router.push('/auth/login');
+    }
+  };
 
   const loadDashboardData = async () => {
     try {
@@ -184,12 +194,12 @@ function AdminDashboardContent() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <Link
-                href="/dashboard"
-                className="px-4 py-2 bg-dark-700 hover:bg-dark-600 border border-gray-600 rounded-lg transition-all text-sm"
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-500/50 text-red-400 rounded-lg transition-all text-sm"
               >
-                ← Main Dashboard
-              </Link>
+                🚪 Sign Out
+              </button>
             </div>
           </div>
         </div>
