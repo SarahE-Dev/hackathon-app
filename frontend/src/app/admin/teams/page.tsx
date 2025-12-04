@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { RoleGuard } from '@/components/guards/RoleGuard';
-import { teamsAPI, usersAPI, hackathonSessionsAPI } from '@/lib/api';
+import { teamsAPI, usersAPI, hackathonSessionsAPI, hackathonRosterAPI } from '@/lib/api';
 
 interface User {
   _id: string;
@@ -11,6 +11,17 @@ interface User {
   lastName: string;
   email: string;
   roles: Array<{ role: string }>;
+}
+
+interface PendingUser {
+  _id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  role: string;
+  status: 'pending' | 'registered';
+  teamId?: { _id: string; name: string } | string;
+  hackathonSessionId: string;
 }
 
 interface Team {
@@ -31,9 +42,11 @@ interface HackathonSession {
 function AdminTeamsContent() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   const [sessions, setSessions] = useState<HackathonSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [draggedUser, setDraggedUser] = useState<User | null>(null);
+  const [draggedPending, setDraggedPending] = useState<PendingUser | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamDescription, setNewTeamDescription] = useState('');
@@ -70,12 +83,37 @@ function AdminTeamsContent() {
       setSessions(sessionsData);
       
       // Auto-select first active session
+      let activeSessionId = '';
       const activeSession = sessionsData.find((s: HackathonSession) => s.status === 'active');
-      if (activeSession && !selectedSessionId) {
-        setSelectedSessionId(activeSession._id);
+      if (activeSession) {
+        activeSessionId = activeSession._id;
+        if (!selectedSessionId) setSelectedSessionId(activeSession._id);
       } else if (sessionsData.length > 0 && !selectedSessionId) {
+        activeSessionId = sessionsData[0]._id;
         setSelectedSessionId(sessionsData[0]._id);
       }
+
+      // Load all roster entries (both pending and registered) from all sessions
+      const allRosterEntries: PendingUser[] = [];
+      for (const session of sessionsData) {
+        try {
+          const rosterRes = await hackathonRosterAPI.getRoster(session._id);
+          const roster = rosterRes?.data?.roster || [];
+          // Get all fellow roster entries (pending = not signed up yet)
+          const fellowEntries = roster.filter((r: PendingUser) => r.role === 'fellow');
+          allRosterEntries.push(...fellowEntries.map((r: PendingUser) => ({ 
+            ...r, 
+            hackathonSessionId: session._id 
+          })));
+        } catch (e) {
+          console.error('Error loading roster for session:', session._id, e);
+        }
+      }
+      // Only keep entries that are truly "pending" (not yet signed up)
+      // These won't have a userId populated or status is 'pending'
+      const pendingOnly = allRosterEntries.filter(r => r.status === 'pending');
+      setPendingUsers(pendingOnly);
+      console.log('Loaded roster entries:', allRosterEntries.length, 'Pending:', pendingOnly.length);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -91,6 +129,9 @@ function AdminTeamsContent() {
       )
     )
   );
+
+  // Pending users without a team assignment show in unassigned section
+  const unassignedPending = pendingUsers.filter(p => !p.teamId);
 
   // Filter unassigned users by search
   const filteredUnassigned = unassignedUsers.filter(user => {
@@ -306,22 +347,26 @@ function AdminTeamsContent() {
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-5 gap-4 mb-8">
           <div className="glass rounded-xl p-4 border border-neon-blue/20">
             <p className="text-3xl font-bold text-neon-blue">{teams.length}</p>
             <p className="text-sm text-gray-400">Teams</p>
           </div>
           <div className="glass rounded-xl p-4 border border-neon-green/20">
             <p className="text-3xl font-bold text-neon-green">{allUsers.length}</p>
-            <p className="text-sm text-gray-400">Total Fellows</p>
+            <p className="text-sm text-gray-400">Registered Fellows</p>
           </div>
           <div className="glass rounded-xl p-4 border border-neon-purple/20">
             <p className="text-3xl font-bold text-neon-purple">{allUsers.length - unassignedUsers.length}</p>
             <p className="text-sm text-gray-400">Assigned</p>
           </div>
-          <div className="glass rounded-xl p-4 border border-yellow-500/20">
-            <p className="text-3xl font-bold text-yellow-400">{unassignedUsers.length}</p>
+          <div className="glass rounded-xl p-4 border border-orange-500/20">
+            <p className="text-3xl font-bold text-orange-400">{unassignedUsers.length}</p>
             <p className="text-sm text-gray-400">Unassigned</p>
+          </div>
+          <div className="glass rounded-xl p-4 border border-yellow-500/20">
+            <p className="text-3xl font-bold text-yellow-400">{pendingUsers.length}</p>
+            <p className="text-sm text-gray-400">Pending Signup</p>
           </div>
         </div>
 
@@ -338,7 +383,7 @@ function AdminTeamsContent() {
           >
             <h3 className="font-bold mb-3 flex items-center gap-2 text-lg">
               <span className="text-2xl">👤</span>
-              Unassigned Fellows ({filteredUnassigned.length})
+              Unassigned ({filteredUnassigned.length + unassignedPending.length})
             </h3>
             
             {/* Search */}
@@ -351,6 +396,7 @@ function AdminTeamsContent() {
             />
             
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {/* Registered users */}
               {filteredUnassigned.map((user) => (
                 <div
                   key={user._id}
@@ -360,14 +406,63 @@ function AdminTeamsContent() {
                 >
                   <p className="font-medium">
                     {user.firstName} {user.lastName}
+                    <span className="ml-2 text-xs px-1.5 py-0.5 bg-neon-green/20 text-neon-green rounded">✓ Registered</span>
                   </p>
                   <p className="text-xs text-gray-400">{user.email}</p>
                 </div>
               ))}
-              {filteredUnassigned.length === 0 && (
-                <p className="text-gray-500 text-center py-8">
-                  {searchTerm ? 'No fellows match search' : 'All fellows assigned to teams! 🎉'}
-                </p>
+              
+              {/* Pending users (not yet signed up) */}
+              {unassignedPending
+                .filter(p => {
+                  if (!searchTerm) return true;
+                  const search = searchTerm.toLowerCase();
+                  return (
+                    p.firstName?.toLowerCase().includes(search) ||
+                    p.lastName?.toLowerCase().includes(search) ||
+                    p.email.toLowerCase().includes(search)
+                  );
+                })
+                .map((pending) => {
+                  // Get pre-assigned team name if any
+                  const preAssignedTeam = pending.teamId 
+                    ? (typeof pending.teamId === 'object' ? pending.teamId.name : teams.find(t => t._id === pending.teamId)?.name)
+                    : null;
+                  
+                  return (
+                    <div
+                      key={pending._id}
+                      className="p-3 bg-dark-700 rounded-lg border border-yellow-500/30"
+                    >
+                      <p className="font-medium">
+                        {pending.firstName || ''} {pending.lastName || ''}
+                        {!pending.firstName && !pending.lastName && <span className="text-gray-500 italic">Name not provided</span>}
+                        <span className="ml-2 text-xs px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded">⏳ Pending Signup</span>
+                      </p>
+                      <p className="text-xs text-gray-400">{pending.email}</p>
+                      {preAssignedTeam ? (
+                        <p className="text-xs text-neon-blue mt-1">Pre-assigned to: {preAssignedTeam}</p>
+                      ) : (
+                        <p className="text-xs text-gray-500 mt-1">No team assigned yet</p>
+                      )}
+                    </div>
+                  );
+                })}
+              
+              {filteredUnassigned.length === 0 && unassignedPending.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">
+                    {searchTerm ? 'No fellows match search' : 'All fellows assigned to teams! 🎉'}
+                  </p>
+                  {!searchTerm && (
+                    <p className="text-xs text-gray-600 mt-2">
+                      Add new fellows via{' '}
+                      <Link href="/admin/users" className="text-neon-blue hover:underline">
+                        User Management
+                      </Link>
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -423,6 +518,7 @@ function AdminTeamsContent() {
                     )}
                     
                     <div className="space-y-2">
+                      {/* Registered members */}
                       {members.map((member) => {
                         const user = typeof member === 'string' 
                           ? allUsers.find(u => u._id === member)
@@ -439,6 +535,7 @@ function AdminTeamsContent() {
                             <div>
                               <p className="font-medium text-sm">
                                 {user.firstName} {user.lastName}
+                                <span className="ml-2 text-xs px-1.5 py-0.5 bg-neon-green/20 text-neon-green rounded">✓</span>
                               </p>
                               <p className="text-xs text-gray-400">{user.email}</p>
                             </div>
@@ -452,16 +549,52 @@ function AdminTeamsContent() {
                           </div>
                         );
                       })}
-                      {members.length === 0 && (
+                      
+                      {/* Pending members (pre-assigned but not signed up yet) */}
+                      {pendingUsers
+                        .filter(p => {
+                          const teamId = typeof p.teamId === 'object' ? p.teamId?._id : p.teamId;
+                          return teamId === team._id;
+                        })
+                        .map((pending) => (
+                          <div
+                            key={pending._id}
+                            className="p-2 bg-dark-700 rounded border border-yellow-500/30 flex items-center justify-between"
+                          >
+                            <div>
+                              <p className="font-medium text-sm">
+                                {pending.firstName || ''} {pending.lastName || ''}
+                                {!pending.firstName && !pending.lastName && <span className="text-gray-500 italic">No name</span>}
+                                <span className="ml-2 text-xs px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded">⏳ Pending</span>
+                              </p>
+                              <p className="text-xs text-gray-400">{pending.email}</p>
+                            </div>
+                          </div>
+                        ))}
+                      
+                      {members.length === 0 && !pendingUsers.some(p => {
+                        const teamId = typeof p.teamId === 'object' ? p.teamId?._id : p.teamId;
+                        return teamId === team._id;
+                      }) && (
                         <p className="text-gray-500 text-sm text-center py-4">
                           Drag fellows here
                         </p>
                       )}
                     </div>
                     
-                    <p className="text-xs text-gray-400 mt-3 pt-3 border-t border-gray-700">
-                      {members.length} member{members.length !== 1 ? 's' : ''}
-                    </p>
+                    {(() => {
+                      const pendingCount = pendingUsers.filter(p => {
+                        const teamId = typeof p.teamId === 'object' ? p.teamId?._id : p.teamId;
+                        return teamId === team._id;
+                      }).length;
+                      const totalCount = members.length + pendingCount;
+                      return (
+                        <p className="text-xs text-gray-400 mt-3 pt-3 border-t border-gray-700">
+                          {totalCount} member{totalCount !== 1 ? 's' : ''}
+                          {pendingCount > 0 && <span className="text-yellow-400"> ({pendingCount} pending)</span>}
+                        </p>
+                      );
+                    })()}
                   </div>
                 );
               })}
