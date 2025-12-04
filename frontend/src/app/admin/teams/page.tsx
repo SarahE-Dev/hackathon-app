@@ -412,7 +412,7 @@ function AdminTeamsContent() {
                 </div>
               ))}
               
-              {/* Pending users (not yet signed up) */}
+              {/* Pending users (not yet signed up, no team assigned) */}
               {unassignedPending
                 .filter(p => {
                   if (!searchTerm) return true;
@@ -423,31 +423,19 @@ function AdminTeamsContent() {
                     p.email.toLowerCase().includes(search)
                   );
                 })
-                .map((pending) => {
-                  // Get pre-assigned team name if any
-                  const preAssignedTeam = pending.teamId 
-                    ? (typeof pending.teamId === 'object' ? pending.teamId.name : teams.find(t => t._id === pending.teamId)?.name)
-                    : null;
-                  
-                  return (
-                    <div
-                      key={pending._id}
-                      className="p-3 bg-dark-700 rounded-lg border border-yellow-500/30"
-                    >
-                      <p className="font-medium">
-                        {pending.firstName || ''} {pending.lastName || ''}
-                        {!pending.firstName && !pending.lastName && <span className="text-gray-500 italic">Name not provided</span>}
-                        <span className="ml-2 text-xs px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded">⏳ Pending Signup</span>
-                      </p>
-                      <p className="text-xs text-gray-400">{pending.email}</p>
-                      {preAssignedTeam ? (
-                        <p className="text-xs text-neon-blue mt-1">Pre-assigned to: {preAssignedTeam}</p>
-                      ) : (
-                        <p className="text-xs text-gray-500 mt-1">No team assigned yet</p>
-                      )}
-                    </div>
-                  );
-                })}
+                .map((pending) => (
+                  <div
+                    key={pending._id}
+                    className="p-3 bg-dark-700 rounded-lg border border-yellow-500/30"
+                  >
+                    <p className="font-medium">
+                      {pending.firstName || ''} {pending.lastName || ''}
+                      {!pending.firstName && !pending.lastName && <span className="text-gray-500 italic">Name not provided</span>}
+                      <span className="ml-2 text-xs px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded">⏳ Pending</span>
+                    </p>
+                    <p className="text-xs text-gray-400">{pending.email}</p>
+                  </div>
+                ))}
               
               {filteredUnassigned.length === 0 && unassignedPending.length === 0 && (
                 <div className="text-center py-8">
