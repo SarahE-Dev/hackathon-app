@@ -25,6 +25,13 @@ interface Submission {
   code: string;
   language: string;
   explanation?: string;
+  explanationFields?: {
+    approach?: string;
+    whyApproach?: string;
+    timeComplexity?: string;
+    spaceComplexity?: string;
+    codeWalkthrough?: string;
+  };
   passedTests: number;
   totalTests: number;
   score: number;
@@ -579,11 +586,11 @@ function JudgeDashboardContent() {
                             {sub.judgeFeedback?.reviewedAt ? (
                               <span className="text-neon-green text-sm font-medium">
                                 {Math.round((sub.judgeFeedback.totalJudgeScore / 100) * (sub.problem?.points || sub.maxPoints))}/{sub.problem?.points || sub.maxPoints} pts
-                              </span>
+                          </span>
                             ) : (
                               <span className="text-gray-400 text-sm">{sub.problem?.points || sub.maxPoints} pts max</span>
-                            )}
-                        </div>
+                        )}
+                      </div>
                           <div className="flex items-center gap-3">
                             {/* Proctoring indicators */}
                             <span className={`px-2 py-0.5 text-xs rounded ${sub.attempts === 1 ? 'bg-green-500/20 text-green-400' : sub.attempts > 3 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-gray-500/20 text-gray-400'}`} title="Submission attempts">
@@ -616,8 +623,8 @@ function JudgeDashboardContent() {
                               <span className="px-2 py-1 text-xs bg-gray-700/50 text-gray-400 rounded border border-gray-600">
                                 Needs Review
                               </span>
-                            )}
-                            </div>
+                          )}
+                        </div>
                             </div>
                         {/* Suspicious patterns preview */}
                         {sub.proctoringStats?.suspiciousPatterns && sub.proctoringStats.suspiciousPatterns.length > 0 && (
@@ -633,16 +640,16 @@ function JudgeDashboardContent() {
                               </span>
                           )}
                         </div>
-                        )}
-                      </div>
+                      )}
+                    </div>
                     ))}
-                            </div>
-                          </div>
-                        </div>
-            ))}
               </div>
-            )}
                 </div>
+              </div>
+            ))}
+            </div>
+            )}
+            </div>
 
       {/* Review Modal */}
       {selectedSubmission && (
@@ -654,12 +661,12 @@ function JudgeDashboardContent() {
                 {selectedSubmission.judgeFeedback?.reviewedAt && (
                   <div className="px-3 py-1 rounded bg-green-500/20 border border-green-500/50 text-green-400 text-sm font-medium">
                     ✏️ Editing Review
-                  </div>
+              </div>
                 )}
                 <div className={`px-3 py-1 rounded border ${getDifficultyColor(selectedSubmission.problem?.difficulty)}`}>
                   {selectedSubmission.problem?.difficulty}
                 </div>
-                <div>
+                  <div>
                   <h2 className="text-xl font-bold text-white">{selectedSubmission.problem?.title}</h2>
                   <p className="text-gray-400 text-sm">
                     {selectedSubmission.submittedBy?.firstName} {selectedSubmission.submittedBy?.lastName} • 
@@ -668,18 +675,18 @@ function JudgeDashboardContent() {
                     {selectedSubmission.judgeFeedback?.reviewedAt && (
                       <span className="text-green-400 ml-2">
                         (Current: {Math.round((selectedSubmission.judgeFeedback.totalJudgeScore / 100) * (selectedSubmission.problem?.points || selectedSubmission.maxPoints))} pts)
-                      </span>
-                    )}
+                                </span>
+                              )}
                   </p>
-                </div>
-              </div>
+                            </div>
+                                    </div>
                                         <button
                 onClick={() => setSelectedSubmission(null)}
                 className="text-gray-400 hover:text-white text-2xl px-2"
                                         >
                 ×
                                         </button>
-            </div>
+                                              </div>
 
             {/* Modal Body */}
             <div className="flex-1 overflow-auto grid grid-cols-5 gap-0">
@@ -687,7 +694,7 @@ function JudgeDashboardContent() {
               <div className="col-span-3 border-r border-gray-700 flex flex-col">
                 <div className="p-3 bg-dark-900 border-b border-gray-700 text-sm font-medium text-gray-400">
                   💻 Submitted Code ({selectedSubmission.language})
-              </div>
+                                        </div>
                 <div className="flex-1">
                   <Editor
                     height="400px"
@@ -702,15 +709,138 @@ function JudgeDashboardContent() {
                       padding: { top: 10 },
                     }}
                   />
-                            </div>
-                {selectedSubmission.explanation && (
+                                      </div>
+                {(selectedSubmission.explanation || selectedSubmission.explanationFields) && (
                   <div className="p-3 border-t border-gray-700">
-                    <div className="text-sm font-medium text-gray-400 mb-2">📝 Explanation</div>
-                    <div className="p-3 bg-dark-900 rounded-lg text-gray-300 text-sm max-h-24 overflow-auto">
-                      {selectedSubmission.explanation}
-                                        </div>
+                    <div className="text-sm font-medium text-gray-400 mb-2">📝 Solution Explanation</div>
+                    <div className="p-3 bg-dark-900 rounded-lg text-sm max-h-64 overflow-auto space-y-3">
+                      {/* Use structured fields if available AND has content */}
+                      {selectedSubmission.explanationFields && (
+                        selectedSubmission.explanationFields.approach ||
+                        selectedSubmission.explanationFields.whyApproach ||
+                        selectedSubmission.explanationFields.timeComplexity ||
+                        selectedSubmission.explanationFields.spaceComplexity ||
+                        selectedSubmission.explanationFields.codeWalkthrough
+                      ) ? (
+                        <>
+                          {selectedSubmission.explanationFields.approach && (
+                            <div>
+                              <div className="font-semibold text-neon-blue mb-1 flex items-center gap-2">
+                                🎯 Approach
+                              </div>
+                              <div className="text-gray-300 text-xs pl-3 border-l-2 border-neon-blue/30">
+                                {selectedSubmission.explanationFields.approach}
+                              </div>
+                            </div>
+                          )}
+                          {selectedSubmission.explanationFields.whyApproach && (
+                            <div>
+                              <div className="font-semibold text-neon-purple mb-1 flex items-center gap-2">
+                                💡 Why This Approach
+                              </div>
+                              <div className="text-gray-300 text-xs pl-3 border-l-2 border-neon-purple/30">
+                                {selectedSubmission.explanationFields.whyApproach}
+                              </div>
+                            </div>
+                          )}
+                          {(selectedSubmission.explanationFields.timeComplexity || selectedSubmission.explanationFields.spaceComplexity) && (
+                            <div>
+                              <div className="font-semibold text-neon-green mb-1 flex items-center gap-2">
+                                📊 Complexity
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 pl-3">
+                                {selectedSubmission.explanationFields.timeComplexity && (
+                                  <div className="bg-dark-700 rounded p-2">
+                                    <div className="text-xs text-gray-500">Time</div>
+                                    <div className="text-sm text-neon-green font-mono">
+                                      {selectedSubmission.explanationFields.timeComplexity}
+                                    </div>
+                                  </div>
+                                )}
+                                {selectedSubmission.explanationFields.spaceComplexity && (
+                                  <div className="bg-dark-700 rounded p-2">
+                                    <div className="text-xs text-gray-500">Space</div>
+                                    <div className="text-sm text-neon-blue font-mono">
+                                      {selectedSubmission.explanationFields.spaceComplexity}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          {selectedSubmission.explanationFields.codeWalkthrough && (
+                            <div>
+                              <div className="font-semibold text-neon-pink mb-1 flex items-center gap-2">
+                                📝 Code Walkthrough
+                              </div>
+                              <div className="text-gray-300 text-xs pl-3 border-l-2 border-neon-pink/30 whitespace-pre-wrap">
+                                {selectedSubmission.explanationFields.codeWalkthrough}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      ) : selectedSubmission.explanation ? (
+                        /* Fallback: Parse legacy explanation format */
+                        selectedSubmission.explanation.split('\n\n').map((section: string, idx: number) => {
+                          if (section.startsWith('## ')) {
+                            const [header, ...content] = section.split('\n');
+                            const headerText = header.replace('## ', '');
+                            const headerConfig: Record<string, { color: string; icon: string; borderColor: string }> = {
+                              'Approach': { color: 'text-neon-blue', icon: '🎯', borderColor: 'border-neon-blue/30' },
+                              'Why This Approach': { color: 'text-neon-purple', icon: '💡', borderColor: 'border-neon-purple/30' },
+                              'Complexity Analysis': { color: 'text-neon-green', icon: '📊', borderColor: 'border-neon-green/30' },
+                              'Code Walkthrough': { color: 'text-neon-pink', icon: '📝', borderColor: 'border-neon-pink/30' },
+                            };
+                            const config = headerConfig[headerText] || { color: 'text-white', icon: '•', borderColor: 'border-gray-700' };
+                            
+                            // Special handling for Complexity Analysis
+                            if (headerText === 'Complexity Analysis') {
+                              const contentStr = content.join('\n');
+                              const timeMatch = contentStr.match(/\*\*Time:\*\*\s*([^\n]*)/);
+                              const spaceMatch = contentStr.match(/\*\*Space:\*\*\s*([^\n]*)/);
+                              
+                              return (
+                                <div key={idx}>
+                                  <div className={`font-semibold ${config.color} mb-1 flex items-center gap-2`}>
+                                    {config.icon} {headerText}
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2 pl-3">
+                                    {timeMatch && (
+                                      <div className="bg-dark-700 rounded p-2">
+                                        <div className="text-xs text-gray-500">Time</div>
+                                        <div className="text-sm text-neon-green font-mono">{timeMatch[1].trim()}</div>
                                       </div>
                                     )}
+                                    {spaceMatch && (
+                                      <div className="bg-dark-700 rounded p-2">
+                                        <div className="text-xs text-gray-500">Space</div>
+                                        <div className="text-sm text-neon-blue font-mono">{spaceMatch[1].trim()}</div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            }
+                            
+                            return (
+                              <div key={idx}>
+                                <div className={`font-semibold ${config.color} mb-1 flex items-center gap-2`}>
+                                  {config.icon} {headerText}
+                                </div>
+                                <div className={`text-gray-300 text-xs pl-3 border-l-2 ${config.borderColor} whitespace-pre-wrap`}>
+                                  {content.join('\n')}
+                                </div>
+                              </div>
+                            );
+                          }
+                          return <div key={idx} className="text-gray-300 whitespace-pre-wrap">{section}</div>;
+                        })
+                      ) : (
+                        <div className="text-gray-500 italic">No explanation provided</div>
+                      )}
+                    </div>
+                  </div>
+                )}
                                   </div>
 
               {/* Right: Proctoring & Feedback (2 cols) */}
@@ -727,21 +857,21 @@ function JudgeDashboardContent() {
                     <div className="bg-dark-900 rounded-lg p-3 text-center">
                       <div className="text-lg font-bold text-white">
                         {(selectedSubmission.proctoringStats?.copyCount || 0) + (selectedSubmission.proctoringStats?.pasteCount || 0)}
-                              </div>
+                                          </div>
                       <div className="text-xs text-gray-500">Copy/Paste</div>
-                          </div>
+                                      </div>
                     <div className={`bg-dark-900 rounded-lg p-3 text-center ${selectedSubmission.attempts > 3 ? 'ring-1 ring-yellow-500/50' : selectedSubmission.attempts === 1 ? 'ring-1 ring-green-500/50' : ''}`}>
                       <div className={`text-lg font-bold ${selectedSubmission.attempts > 3 ? 'text-yellow-400' : selectedSubmission.attempts === 1 ? 'text-green-400' : 'text-white'}`}>
                         {selectedSubmission.attempts || 1}
-                    </div>
+                              </div>
                       <div className="text-xs text-gray-500">Submissions</div>
-                  </div>
+                          </div>
                     <div className={`bg-dark-900 rounded-lg p-3 text-center ${(selectedSubmission.proctoringStats?.externalPasteCount || 0) > 0 ? 'ring-1 ring-red-500/50' : ''}`}>
                       <div className={`text-lg font-bold ${(selectedSubmission.proctoringStats?.externalPasteCount || 0) > 0 ? 'text-red-400' : 'text-white'}`}>
                         {selectedSubmission.proctoringStats?.externalPasteCount || 0}
-                                          </div>
+                    </div>
                       <div className="text-xs text-gray-500">External Paste</div>
-                                      </div>
+                  </div>
                     <div className={`bg-dark-900 rounded-lg p-3 text-center ${(selectedSubmission.proctoringStats?.tabSwitchCount || 0) > 10 ? 'ring-1 ring-yellow-500/50' : ''}`}>
                       <div className={`text-lg font-bold ${(selectedSubmission.proctoringStats?.tabSwitchCount || 0) > 10 ? 'text-yellow-400' : 'text-white'}`}>
                         {selectedSubmission.proctoringStats?.tabSwitchCount || 0}

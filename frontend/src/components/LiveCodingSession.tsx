@@ -6,6 +6,7 @@ import { io, Socket } from 'socket.io-client';
 import * as monaco from 'monaco-editor';
 import { teamSubmissionsAPI } from '../lib/api';
 import { useProctoring } from '../hooks/useProctoring';
+import Markdown from './Markdown';
 
 interface TestCase {
   id: string;
@@ -205,7 +206,19 @@ Output: [0,1]
   const [testResults, setTestResults] = useState<{[key: string]: 'pending' | 'passed' | 'failed'}>({});
   const [runningVisible, setRunningVisible] = useState(false);
   const [runningAll, setRunningAll] = useState(false);
+  
+  // Structured explanation fields
+  const [explanationFields, setExplanationFields] = useState({
+    approach: '',
+    whyApproach: '',
+    timeComplexity: '',
+    spaceComplexity: '',
+    codeWalkthrough: '',
+  });
+  
+  // Legacy single explanation for backwards compatibility
   const [explanation, setExplanation] = useState('');
+  
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [showExplanationModal, setShowExplanationModal] = useState(false);
@@ -213,6 +226,45 @@ Output: [0,1]
   const sessionStartRef = useRef<Date>(new Date());
   const [testAttempts, setTestAttempts] = useState(0);
   const MAX_TEST_ATTEMPTS = 5;
+  
+  // Combine explanation fields into single string
+  const getCombinedExplanation = () => {
+    const parts = [];
+    if (explanationFields.approach.trim()) {
+      parts.push(`## Approach\n${explanationFields.approach.trim()}`);
+    }
+    if (explanationFields.whyApproach.trim()) {
+      parts.push(`## Why This Approach\n${explanationFields.whyApproach.trim()}`);
+    }
+    if (explanationFields.timeComplexity.trim() || explanationFields.spaceComplexity.trim()) {
+      let complexity = '## Complexity Analysis\n';
+      if (explanationFields.timeComplexity.trim()) {
+        complexity += `- **Time:** ${explanationFields.timeComplexity.trim()}\n`;
+      }
+      if (explanationFields.spaceComplexity.trim()) {
+        complexity += `- **Space:** ${explanationFields.spaceComplexity.trim()}`;
+      }
+      parts.push(complexity);
+    }
+    if (explanationFields.codeWalkthrough.trim()) {
+      parts.push(`## Code Walkthrough\n${explanationFields.codeWalkthrough.trim()}`);
+    }
+    return parts.join('\n\n');
+  };
+  
+  // Check if explanation is complete enough
+  const isExplanationComplete = () => {
+    return (
+      explanationFields.approach.trim().length > 0 &&
+      explanationFields.timeComplexity.trim().length > 0 &&
+      explanationFields.codeWalkthrough.trim().length > 0
+    );
+  };
+  
+  // Update combined explanation whenever fields change
+  useEffect(() => {
+    setExplanation(getCombinedExplanation());
+  }, [explanationFields]);
 
   // Proctoring hook - tracks copy/paste, tab switches, etc.
   const proctoring = useProctoring({
@@ -252,6 +304,21 @@ Output: [0,1]
           }
           if (submission.explanation) {
             setExplanation(submission.explanation);
+            // Try to parse structured explanation back into fields
+            const exp = submission.explanation;
+            const approachMatch = exp.match(/## Approach\n([\s\S]*?)(?=\n## |$)/);
+            const whyMatch = exp.match(/## Why This Approach\n([\s\S]*?)(?=\n## |$)/);
+            const timeMatch = exp.match(/\*\*Time:\*\* ([^\n]*)/);
+            const spaceMatch = exp.match(/\*\*Space:\*\* ([^\n]*)/);
+            const walkthroughMatch = exp.match(/## Code Walkthrough\n([\s\S]*?)(?=\n## |$)/);
+            
+            setExplanationFields({
+              approach: approachMatch ? approachMatch[1].trim() : '',
+              whyApproach: whyMatch ? whyMatch[1].trim() : '',
+              timeComplexity: timeMatch ? timeMatch[1].trim() : '',
+              spaceComplexity: spaceMatch ? spaceMatch[1].trim() : '',
+              codeWalkthrough: walkthroughMatch ? walkthroughMatch[1].trim() : '',
+            });
           }
           // Load team's shared test run attempts from backend
           if (typeof submission.testRunAttempts === 'number') {
@@ -770,10 +837,13 @@ Output: [0,1]
   };
 
   const submitSolution = async () => {
-    if (!explanation.trim()) {
+    if (!isExplanationComplete()) {
       setShowExplanationModal(true);
       return;
     }
+    
+    // Get the combined explanation
+    const combinedExplanation = getCombinedExplanation();
 
     if (!problem?._id) {
       alert('Problem ID not available. Please ensure you selected a problem from the Problems tab.');
@@ -790,14 +860,15 @@ Output: [0,1]
       // Submit solution using the team submissions API with proctoring data
       const response = await teamSubmissionsAPI.submitSolution(teamId, sessionId, problem._id, {
         code,
-        explanation,
+        explanation: combinedExplanation,
+        explanationFields, // Also send structured fields for better judge display
         proctoringStats: proctoringData.stats,
         proctoringEvents: proctoringData.events,
         codeSnapshots: proctoringData.codeSnapshots,
       });
 
       if (response.success) {
-        setSubmitSuccess(true);
+      setSubmitSuccess(true);
         
         // Always mark problem as completed on submission (regardless of test results)
         // The user has submitted their answer - that's final for this problem
@@ -887,28 +958,36 @@ Output: [0,1]
       {/* Explanation Required Modal */}
       {showExplanationModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="glass rounded-2xl p-8 border border-yellow-500/50 max-w-md w-full animate-in fade-in zoom-in duration-200">
+          <div className="glass rounded-2xl p-8 border border-yellow-500/50 max-w-lg w-full animate-in fade-in zoom-in duration-200">
             <div className="text-center">
               <div className="text-5xl mb-4">📝</div>
-              <h3 className="text-xl font-bold text-yellow-400 mb-2">Explanation Required</h3>
+              <h3 className="text-xl font-bold text-yellow-400 mb-2">Complete Your Explanation</h3>
               <p className="text-gray-300 mb-4">
-                Before submitting your solution, please provide an explanation of your approach.
+                Before submitting, please fill in the required explanation fields below the code editor.
               </p>
               <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6 text-left">
-                <h4 className="font-semibold text-yellow-300 text-sm mb-2">Your explanation should include:</h4>
-                <ul className="text-sm text-yellow-300/80 space-y-1">
-                  <li>• The algorithm or approach you used</li>
-                  <li>• Why you chose this solution</li>
-                  <li>• Time and space complexity (if known)</li>
-                  <li>• Any trade-offs or alternatives considered</li>
+                <h4 className="font-semibold text-yellow-300 text-sm mb-3">Missing required fields:</h4>
+                <ul className="text-sm space-y-2">
+                  <li className={`flex items-center gap-2 ${explanationFields.approach.trim() ? 'text-green-400' : 'text-yellow-300'}`}>
+                    {explanationFields.approach.trim() ? '✓' : '○'} Your Approach
+                  </li>
+                  <li className={`flex items-center gap-2 ${explanationFields.timeComplexity.trim() ? 'text-green-400' : 'text-yellow-300'}`}>
+                    {explanationFields.timeComplexity.trim() ? '✓' : '○'} Time Complexity
+                  </li>
+                  <li className={`flex items-center gap-2 ${explanationFields.codeWalkthrough.trim() ? 'text-green-400' : 'text-yellow-300'}`}>
+                    {explanationFields.codeWalkthrough.trim() ? '✓' : '○'} Code Walkthrough
+                  </li>
                 </ul>
+                <p className="text-xs text-gray-400 mt-3">
+                  Optional: Why This Approach, Space Complexity
+                </p>
               </div>
               <div className="flex justify-center gap-4">
                 <button
                   onClick={() => setShowExplanationModal(false)}
                   className="px-6 py-3 bg-neon-blue hover:bg-neon-blue/80 text-white rounded-lg font-medium transition-all"
                 >
-                  Got it, I'll add one
+                  Got it, I'll complete it
                 </button>
               </div>
             </div>
@@ -949,9 +1028,7 @@ Output: [0,1]
         <div className="glass rounded-2xl p-6 border border-gray-800">
           <h3 className="text-lg font-bold text-white mb-4">Problem Description</h3>
           <div className="prose prose-invert max-w-none">
-            <div className="text-gray-300 whitespace-pre-wrap leading-relaxed">
-              {currentProblem.description}
-            </div>
+            <Markdown content={currentProblem.description} />
           </div>
         </div>
 
@@ -1058,56 +1135,136 @@ Output: [0,1]
             </div>
           )}
 
-          {/* Explanation */}
-          <div className={`mb-4 ${!explanation.trim() ? 'animate-pulse-subtle' : ''}`}>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+          {/* Structured Explanation */}
+          <div className={`mb-4 space-y-4 ${!isExplanationComplete() ? 'animate-pulse-subtle' : ''}`}>
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-medium text-gray-300">
               Solution Explanation <span className="text-red-400">*</span>
-              {!explanation.trim() && (
-                <span className="ml-2 text-xs text-yellow-400 font-normal">(Required to submit)</span>
-              )}
             </label>
-            <div className="bg-dark-800 rounded-lg p-3 mb-3 border border-gray-700">
-              <p className="text-xs text-gray-300 font-medium mb-2">📝 Your explanation should include:</p>
-              <ul className="text-xs text-gray-400 space-y-1 ml-4">
-                <li>• <span className="text-neon-blue">Algorithm:</span> What approach did you use? (e.g., two pointers, hash map)</li>
-                <li>• <span className="text-neon-blue">Why:</span> Why did you choose this approach?</li>
-                <li>• <span className="text-neon-blue">Complexity:</span> Time & space complexity (e.g., O(n), O(1))</li>
-                <li>• <span className="text-neon-blue">Steps:</span> Brief walkthrough of your solution</li>
-              </ul>
+              {!isExplanationComplete() && (
+                <span className="text-xs text-yellow-400">(Fill all required fields to submit)</span>
+              )}
             </div>
+            
+            {/* Approach */}
+            <div className="bg-dark-800 rounded-lg p-4 border border-gray-700">
+              <label className="block text-sm font-medium text-neon-blue mb-2">
+                🎯 Your Approach <span className="text-red-400">*</span>
+              </label>
+            <p className="text-xs text-gray-400 mb-2">
+                What algorithm or technique did you use? (e.g., hash map, two pointers, recursion, dynamic programming)
+            </p>
             <textarea
-              value={explanation}
-              onChange={(e) => setExplanation(e.target.value)}
-              placeholder="Example:
-
-ALGORITHM: I used a hash map approach.
-
-WHY: Hash map allows O(1) lookups, making it efficient.
-
-COMPLEXITY: 
-- Time: O(n) - single pass through the array
-- Space: O(n) - storing elements in hash map
-
-STEPS:
-1. Created a hash map to store values and indices
-2. For each element, checked if complement exists
-3. If found, returned the indices"
-              className={`w-full h-48 px-4 py-3 bg-dark-700 border rounded-lg text-white text-sm focus:border-neon-blue outline-none resize-y font-mono transition-colors placeholder:text-gray-500 ${
-                !explanation.trim() 
-                  ? 'border-yellow-500/50 focus:border-yellow-500' 
-                  : 'border-gray-600'
-              }`}
-            />
+                value={explanationFields.approach}
+                onChange={(e) => setExplanationFields({...explanationFields, approach: e.target.value})}
+                placeholder="I used a hash map approach to store previously seen values and their indices..."
+                rows={2}
+                className={`w-full px-3 py-2 bg-dark-700 border rounded-lg text-white text-sm focus:border-neon-blue outline-none resize-y transition-colors ${
+                  !explanationFields.approach.trim() ? 'border-yellow-500/50' : 'border-gray-600'
+                }`}
+              />
+            </div>
+            
+            {/* Why This Approach */}
+            <div className="bg-dark-800 rounded-lg p-4 border border-gray-700">
+              <label className="block text-sm font-medium text-neon-purple mb-2">
+                💡 Why This Approach?
+              </label>
+              <p className="text-xs text-gray-400 mb-2">
+                Why did you choose this approach over alternatives? What trade-offs did you consider?
+              </p>
+              <textarea
+                value={explanationFields.whyApproach}
+                onChange={(e) => setExplanationFields({...explanationFields, whyApproach: e.target.value})}
+                placeholder="A hash map allows O(1) lookups, making it more efficient than a nested loop approach which would be O(n²)..."
+                rows={2}
+                className="w-full px-3 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white text-sm focus:border-neon-blue outline-none resize-y transition-colors"
+              />
+            </div>
+            
+            {/* Complexity Analysis */}
+            <div className="bg-dark-800 rounded-lg p-4 border border-gray-700">
+              <label className="block text-sm font-medium text-neon-green mb-2">
+                📊 Complexity Analysis <span className="text-red-400">*</span>
+              </label>
+              <p className="text-xs text-gray-400 mb-3">
+                Analyze the time and space complexity of your solution using Big O notation.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Time Complexity <span className="text-red-400">*</span></label>
+                  <input
+                    type="text"
+                    value={explanationFields.timeComplexity}
+                    onChange={(e) => setExplanationFields({...explanationFields, timeComplexity: e.target.value})}
+                    placeholder="e.g., O(n) - single pass through array"
+                    className={`w-full px-3 py-2 bg-dark-700 border rounded-lg text-white text-sm focus:border-neon-blue outline-none transition-colors ${
+                      !explanationFields.timeComplexity.trim() ? 'border-yellow-500/50' : 'border-gray-600'
+                    }`}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Space Complexity</label>
+                  <input
+                    type="text"
+                    value={explanationFields.spaceComplexity}
+                    onChange={(e) => setExplanationFields({...explanationFields, spaceComplexity: e.target.value})}
+                    placeholder="e.g., O(n) - storing in hash map"
+                    className="w-full px-3 py-2 bg-dark-700 border border-gray-600 rounded-lg text-white text-sm focus:border-neon-blue outline-none transition-colors"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {/* Code Walkthrough */}
+            <div className="bg-dark-800 rounded-lg p-4 border border-gray-700">
+              <label className="block text-sm font-medium text-neon-pink mb-2">
+                📝 Code Walkthrough <span className="text-red-400">*</span>
+              </label>
+              <p className="text-xs text-gray-400 mb-2">
+                Walk through your code step by step. What happens at each stage? How does your solution handle edge cases?
+              </p>
+              <textarea
+                value={explanationFields.codeWalkthrough}
+                onChange={(e) => setExplanationFields({...explanationFields, codeWalkthrough: e.target.value})}
+                placeholder="1. First, I initialize an empty hash map to store values and their indices.
+2. I iterate through each element in the array.
+3. For each element, I calculate its complement (target - current).
+4. I check if the complement exists in the hash map.
+5. If found, I return the indices. If not, I add the current element to the hash map.
+6. Edge cases handled: duplicate values, negative numbers..."
+                rows={5}
+                className={`w-full px-3 py-2 bg-dark-700 border rounded-lg text-white text-sm focus:border-neon-blue outline-none resize-y font-mono transition-colors ${
+                  !explanationFields.codeWalkthrough.trim() ? 'border-yellow-500/50' : 'border-gray-600'
+                }`}
+              />
+            </div>
+            
+            {/* Completion Status */}
             {!submitSuccess && (
-              !explanation.trim() ? (
-                <p className="text-xs text-yellow-400 mt-1">
-                  ⚠️ You must explain your solution approach before submitting
-                </p>
-              ) : (
-                <p className="text-xs text-green-400 mt-1">
-                  ✓ Explanation provided - ready to submit!
-                </p>
-              )
+              <div className={`p-3 rounded-lg border ${
+                isExplanationComplete() 
+                  ? 'bg-green-500/10 border-green-500/30' 
+                  : 'bg-yellow-500/10 border-yellow-500/30'
+              }`}>
+                <div className="flex items-center gap-2 text-sm">
+                  {isExplanationComplete() ? (
+                    <>
+                      <span className="text-green-400">✓</span>
+                      <span className="text-green-400">All required fields completed - ready to submit!</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-yellow-400">⚠️</span>
+                      <span className="text-yellow-400">Please fill in: {[
+                        !explanationFields.approach.trim() && 'Approach',
+                        !explanationFields.timeComplexity.trim() && 'Time Complexity',
+                        !explanationFields.codeWalkthrough.trim() && 'Code Walkthrough'
+                      ].filter(Boolean).join(', ')}</span>
+                    </>
+                  )}
+                </div>
+              </div>
             )}
           </div>
 
@@ -1139,7 +1296,7 @@ STEPS:
               onClick={submitSolution}
                 disabled={submitting}
                 className={`w-full py-3 rounded-lg font-medium transition-all ${
-                  explanation.trim()
+                  isExplanationComplete()
                     ? 'bg-gradient-to-r from-neon-purple to-purple-600 text-white hover:shadow-lg hover:shadow-neon-purple/50'
                     : 'bg-dark-600 border border-yellow-500/50 text-yellow-400 cursor-pointer hover:bg-dark-500'
                 } ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -1149,10 +1306,10 @@ STEPS:
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                     Submitting...
                   </span>
-                ) : explanation.trim() ? (
+                ) : isExplanationComplete() ? (
                   '✓ Submit Solution'
                 ) : (
-                  '📝 Add Explanation to Submit'
+                  '📝 Complete Explanation to Submit'
                 )}
             </button>
             )}

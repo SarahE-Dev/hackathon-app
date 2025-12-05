@@ -7,11 +7,12 @@ import Question from '../models/Question';
 import Team from '../models/Team';
 import HackathonSession from '../models/HackathonSession';
 import HackathonRoster from '../models/HackathonRoster';
+import TeamSubmission from '../models/TeamSubmission';
 import { logger } from '../utils/logger';
 
 export async function seedComprehensive() {
   try {
-    // Clear existing data
+    // Clear ALL existing data for a clean start
     await User.deleteMany({});
     await Organization.deleteMany({});
     await Assessment.deleteMany({});
@@ -19,8 +20,9 @@ export async function seedComprehensive() {
     await Team.deleteMany({});
     await HackathonSession.deleteMany({});
     await HackathonRoster.deleteMany({});
+    await TeamSubmission.deleteMany({}); // Clear all submissions too!
 
-    logger.info('Cleared existing data');
+    logger.info('Cleared ALL existing data (including submissions)');
 
     // Create Organization
     const organization = await Organization.create({
@@ -786,18 +788,21 @@ print(result)`,
 
     logger.info(`Created ${teams.length} teams`);
 
-    // Create Hackathon Session for December 13, 2025 (4 hours)
-    // Filter for coding questions only
+    // Create Hackathon Session
+    // For testing: Active now. Production date: December 13, 2025 (1pm - 5pm EST)
     const codingQuestions = questions.filter(q => q.type === 'coding');
 
-    // Create hackathon session with coding problems
+    // Create hackathon session - ACTIVE NOW for testing
     const now = new Date();
+    const hackathonStart = new Date(now.getTime() - 60 * 60 * 1000); // Started 1 hour ago
+    const hackathonEnd = new Date(now.getTime() + 3 * 60 * 60 * 1000); // Ends in 3 hours
+    
     const hackathonSession = await HackathonSession.create({
       title: 'JTC CodeJam 2025',
-      description: 'Justice Through Code - Live Coding Hackathon. Solve coding challenges with your team!',
+      description: 'Justice Through Code - Live Coding Hackathon. Official date: December 13th, 2025 from 1-5pm EST. Solve coding challenges with your team!',
       organizationId: organization._id,
-      startTime: new Date(now.getTime() - 60 * 60 * 1000), // Started 1 hour ago
-      endTime: new Date(now.getTime() + 3 * 60 * 60 * 1000), // Ends in 3 hours
+      startTime: hackathonStart,
+      endTime: hackathonEnd,
       duration: 240, // 4 hours in minutes
       problems: codingQuestions.map((q, index) => ({
         problemId: q._id,
@@ -822,7 +827,7 @@ print(result)`,
         snapshotIntervalMinutes: 10,
         requireIdentityCheck: false,
       },
-      status: 'active',
+      status: 'active', // Active now for testing
       isActive: true,
       accommodations: [],
       createdBy: admin._id,

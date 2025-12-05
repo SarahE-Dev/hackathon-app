@@ -338,7 +338,7 @@ export const submitSolution = async (
 ) => {
   try {
     const { teamId, sessionId, problemId } = req.params;
-    const { code, explanation, proctoringStats, proctoringEvents, codeSnapshots } = req.body;
+    const { code, explanation, explanationFields, proctoringStats, proctoringEvents, codeSnapshots } = req.body;
     const userId = req.user!.userId;
 
     // Verify user is a member of the team
@@ -386,6 +386,7 @@ export const submitSolution = async (
     const updateSet: any = {
       code,
       explanation,
+      explanationFields: explanationFields || null, // Structured explanation fields
       language,
       testResults: results.map((r) => ({
         testCaseId: r.id,
@@ -582,6 +583,7 @@ export const getAllSessionSubmissions = async (
         code: sub.code,
         language: sub.language,
         explanation: sub.explanation,
+        explanationFields: (sub as any).explanationFields,
         testResults: sub.testResults,
         passedTests: sub.passedTests,
         totalTests: sub.totalTests,

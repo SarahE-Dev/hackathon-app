@@ -41,6 +41,13 @@ export interface ITeamSubmission extends Document {
   code: string;
   language: string;
   explanation?: string;
+  explanationFields?: {
+    approach: string;
+    whyApproach: string;
+    timeComplexity: string;
+    spaceComplexity: string;
+    codeWalkthrough: string;
+  };
   
   // Test results
   testResults: Array<{
@@ -131,6 +138,13 @@ const TeamSubmissionSchema = new Schema<ITeamSubmission>(
     },
     explanation: {
       type: String,
+    },
+    explanationFields: {
+      approach: { type: String },
+      whyApproach: { type: String },
+      timeComplexity: { type: String },
+      spaceComplexity: { type: String },
+      codeWalkthrough: { type: String },
     },
     testResults: [
       {
