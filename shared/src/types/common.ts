@@ -119,7 +119,7 @@ export interface RubricScoringGuide {
   description: string;
 }
 
-export interface RubricCriterion {
+export interface JudgeRubricCriterion {
   name: string;
   description: string;
   maxPoints: number;
@@ -138,7 +138,7 @@ export interface JudgeDocumentation {
   organizationId: string;
   title: string;
   type: JudgeDocumentationType;
-  rubricCriteria?: RubricCriterion[];
+  rubricCriteria?: JudgeRubricCriterion[];
   totalPoints?: number;
   faqs?: FAQ[];
   content?: string;

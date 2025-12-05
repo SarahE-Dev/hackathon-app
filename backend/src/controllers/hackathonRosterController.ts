@@ -4,6 +4,7 @@ import User from '../models/User';
 import Team from '../models/Team';
 import { ApiError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
+import { UserRole } from '../../../shared/src/types/common';
 
 /**
  * Get roster entries for a hackathon session
@@ -96,7 +97,7 @@ export const addToRoster = async (
       rosterEntry.registeredAt = new Date();
 
       // Auto-assign role to existing user if they don't have it
-      const roleToAdd = role === 'judge' ? 'judge' : 'fellow';
+      const roleToAdd = role === 'judge' ? UserRole.JUDGE : UserRole.FELLOW;
       const hasRole = existingUser.roles?.some(r => r.role === roleToAdd);
       if (!hasRole) {
         existingUser.roles = existingUser.roles || [];
@@ -193,7 +194,7 @@ export const bulkAddToRoster = async (
       if (existingUser) {
         results.autoRegistered++;
         // Auto-assign role
-        const roleToAdd = role === 'judge' ? 'judge' : 'fellow';
+        const roleToAdd = role === 'judge' ? UserRole.JUDGE : UserRole.FELLOW;
         const hasRole = existingUser.roles?.some(r => r.role === roleToAdd);
         if (!hasRole) {
           existingUser.roles = existingUser.roles || [];
