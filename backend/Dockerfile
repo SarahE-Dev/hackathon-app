@@ -35,5 +35,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 # Use dumb-init to handle signals
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start from the correct nested path
-CMD ["node", "dist/backend/src/index.js"]
+# Start with seed check then run server
+# Set SEED_ON_START=true in Railway env vars to seed on first deploy
+CMD ["sh", "-c", "if [ \"$SEED_ON_START\" = \"true\" ]; then echo 'Running seed...' && npm run seed && echo 'Seed complete!'; fi && node dist/backend/src/index.js"]
