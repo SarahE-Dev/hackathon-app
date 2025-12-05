@@ -98,10 +98,11 @@ export const addToRoster = async (
 
       // Auto-assign role to existing user if they don't have it
       const roleToAdd = role === 'judge' ? UserRole.JUDGE : UserRole.FELLOW;
+      const orgId = req.body.organizationId || '000000000000000000000001';
       const hasRole = existingUser.roles?.some(r => r.role === roleToAdd);
       if (!hasRole) {
         existingUser.roles = existingUser.roles || [];
-        existingUser.roles.push({ role: roleToAdd });
+        existingUser.roles.push({ role: roleToAdd, organizationId: orgId } as any);
         await existingUser.save();
       }
     }
@@ -195,10 +196,11 @@ export const bulkAddToRoster = async (
         results.autoRegistered++;
         // Auto-assign role
         const roleToAdd = role === 'judge' ? UserRole.JUDGE : UserRole.FELLOW;
+        const orgId = req.body.organizationId || '000000000000000000000001';
         const hasRole = existingUser.roles?.some(r => r.role === roleToAdd);
         if (!hasRole) {
           existingUser.roles = existingUser.roles || [];
-          existingUser.roles.push({ role: roleToAdd });
+          existingUser.roles.push({ role: roleToAdd, organizationId: orgId } as any);
           await existingUser.save();
         }
       }
