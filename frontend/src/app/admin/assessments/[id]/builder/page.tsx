@@ -35,9 +35,9 @@ interface Assessment {
   settings: {
     totalTimeLimit?: number;
     proctoring?: {
-      enabled: boolean;
+      enabled?: boolean;
       requireIdCheck?: boolean;
-      detectTabSwitch: boolean;
+      detectTabSwitch?: boolean;
       detectCopyPaste?: boolean;
       enableWebcam?: boolean;
     };

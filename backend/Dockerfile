@@ -2,8 +2,9 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init curl python3 make g++
+# Install dumb-init for proper signal handling and Python3 for code execution
+RUN apk add --no-cache dumb-init curl python3 py3-pip make g++ \
+    && ln -sf /usr/bin/python3 /usr/bin/python
 
 # Copy package files from repo root context
 COPY package.json package-lock.json ./
