@@ -15,7 +15,7 @@ export default function Home() {
         {/* Header */}
         <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-8">
           <Link href="/" className="flex items-center gap-3">
-            <span className="text-2xl font-bold text-gradient">CodeArena</span>
+            <span className="text-2xl font-bold text-gradient font-[family-name:var(--font-orbitron)] tracking-wider">CodeArena</span>
           </Link>
           <div className="flex items-center gap-3 text-sm">
             <Link href="/auth/login" className="text-gray-300 transition-colors hover:text-white">
@@ -34,7 +34,7 @@ export default function Home() {
         <section className="mx-auto max-w-4xl px-6 py-20 text-center">
           <div className="space-y-8">
             <div className="space-y-6">
-              <h1 className="text-5xl font-bold leading-tight md:text-7xl">
+              <h1 className="text-5xl font-bold leading-tight md:text-7xl font-[family-name:var(--font-orbitron)] tracking-wide">
                 <span className="text-gradient">CodeArena</span>
               </h1>
               <h2 className="text-xl md:text-2xl font-medium text-gray-300">

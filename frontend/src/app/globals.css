@@ -14,7 +14,7 @@
 body {
   color: rgb(var(--foreground-rgb));
   background: rgb(var(--background-rgb));
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
   background-image:
     linear-gradient(to bottom, rgba(0, 217, 255, 0.03) 1px, transparent 1px),
     linear-gradient(to right, rgba(0, 217, 255, 0.03) 1px, transparent 1px);
