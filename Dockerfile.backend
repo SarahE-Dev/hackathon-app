@@ -18,17 +18,12 @@ RUN npm install
 COPY backend ./backend
 COPY shared ./shared
 
-# Build shared types
-WORKDIR /app/shared
-RUN npm run build 2>&1 || echo "Shared build skipped"
-
-# Build backend - show all output
+# Build backend
 WORKDIR /app/backend
-RUN echo "=== Starting backend build ===" && \
-    npm run build 2>&1 && \
-    echo "=== Build complete ===" && \
-    ls -la dist/ && \
-    ls -la dist/index.js
+RUN npm run build 2>&1
+
+# Debug: Show the actual dist structure
+RUN echo "=== Dist structure ===" && find dist -type f -name "*.js" | head -20
 
 # Expose port
 EXPOSE 3001
@@ -40,5 +35,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 # Use dumb-init to handle signals
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start application directly with node
-CMD ["node", "dist/index.js"]
+# Start from the correct nested path
+CMD ["node", "dist/backend/src/index.js"]
