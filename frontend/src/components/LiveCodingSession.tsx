@@ -552,6 +552,7 @@ Output: [0,1]
 
   const handleCodeChange = (value: string | undefined) => {
     if (value !== undefined) {
+      const prevCode = code;
       setCode(value);
 
       // Send code update to team (real-time collaboration)
@@ -562,7 +563,9 @@ Output: [0,1]
       }
       
       // Track code change for proctoring
-      proctoring.trackCodeChange(value);
+      const charDiff = Math.abs(value.length - prevCode.length);
+      const changeType = value.length > prevCode.length ? 'insert' : value.length < prevCode.length ? 'delete' : 'replace';
+      proctoring.trackCodeChange(changeType, charDiff);
     }
   };
 
