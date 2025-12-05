@@ -18,28 +18,27 @@ RUN npm install
 COPY backend ./backend
 COPY shared ./shared
 
-# Build shared first (ignore errors if no build script)
-RUN cd shared && npm run build 2>/dev/null || true
+# Build shared types
+WORKDIR /app/shared
+RUN npm run build 2>&1 || echo "Shared build skipped"
 
-# Build backend
+# Build backend - show all output
 WORKDIR /app/backend
-RUN npm run build
-
-# Verify the build output exists
-RUN ls -la dist/ && ls -la dist/index.js
-
-WORKDIR /app
+RUN echo "=== Starting backend build ===" && \
+    npm run build 2>&1 && \
+    echo "=== Build complete ===" && \
+    ls -la dist/ && \
+    ls -la dist/index.js
 
 # Expose port
 EXPOSE 3001
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD curl -f http://localhost:3001/health || exit 1
 
 # Use dumb-init to handle signals
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start application from backend directory
-WORKDIR /app/backend
+# Start application directly with node
 CMD ["node", "dist/index.js"]

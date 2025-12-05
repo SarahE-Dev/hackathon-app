@@ -18,21 +18,27 @@ RUN npm install
 COPY backend ./backend
 COPY shared ./shared
 
-# Build TypeScript
-WORKDIR /app/backend
-RUN npm run build
+# Build shared types
+WORKDIR /app/shared
+RUN npm run build 2>&1 || echo "Shared build skipped"
 
-WORKDIR /app
+# Build backend - show all output
+WORKDIR /app/backend
+RUN echo "=== Starting backend build ===" && \
+    npm run build 2>&1 && \
+    echo "=== Build complete ===" && \
+    ls -la dist/ && \
+    ls -la dist/index.js
 
 # Expose port
 EXPOSE 3001
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD curl -f http://localhost:3001/health || exit 1
 
 # Use dumb-init to handle signals
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start application
-CMD ["npm", "run", "start", "--workspace=backend"]
+# Start application directly with node
+CMD ["node", "dist/index.js"]
