@@ -41,8 +41,8 @@ export default function Home() {
                 Justice Through Code Challenge Platform
               </h2>
               <p className="max-w-2xl mx-auto text-lg text-gray-400">
-                A proctored coding challenge platform for hackathon assessments.
-                Take timed coding challenges, build projects, and showcase your skills.
+                A collaborative coding platform for hackathons and assessments.
+                Work with your team, solve challenges, and showcase your skills.
               </p>
             </div>
 
@@ -51,7 +51,7 @@ export default function Home() {
                 href="/auth/register"
                 className="flex items-center justify-center rounded-lg bg-gradient-to-r from-neon-blue to-neon-purple px-8 py-4 text-lg font-semibold text-white transition-all hover:opacity-90 glow-blue"
               >
-                Register for Challenge
+                Get Started
               </Link>
               <Link
                 href="/auth/login"
@@ -69,11 +69,11 @@ export default function Home() {
             <div className="glass group relative overflow-hidden rounded-2xl border border-white/10 p-6 hover:border-neon-blue/40 transition-all">
               <div className="space-y-3">
                 <div className="w-12 h-12 rounded-lg bg-neon-blue/20 flex items-center justify-center text-2xl">
-                  💻
+                  👥
                 </div>
-                <h3 className="text-xl font-semibold text-white">Coding Challenges</h3>
+                <h3 className="text-xl font-semibold text-white">Team Live Coding</h3>
                 <p className="text-sm text-gray-300">
-                  Take timed coding assessments with multiple question types including multiple choice, coding, and file uploads.
+                  Collaborate in real-time with your teammates. Share code, chat, and solve problems together in synchronized sessions.
                 </p>
               </div>
             </div>
@@ -85,7 +85,7 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-semibold text-white">Proctored Sessions</h3>
                 <p className="text-sm text-gray-300">
-                  Real-time monitoring ensures academic integrity with tab detection, copy-paste tracking, and focus monitoring.
+                  Fair competition with integrity monitoring. Tab detection, copy-paste tracking, and activity logging throughout sessions.
                 </p>
               </div>
             </div>
@@ -93,11 +93,11 @@ export default function Home() {
             <div className="glass group relative overflow-hidden rounded-2xl border border-white/10 p-6 hover:border-neon-pink/40 transition-all">
               <div className="space-y-3">
                 <div className="w-12 h-12 rounded-lg bg-neon-pink/20 flex items-center justify-center text-2xl">
-                  ⚡
+                  ⚖️
                 </div>
-                <h3 className="text-xl font-semibold text-white">Instant Results</h3>
+                <h3 className="text-xl font-semibold text-white">Judge Scoring</h3>
                 <p className="text-sm text-gray-300">
-                  Auto-save functionality and immediate submission with comprehensive attempt tracking and grading.
+                  Expert judges review submissions with detailed rubric scoring. Get feedback on code quality, efficiency, and explanation.
                 </p>
               </div>
             </div>
