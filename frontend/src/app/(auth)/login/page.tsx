@@ -70,7 +70,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md relative z-10 animate-slide-up">
         {/* Logo/Title */}
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold mb-2 text-gradient">
+          <h1 className="text-5xl font-bold mb-2 text-gradient font-[family-name:var(--font-orbitron)] tracking-wide">
             CodeArena
           </h1>
           <p className="text-gray-400">Justice Through Code Challenge Platform</p>
