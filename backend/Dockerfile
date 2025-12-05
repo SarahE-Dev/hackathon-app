@@ -2,39 +2,36 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Install dumb-init and curl for proper signal handling and health checks
-RUN apk add --no-cache dumb-init curl
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init curl python3 make g++
 
-# Copy root package files
+# Copy package files from repo root context
 COPY package.json package-lock.json ./
-
-# Copy workspace package files
 COPY backend/package.json ./backend/
 COPY shared/package.json ./shared/
 
-# Install dependencies
+# Install all dependencies
 RUN npm install
 
-# Copy source code and config files
+# Copy source code
 COPY backend ./backend
 COPY shared ./shared
 
-# Copy critical backend config files
-COPY backend/tsconfig.json ./backend/
+# Build TypeScript
+WORKDIR /app/backend
+RUN npm run build
+
+WORKDIR /app
 
 # Expose port
 EXPOSE 3001
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD wget -O- http://localhost:3001/health || exit 1
-
-# Copy seed script
-COPY backend/seed-on-start.sh /app/backend/seed-on-start.sh
-RUN chmod +x /app/backend/seed-on-start.sh
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:3001/health || exit 1
 
 # Use dumb-init to handle signals
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start application with seed check
-CMD ["/app/backend/seed-on-start.sh"]
+# Start application
+CMD ["npm", "run", "start", "--workspace=backend"]
