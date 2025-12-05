@@ -552,6 +552,13 @@ export const teamSubmissionsAPI = {
     data: { 
       code: string; 
       explanation?: string;
+      explanationFields?: {
+        approach: string;
+        whyApproach: string;
+        timeComplexity: string;
+        spaceComplexity: string;
+        codeWalkthrough: string;
+      };
       proctoringStats?: ProctoringStats;
       proctoringEvents?: ProctoringEvent[];
       codeSnapshots?: Array<{ code: string; timestamp: Date; charCount: number }>;
