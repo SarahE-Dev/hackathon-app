@@ -947,6 +947,144 @@ export const getMyTeamReviews = async (
 /**
  * Clear all submissions for a team (DEV ONLY)
  */
+/**
+ * Get problem statuses for a team in a session
+ */
+export const getProblemStatuses = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { teamId, sessionId } = req.params;
+    const userId = req.user!.userId;
+
+    // Verify user is a member of the team
+    const team = await Team.findById(teamId);
+    if (!team) {
+      throw new ApiError(404, 'Team not found');
+    }
+
+    const isMember = team.memberIds.some(
+      (m) => m.toString() === userId
+    );
+    if (!isMember) {
+      throw new ApiError(403, 'You are not a member of this team');
+    }
+
+    // Get all submissions for this team/session
+    const submissions = await TeamSubmission.find({ teamId, sessionId })
+      .select('problemId status allTestsPassed');
+
+    // Build status map: problemId -> status
+    const statusMap: Record<string, 'not-started' | 'in-progress' | 'completed'> = {};
+    
+    submissions.forEach((sub) => {
+      const problemId = sub.problemId.toString();
+      if (sub.allTestsPassed || sub.status === 'submitted' || sub.status === 'passed') {
+        statusMap[problemId] = 'completed';
+      } else if (sub.status === 'in_progress') {
+        statusMap[problemId] = 'in-progress';
+      }
+    });
+
+    res.json({
+      success: true,
+      data: { statuses: statusMap },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Update problem status for a team (when they start or complete a problem)
+ */
+export const updateProblemStatus = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { teamId, sessionId, problemId } = req.params;
+    const { status } = req.body; // 'in-progress' or 'completed'
+    const userId = req.user!.userId;
+
+    // Verify user is a member of the team
+    const team = await Team.findById(teamId);
+    if (!team) {
+      throw new ApiError(404, 'Team not found');
+    }
+
+    const isMember = team.memberIds.some(
+      (m) => m.toString() === userId
+    );
+    if (!isMember) {
+      throw new ApiError(403, 'You are not a member of this team');
+    }
+
+    // Validate status
+    if (!['in-progress', 'completed'].includes(status)) {
+      throw new ApiError(400, 'Invalid status. Must be "in-progress" or "completed"');
+    }
+
+    // Find or create submission for this problem
+    let submission = await TeamSubmission.findOne({ teamId, sessionId, problemId });
+
+    if (!submission) {
+      // Create a new submission record if starting a problem
+      if (status === 'in-progress') {
+        const problem = await Question.findById(problemId);
+        if (!problem) {
+          throw new ApiError(404, 'Problem not found');
+        }
+
+        submission = await TeamSubmission.create({
+          teamId,
+          sessionId,
+          problemId,
+          code: problem.content?.codeTemplate || '',
+          language: problem.content?.language || 'python',
+          status: 'in_progress',
+          submittedBy: userId,
+          startedAt: new Date(),
+          maxPoints: problem.points || 0,
+          proctoringStats: {
+            tabSwitches: 0,
+            copyPasteAttempts: 0,
+            focusLosses: 0,
+            suspiciousPatterns: 0,
+            riskScore: 0,
+          },
+          proctoringEvents: [],
+          codeSnapshots: [],
+        });
+
+        logger.info(`Team ${teamId} started problem ${problemId}`);
+      } else {
+        // Trying to complete a problem that was never started
+        throw new ApiError(400, 'Cannot complete a problem that has not been started');
+      }
+    } else {
+      // Update existing submission
+      if (status === 'completed') {
+        // Mark as submitted (even if incomplete)
+        submission.status = 'submitted';
+        submission.submittedAt = new Date();
+        await submission.save();
+        logger.info(`Team ${teamId} completed problem ${problemId}`);
+      }
+    }
+
+    res.json({
+      success: true,
+      data: { submission },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const clearTeamSubmissions = async (
   req: AuthRequest,
   res: Response,

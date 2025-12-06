@@ -87,6 +87,8 @@ export default function TeamDetailPage() {
   const [presenceSocket, setPresenceSocket] = useState<Socket | null>(null);
   const currentUserIdRef = useRef<string | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [showForceLeaveModal, setShowForceLeaveModal] = useState(false);
+  const [forceLeaveMessage, setForceLeaveMessage] = useState('');
   
   // Refs to track current state for socket reconnection
   const activeTabRef = useRef(activeTab);
@@ -114,23 +116,19 @@ export default function TeamDetailPage() {
     if (!teamId || !activeSessionId) return;
     
     try {
-      const response = await teamSubmissionsAPI.getTeamSubmissions(teamId, activeSessionId);
-      const submissions = response?.data?.submissions || [];
+      // Get problem statuses from backend (persisted per team/session)
+      const response = await teamSubmissionsAPI.getProblemStatuses(teamId, activeSessionId);
+      const statuses = response?.data?.statuses || {};
+      
+      console.log('📊 Loaded team problem statuses:', statuses);
       
       const progressMap = new Map<string, 'not-started' | 'in-progress' | 'completed'>();
       let activeProblem: string | null = null;
       
-      submissions.forEach((sub: any) => {
-        const problemId = typeof sub.problemId === 'string' ? sub.problemId : sub.problemId?._id;
-        if (!problemId) return;
-        
-        // Determine status from submission
-        if (sub.status === 'submitted' || sub.status === 'passed' || sub.explanation) {
-          // Has explanation or final submission = completed
-          progressMap.set(problemId, 'completed');
-        } else if (sub.code || sub.status === 'in-progress') {
-          // Has code saved but not submitted = in-progress (this is the active problem)
-          progressMap.set(problemId, 'in-progress');
+      // Convert the statuses object to a Map
+      Object.entries(statuses).forEach(([problemId, status]) => {
+        progressMap.set(problemId, status as 'not-started' | 'in-progress' | 'completed');
+        if (status === 'in-progress') {
           activeProblem = problemId; // Track the active problem
         }
       });
@@ -138,10 +136,14 @@ export default function TeamDetailPage() {
       setProblemProgress(progressMap);
       setTeamActiveProblemId(activeProblem);
       
+      console.log('  Progress map:', progressMap);
+      console.log('  Active problem:', activeProblem);
+      
       // If there's an active problem, auto-select it for this user
       if (activeProblem && problems.length > 0) {
         const activeProblemObj = problems.find(p => p._id === activeProblem);
         if (activeProblemObj && !selectedProblem) {
+          console.log('  Auto-selecting active problem:', activeProblemObj.title);
           setSelectedProblem(activeProblemObj);
         }
       }
@@ -160,21 +162,43 @@ export default function TeamDetailPage() {
   }, [activeSessionId, loadTeamProgress]);
 
   // Mark problem as in-progress (called when team member opens it)
-  const markProblemAsStarted = useCallback((problemId: string) => {
-    const currentStatus = problemProgress.get(problemId);
-    // Only update if not already completed
-    if (currentStatus !== 'completed') {
-      setProblemProgress(prev => {
+  const markProblemAsStarted = useCallback(async (problemId: string) => {
+    console.log('📝 Marking problem as started:', problemId);
+    setProblemProgress(prev => {
+      const currentStatus = prev.get(problemId);
+      console.log('  Current status:', currentStatus);
+      // Only update if not already completed
+      if (currentStatus !== 'completed') {
         const updated = new Map(prev);
         updated.set(problemId, 'in-progress');
+        console.log('  ✅ Set to in-progress');
         return updated;
-      });
-      setTeamActiveProblemId(problemId); // This is now the team's active problem
+      }
+      return prev;
+    });
+    setTeamActiveProblemId(problemId); // This is now the team's active problem
+    
+    // Persist to backend
+    if (teamId && activeSessionId) {
+      try {
+        await teamSubmissionsAPI.updateProblemStatus(teamId, activeSessionId, problemId, 'in-progress');
+        console.log('  ✅ Persisted to backend');
+      } catch (error) {
+        console.error('  ⚠️ Failed to persist status:', error);
+      }
     }
-  }, [problemProgress]);
+    
+    // Broadcast to team that this problem is now in progress
+    if (presenceSocket?.connected) {
+      console.log('  📡 Broadcasting problem-started to team');
+      presenceSocket.emit('problem-started', { problemId });
+    } else {
+      console.log('  ⚠️ Socket not connected, cannot broadcast');
+    }
+  }, [presenceSocket, teamId, activeSessionId]);
 
   // Mark problem as completed (called after successful submission)
-  const markProblemAsCompleted = useCallback((problemId: string) => {
+  const markProblemAsCompleted = useCallback(async (problemId: string) => {
     setProblemProgress(prev => {
       const updated = new Map(prev);
       updated.set(problemId, 'completed');
@@ -182,11 +206,26 @@ export default function TeamDetailPage() {
     });
     setTeamActiveProblemId(null); // No more active problem - team can pick a new one
     setSelectedProblem(null);
-  }, []);
+    
+    // Persist to backend
+    if (teamId && activeSessionId) {
+      try {
+        await teamSubmissionsAPI.updateProblemStatus(teamId, activeSessionId, problemId, 'completed');
+        console.log('✅ Persisted problem completion to backend');
+      } catch (error) {
+        console.error('⚠️ Failed to persist completion:', error);
+      }
+    }
+    
+    // Broadcast to team that this problem is now completed
+    if (presenceSocket?.connected) {
+      presenceSocket.emit('problem-completed', { problemId });
+    }
+  }, [presenceSocket, teamId, activeSessionId]);
 
   // Dev reset function - clears backend submissions and reloads progress
   const handleDevReset = async () => {
-    if (!confirm('DEV RESET: This will clear all team submissions for this session. Continue?')) {
+    if (!confirm('DEV RESET: This will clear ALL data for your team:\n\n• All code submissions\n• All explanations\n• All judge reviews & scores\n• All test results\n• Problem completion status\n\nThis cannot be undone. Continue?')) {
       return;
     }
     
@@ -196,14 +235,22 @@ export default function TeamDetailPage() {
         const result = await teamSubmissionsAPI.devReset(teamId, activeSessionId);
         console.log('DEV RESET: Cleared submissions:', result);
         
-        // Clear local state and reload
+        // Clear local state
         setProblemProgress(new Map());
         setTeamActiveProblemId(null); // Reset active problem
         setSelectedProblem(null);
         setConfirmProblem(null);
         setActiveTab('problems');
         
-        alert(`DEV RESET complete! Cleared ${result.deletedCount} team submissions.`);
+        // Broadcast to other team members that everything is reset
+        if (presenceSocket?.connected) {
+          presenceSocket.emit('dev-reset', {});
+        }
+        
+        // Reload progress from backend (should be empty now)
+        await loadTeamProgress();
+        
+        alert(`✅ DEV RESET complete!\n\nCleared ${result.deletedCount} submissions (including code, explanations, and judge reviews).\n\nYour team can now start fresh.`);
       } catch (error) {
         console.error('Failed to clear backend submissions:', error);
         alert('Failed to clear team submissions.');
@@ -288,15 +335,16 @@ export default function TeamDetailPage() {
     });
 
     socket.on('team-joined', (data: { teamId: string; presence: any[]; chatHistory: any[] }) => {
-      console.log('Team page: Joined team, presence:', data.presence?.length);
+      console.log('Team page: Joined team, presence:', data.presence?.length, data.presence);
       setMemberStatuses(prev => {
         const updated = new Map(prev);
         data.presence.forEach((p: any) => {
           if (p.isOnline) {
             updated.set(p.userId, {
               odId: p.userId,
-              odStatus: 'in-team-space',
-              odProblemTitle: undefined,
+              // Use actual status from presence data, default to 'in-team-space'
+              odStatus: (p.status as 'in-team-space' | 'live-coding') || 'in-team-space',
+              odProblemTitle: p.problemTitle,
             });
           }
         });
@@ -305,13 +353,14 @@ export default function TeamDetailPage() {
     });
 
     socket.on('user-joined', (data: { userId: string; presence: any }) => {
-      console.log('Team page: User joined', data.userId);
+      console.log('Team page: User joined', data.userId, data.presence);
       setMemberStatuses(prev => {
         const updated = new Map(prev);
         updated.set(data.userId, {
           odId: data.userId,
-          odStatus: 'in-team-space',
-          odProblemTitle: undefined,
+          // Use actual status from presence data, default to 'in-team-space'
+          odStatus: (data.presence?.status as 'in-team-space' | 'live-coding') || 'in-team-space',
+          odProblemTitle: data.presence?.problemTitle,
         });
         return updated;
       });
@@ -337,6 +386,80 @@ export default function TeamDetailPage() {
         });
         return updated;
       });
+    });
+
+    // Listen for when team members start a problem
+    socket.on('problem-started', (data: { problemId: string; isForceSwitch?: boolean }) => {
+      console.log('🎯 Team page: Problem started by teammate', data.problemId, data.isForceSwitch ? '(force switch)' : '');
+      setProblemProgress(prev => {
+        const currentStatus = prev.get(data.problemId);
+        console.log('  Current status:', currentStatus, '→ in-progress');
+        const updated = new Map(prev);
+        updated.set(data.problemId, 'in-progress');
+        return updated;
+      });
+      setTeamActiveProblemId(data.problemId);
+      console.log('  Team active problem ID set to:', data.problemId);
+    });
+
+    // Listen for when team completes a problem
+    socket.on('problem-completed', (data: { problemId: string; isForceSwitch?: boolean }) => {
+      console.log('✅ Team page: Problem completed by teammate', data.problemId, data.isForceSwitch ? '(force switch)' : '');
+      setProblemProgress(prev => {
+        const updated = new Map(prev);
+        updated.set(data.problemId, 'completed');
+        console.log('  Marked as completed');
+        return updated;
+      });
+      // Only clear teamActiveProblemId if this is a real submission (not a force-switch)
+      if (!data.isForceSwitch) {
+        setTeamActiveProblemId(null);
+        console.log('  Team active problem ID cleared');
+      }
+    });
+
+    // Listen for force-leave-problem (when someone force-switches)
+    socket.on('force-leave-problem', (data: { problemId: string; newProblemId: string }) => {
+      console.log('🚪 Force leave problem:', data.problemId, '→', data.newProblemId);
+      
+      // Update problem statuses FIRST (before kicking user out)
+      setProblemProgress(prev => {
+        const updated = new Map(prev);
+        updated.set(data.problemId, 'completed');
+        updated.set(data.newProblemId, 'in-progress');
+        console.log('  Updated statuses: old=completed, new=in-progress');
+        return updated;
+      });
+      
+      setTeamActiveProblemId(data.newProblemId);
+      
+      // If the user is currently viewing the old problem, kick them out
+      if (selectedProblemRef.current?._id === data.problemId) {
+        console.log('  User was viewing old problem, switching to problems list');
+        setSelectedProblem(null);
+        setActiveTab('problems');
+        
+        // Show a modal notification
+        setForceLeaveMessage('Your team has switched to a different problem. The previous problem has been submitted as-is.');
+        setShowForceLeaveModal(true);
+      }
+    });
+
+    // Listen for dev-reset (when a teammate resets everything)
+    socket.on('dev-reset', async () => {
+      console.log('🔄 DEV RESET broadcast received from teammate');
+      
+      // Clear local state
+      setProblemProgress(new Map());
+      setTeamActiveProblemId(null);
+      setSelectedProblem(null);
+      setActiveTab('problems');
+      
+      // Reload progress from backend (should be empty)
+      await loadTeamProgress();
+      
+      // Show notification
+      alert('🔄 Team Reset: A teammate has reset all progress. Starting fresh!');
     });
 
     socket.on('connect_error', (error) => {
@@ -468,11 +591,69 @@ export default function TeamDetailPage() {
     return problems.find(p => p._id === teamActiveProblemId) || null;
   }, [teamActiveProblemId, problems]);
 
-  // Confirm switching to a different problem (not normally used - just for edge cases)
-  const confirmProblemSelection = () => {
-    if (confirmProblem) {
-      // This shouldn't normally happen since team must submit first
+  // Force switch to a different problem - submits current work as-is
+  const confirmProblemSelection = async () => {
+    if (!confirmProblem || !teamActiveProblemId || !activeSessionId || !teamId) return;
+
+    try {
+      console.log('🔄 Force switching problems - completing:', teamActiveProblemId, 'starting:', confirmProblem._id);
+      
+      const oldProblemId = teamActiveProblemId;
+      const newProblem = confirmProblem;
+      
+      // Persist status changes to backend FIRST
+      try {
+        await teamSubmissionsAPI.updateProblemStatus(teamId, activeSessionId, oldProblemId, 'completed');
+        console.log('  ✅ Backend: Marked old problem as completed');
+        
+        await teamSubmissionsAPI.updateProblemStatus(teamId, activeSessionId, newProblem._id, 'in-progress');
+        console.log('  ✅ Backend: Marked new problem as in-progress');
+      } catch (error) {
+        console.error('  ⚠️ Failed to persist status changes:', error);
+        throw error;
+      }
+      
+      // Update local state for THIS user
+      setProblemProgress(prev => {
+        const updated = new Map(prev);
+        updated.set(oldProblemId, 'completed');
+        updated.set(newProblem._id, 'in-progress');
+        console.log('  ✅ Local state updated: old=completed, new=in-progress');
+        return updated;
+      });
+      
+      setTeamActiveProblemId(newProblem._id);
+      
+      // Broadcast force-leave to all OTHER team members (handles their state)
+      if (presenceSocket?.connected) {
+        console.log('  📡 Broadcasting force-leave-problem to team');
+        presenceSocket.emit('force-leave-problem', { 
+          problemId: oldProblemId,
+          newProblemId: newProblem._id 
+        });
+        
+        // Also broadcast problem-completed and problem-started with isForceSwitch flag
+        presenceSocket.emit('problem-completed', { problemId: oldProblemId, isForceSwitch: true });
+        presenceSocket.emit('problem-started', { problemId: newProblem._id, isForceSwitch: true });
+      }
+      
+      // Switch UI to new problem for THIS user
+      setSelectedProblem(newProblem);
+      setActiveTab('code');
       setConfirmProblem(null);
+      
+      // Emit status update
+      if (presenceSocket?.connected) {
+        presenceSocket.emit('update-status', {
+          status: 'live-coding',
+          problemTitle: newProblem.title,
+        });
+      }
+      
+      console.log('✅ Force switch complete - old:', oldProblemId, 'new:', newProblem._id);
+    } catch (error) {
+      console.error('Error switching problems:', error);
+      alert('Failed to switch problems. Please try again.');
     }
   };
 
@@ -537,19 +718,48 @@ export default function TeamDetailPage() {
 
   return (
     <div className="min-h-screen bg-dark-900 text-white">
-      {/* Modal: Team already has an active problem */}
-      {confirmProblem && teamActiveProblemId && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+      {/* Modal: Force Leave Problem Notification */}
+      {showForceLeaveModal && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
           <div className="glass rounded-2xl p-8 border border-yellow-500/50 max-w-md w-full">
             <div className="text-center">
-              <div className="text-5xl mb-4">🔒</div>
-              <h3 className="text-xl font-bold text-yellow-400 mb-2">Problem Already Active</h3>
-              <p className="text-gray-300 mb-4">
-                Your team is currently working on <span className="font-bold text-neon-blue">"{getActiveProblem()?.title || 'another problem'}"</span>
+              <div className="text-6xl mb-4">⚠️</div>
+              <h3 className="text-2xl font-bold text-yellow-400 mb-4">Team Problem Switch</h3>
+              <p className="text-gray-300 mb-6 leading-relaxed">
+                {forceLeaveMessage}
               </p>
               <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6">
                 <p className="text-sm text-yellow-300">
-                  <strong>One problem at a time:</strong> Your team must submit the current problem before starting a new one.
+                  Check the <strong>Problems</strong> tab to see the new active problem.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowForceLeaveModal(false)}
+                className="w-full px-6 py-3 bg-gradient-to-r from-neon-blue to-neon-purple text-white rounded-lg font-medium hover:opacity-90 transition-all"
+              >
+                Got It
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Team already has an active problem */}
+      {confirmProblem && teamActiveProblemId && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="glass rounded-2xl p-8 border border-red-500/50 max-w-lg w-full">
+            <div className="text-center">
+              <div className="text-5xl mb-4">⚠️</div>
+              <h3 className="text-xl font-bold text-red-400 mb-2">Switch to Different Problem?</h3>
+              <p className="text-gray-300 mb-4">
+                Your team is currently working on <span className="font-bold text-neon-blue">"{getActiveProblem()?.title || 'another problem'}"</span>
+              </p>
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6">
+                <p className="text-sm text-red-300 mb-3">
+                  <strong>⚠️ Warning:</strong> Switching problems will mark your current problem as incomplete and submit any saved work as-is.
+                </p>
+                <p className="text-sm text-gray-400">
+                  Your team can only work on <strong>one problem at a time</strong>. Once you switch, you cannot return to the previous problem.
                 </p>
               </div>
               <div className="flex gap-3">
@@ -561,7 +771,7 @@ export default function TeamDetailPage() {
                 </button>
                 <button
                   onClick={() => {
-                    // Go to the active problem
+                    // Go to the active problem instead of switching
                     const activeProblem = getActiveProblem();
                     if (activeProblem) {
                       setSelectedProblem(activeProblem);
@@ -571,7 +781,13 @@ export default function TeamDetailPage() {
                   }}
                   className="flex-1 px-4 py-3 bg-neon-blue hover:bg-neon-blue/80 text-white rounded-lg font-medium transition-all"
                 >
-                  Go to Active Problem →
+                  Continue Current Problem
+                </button>
+                <button
+                  onClick={confirmProblemSelection}
+                  className="flex-1 px-4 py-3 bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 text-red-400 rounded-lg font-medium transition-all"
+                >
+                  Switch Anyway →
                 </button>
               </div>
             </div>
@@ -844,6 +1060,11 @@ export default function TeamDetailPage() {
                       const isCompleted = status === 'completed';
                       const isInProgress = status === 'in-progress';
                       const isCurrentlySelected = selectedProblem?._id === problem._id;
+                      
+                      // Check if any teammate is currently working on this problem
+                      const teammatesOnProblem = Array.from(memberStatuses.values())
+                        .filter(s => s.odStatus === 'live-coding' && s.odProblemTitle === problem.title);
+                      const hasActiveTeammates = teammatesOnProblem.length > 0;
 
                     return (
                       <div
@@ -897,10 +1118,20 @@ export default function TeamDetailPage() {
                             </div>
 
                             <div className="flex items-center gap-2">
+                              {/* Show if teammates are working on this problem */}
+                              {hasActiveTeammates && (
+                                <div className="flex items-center gap-1 text-xs bg-neon-blue/20 text-neon-blue px-2 py-1 rounded-full animate-pulse">
+                                  <span className="inline-block w-2 h-2 bg-neon-blue rounded-full"></span>
+                                  {teammatesOnProblem.length} coding
+                                </div>
+                              )}
                               {isCompleted ? (
-                                <span className="text-xs bg-neon-green/20 text-neon-green px-3 py-1 rounded-full font-medium">
-                                  ✓ Submitted
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs bg-neon-green/20 text-neon-green px-3 py-1 rounded-full font-medium">
+                                    ✓ Submitted
+                                  </span>
+                                  <span className="text-gray-500 text-xs">🔒</span>
+                                </div>
                               ) : isInProgress ? (
                                 <span className="text-xs bg-yellow-500/20 text-yellow-500 px-3 py-1 rounded-full">
                                   In Progress →
@@ -931,6 +1162,7 @@ export default function TeamDetailPage() {
               <>
                 {selectedProblem && activeSessionId ? (
                   <LiveCodingSession
+                    key={`${selectedProblem._id}-${activeSessionId}`} // Force remount on problem/session change
                     teamId={team._id}
                     sessionId={activeSessionId}
                     problemTitle={selectedProblem.title}

@@ -11,6 +11,8 @@ import {
   getLeaderboard,
   getMyTeamReviews,
   clearTeamSubmissions,
+  getProblemStatuses,
+  updateProblemStatus,
 } from '../controllers/teamSubmissionController';
 import { authenticate } from '../middleware/auth';
 
@@ -58,6 +60,18 @@ router.post('/:submissionId/feedback', addJudgeFeedback);
  * Get all submissions for a team in a session
  */
 router.get('/:teamId/:sessionId', getTeamSubmissions);
+
+/**
+ * GET /api/team-submissions/:teamId/:sessionId/statuses
+ * Get problem statuses for a team in a session
+ */
+router.get('/:teamId/:sessionId/statuses', getProblemStatuses);
+
+/**
+ * PUT /api/team-submissions/:teamId/:sessionId/:problemId/status
+ * Update problem status (in-progress or completed)
+ */
+router.put('/:teamId/:sessionId/:problemId/status', updateProblemStatus);
 
 /**
  * DELETE /api/team-submissions/:teamId/:sessionId/dev-reset

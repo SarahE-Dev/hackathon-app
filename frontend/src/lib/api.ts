@@ -611,6 +611,18 @@ export const teamSubmissionsAPI = {
     return response.data;
   },
 
+  // Get problem statuses for a team
+  getProblemStatuses: async (teamId: string, sessionId: string) => {
+    const response = await api.get(`/team-submissions/${teamId}/${sessionId}/statuses`);
+    return response.data;
+  },
+
+  // Update problem status (in-progress or completed)
+  updateProblemStatus: async (teamId: string, sessionId: string, problemId: string, status: 'in-progress' | 'completed') => {
+    const response = await api.put(`/team-submissions/${teamId}/${sessionId}/${problemId}/status`, { status });
+    return response.data;
+  },
+
   // DEV ONLY: Clear all submissions for a team
   devReset: async (teamId: string, sessionId: string) => {
     const response = await api.delete(`/team-submissions/${teamId}/${sessionId}/dev-reset`);

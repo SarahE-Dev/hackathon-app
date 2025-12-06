@@ -301,6 +301,9 @@ Output: [0,1]
           // Load saved code and explanation
           if (submission.code) {
             setCode(submission.code);
+          } else {
+            // No saved code, reset to starter code
+            setCode(currentProblem.starterCode);
           }
           if (submission.explanation) {
             setExplanation(submission.explanation);
@@ -319,10 +322,22 @@ Output: [0,1]
               spaceComplexity: spaceMatch ? spaceMatch[1].trim() : '',
               codeWalkthrough: walkthroughMatch ? walkthroughMatch[1].trim() : '',
             });
+          } else {
+            // No saved explanation, reset to empty
+            setExplanation('');
+            setExplanationFields({
+              approach: '',
+              whyApproach: '',
+              timeComplexity: '',
+              spaceComplexity: '',
+              codeWalkthrough: '',
+            });
           }
           // Load team's shared test run attempts from backend
           if (typeof submission.testRunAttempts === 'number') {
             setTestAttempts(submission.testRunAttempts);
+          } else {
+            setTestAttempts(0);
           }
           // Load test results if available
           if (submission.testResults?.length > 0) {
@@ -331,12 +346,41 @@ Output: [0,1]
               results[r.testCaseId] = r.passed ? 'passed' : 'failed';
             });
             setTestResults(results);
+          } else {
+            setTestResults({});
           }
           console.log('Loaded existing submission for problem:', problem.title);
+        } else {
+          // No submission found - reset everything to defaults
+          console.log('No submission found, resetting to starter code');
+          setCode(currentProblem.starterCode);
+          setExplanation('');
+          setExplanationFields({
+            approach: '',
+            whyApproach: '',
+            timeComplexity: '',
+            spaceComplexity: '',
+            codeWalkthrough: '',
+          });
+          setTestAttempts(0);
+          setTestResults({});
+          setOutput('');
         }
       } catch (error) {
-        // No existing submission, that's fine
-        console.log('No existing submission found');
+        // No existing submission or error - reset to starter code
+        console.log('No existing submission found, using starter code');
+        setCode(currentProblem.starterCode);
+        setExplanation('');
+        setExplanationFields({
+          approach: '',
+          whyApproach: '',
+          timeComplexity: '',
+          spaceComplexity: '',
+          codeWalkthrough: '',
+        });
+        setTestAttempts(0);
+        setTestResults({});
+        setOutput('');
       }
     };
 

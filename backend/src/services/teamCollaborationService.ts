@@ -33,6 +33,8 @@ interface TeamPresence {
   cursorPosition?: { line: number; column: number };
   lastActive: Date;
   isOnline: boolean;
+  status?: 'in-team-space' | 'live-coding';
+  problemTitle?: string;
 }
 
 export class TeamCollaborationService {
@@ -233,12 +235,68 @@ export class TeamCollaborationService {
 
         logger.info(`User ${socket.userId} status update: ${data.status}${data.problemTitle ? ` (${data.problemTitle})` : ''}`);
 
-        // Broadcast status update to all team members
+        // Update presence with status
+        const teamPresence = this.teamRooms.get(socket.teamId) || [];
+        const userPresence = teamPresence.find(p => p.userId === socket.userId);
+        if (userPresence) {
+          userPresence.status = data.status as 'in-team-space' | 'live-coding';
+          userPresence.problemTitle = data.problemTitle;
+          userPresence.lastActive = new Date();
+        }
+
+        // Broadcast status update to all team members (including sender for confirmation)
         this.io.to(`team:${socket.teamId}`).emit('user-status-update', {
           odId: socket.userId,
           odStatus: data.status,
           odProblemTitle: data.problemTitle,
         });
+      });
+
+      // Problem started event
+      socket.on('problem-started', (data: { problemId: string }) => {
+        if (!socket.teamId) return;
+
+        logger.info(`User ${socket.userId} started problem ${data.problemId} for team ${socket.teamId}`);
+
+        // Broadcast to all team members
+        this.io.to(`team:${socket.teamId}`).emit('problem-started', {
+          problemId: data.problemId,
+        });
+      });
+
+      // Problem completed event
+      socket.on('problem-completed', (data: { problemId: string }) => {
+        if (!socket.teamId) return;
+
+        logger.info(`User ${socket.userId} completed problem ${data.problemId} for team ${socket.teamId}`);
+
+        // Broadcast to all team members
+        this.io.to(`team:${socket.teamId}`).emit('problem-completed', {
+          problemId: data.problemId,
+        });
+      });
+
+      // Force leave problem event (when switching problems mid-work)
+      socket.on('force-leave-problem', (data: { problemId: string; newProblemId: string }) => {
+        if (!socket.teamId) return;
+
+        logger.info(`User ${socket.userId} forcing team to leave problem ${data.problemId} and switch to ${data.newProblemId}`);
+
+        // Broadcast to all OTHER team members (not the sender)
+        socket.to(`team:${socket.teamId}`).emit('force-leave-problem', {
+          problemId: data.problemId,
+          newProblemId: data.newProblemId,
+        });
+      });
+
+      // Dev reset event (when someone resets all team progress)
+      socket.on('dev-reset', () => {
+        if (!socket.teamId) return;
+
+        logger.info(`User ${socket.userId} triggered dev reset for team ${socket.teamId}`);
+
+        // Broadcast to all OTHER team members (not the sender)
+        socket.to(`team:${socket.teamId}`).emit('dev-reset', {});
       });
 
       // Leave team
@@ -264,12 +322,17 @@ export class TeamCollaborationService {
         username: `${user.firstName} ${user.lastName}`,
         lastActive: new Date(),
         isOnline: true,
+        status: 'in-team-space', // Default status when joining
       };
 
       const teamPresence = this.teamRooms.get(teamId) || [];
       const existingIndex = teamPresence.findIndex(p => p.userId === userId);
 
       if (existingIndex >= 0) {
+        // Preserve existing status if reconnecting
+        const existingPresence = teamPresence[existingIndex];
+        presence.status = existingPresence.status || 'in-team-space';
+        presence.problemTitle = existingPresence.problemTitle;
         teamPresence[existingIndex] = presence;
       } else {
         teamPresence.push(presence);
